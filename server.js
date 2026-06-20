@@ -107,17 +107,20 @@ const PERMISSIONS = {
 };
 
 function getCurrentRole(req) {
-  const role = req.headers['x-user-role'] || req.query.role || DEFAULT_ROLE;
+  const role = req.headers['x-user-role'] || DEFAULT_ROLE;
   return ROLES[role] ? role : DEFAULT_ROLE;
 }
 
 function getCurrentUser(req) {
-  const name = req.headers['x-user-name'] || req.query.user || '系统';
+  let name = req.headers['x-user-name'] || '系统';
   try {
-    return decodeURIComponent(name);
+    if (/^%[0-9A-Fa-f]{2}/.test(name)) {
+      name = decodeURIComponent(name);
+    }
   } catch (e) {
-    return name;
+    // 解码失败则使用原始值
   }
+  return name;
 }
 
 function hasPermission(role, collection, action) {
@@ -728,7 +731,12 @@ app.get('/api/db', async (req, res) => {
   for (const key of Object.keys(db)) {
     if (Array.isArray(db[key])) db[key].sort(sortNewest);
   }
-  res.json(db);
+  const role = getCurrentRole(req);
+  const result = { ...db };
+  if (role !== 'admin') {
+    delete result.audits;
+  }
+  res.json(result);
 });
 
 app.get('/api/loans/calendar', async (req, res) => {
