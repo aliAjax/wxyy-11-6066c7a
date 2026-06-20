@@ -140,11 +140,18 @@ function toneForRisk(level) {
   return '';
 }
 
+function isStrictRiskAssessment(assessment) {
+  if (!assessment) return false;
+  return assessment.isStrictMode === true ||
+    assessment.protectionLevel === '一级' ||
+    assessment.borrowStatus === '修补中';
+}
+
 function renderRiskPanel(assessment) {
   if (!assessment) return '';
   const tone = toneForRisk(assessment.level);
   const reasons = (assessment.reasons || []).map((r) => `<li>${escapeHtml(r)}</li>`).join('');
-  const strictHtml = assessment.isStrictMode
+  const strictHtml = isStrictRiskAssessment(assessment)
     ? `<div class="risk-strict">⚠️ 严格模式：${assessment.protectionLevel === '一级' ? '一级保护经卷' : ''}${assessment.protectionLevel === '一级' && assessment.borrowStatus === '修补中' ? ' + ' : ''}${assessment.borrowStatus === '修补中' ? '经卷修补中' : ''}，审批需确认</div>`
     : '';
   return `
@@ -365,7 +372,7 @@ function renderCard(item, collection, view) {
       .join('');
   };
 
-  const actionsHtml = collection === 'loans' && item.riskAssessment?.isStrictMode
+  const actionsHtml = collection === 'loans' && isStrictRiskAssessment(item.riskAssessment)
     ? `<div class="actions">${state.config.actions
         .filter((action) => action.collection === collection)
         .map((action) => {
@@ -658,7 +665,7 @@ document.addEventListener('click', async (event) => {
 
     if (actionConfig?.collection === 'loans' &&
         (actionId === 'loan-approve' || actionId === 'loan-reject') &&
-        item?.riskAssessment?.isStrictMode) {
+        isStrictRiskAssessment(item?.riskAssessment)) {
       openStrictConfirmModal(actionConfig, item, async (note) => {
         try {
           await api(`/api/${actionConfig.collection}/${itemId}`, {
