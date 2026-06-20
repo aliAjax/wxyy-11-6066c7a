@@ -623,6 +623,7 @@ app.patch('/api/:collection/:id', async (req, res) => {
 
   const historyAction = req.body.historyAction;
   delete req.body.historyAction;
+  const prevStatus = item.status;
   Object.assign(item, req.body, { updatedAt: new Date().toISOString() });
 
   if (collection === 'loans' && (req.body.scrollId || req.body.borrowDate || req.body.dueDate || req.body.purpose)) {
@@ -631,8 +632,9 @@ app.patch('/api/:collection/:id', async (req, res) => {
     item.riskAssessment = assessment;
   }
 
-  if (collection === 'repairs' && req.body.status) {
-    const justCompleted = req.body.status === '已完成' && item.status !== '已完成';
+  if (collection === 'repairs' && req.body.status && req.body.status !== prevStatus) {
+    const justCompleted = req.body.status === '已完成';
+    const justReverted = prevStatus === '已完成' && req.body.status !== '已完成';
     if (item.batchId) {
       const batch = db.repairBatches?.find((b) => b.id === item.batchId);
       if (batch) {
@@ -660,8 +662,22 @@ app.patch('/api/:collection/:id', async (req, res) => {
               scroll.history.unshift(stamp('修补完成', `修补批次"${batch.templateName}"全部工序完成，转入需审批`));
             }
           }
-        } else if (justCompleted) {
-          batch.history.unshift(stamp('进度更新', `${item.process}已完成（${completedCount}/${totalCount}）`));
+        } else {
+          if (wasAllDone) {
+            batch.status = '进行中';
+            batch.history.unshift(stamp('批次回退', `${item.process}从已完成回退为${req.body.status}，批次重新进行中（${completedCount}/${totalCount}）`));
+            const scroll = db.scrolls?.find((s) => s.id === batch.scrollId);
+            if (scroll && scroll.borrowStatus === '需审批') {
+              scroll.borrowStatus = '修补中';
+              scroll.updatedAt = new Date().toISOString();
+              scroll.history = scroll.history || [];
+              scroll.history.unshift(stamp('修补中', `修补批次"${batch.templateName}"有工序回退，经卷重回修补中`));
+            }
+          } else if (justCompleted) {
+            batch.history.unshift(stamp('进度更新', `${item.process}已完成（${completedCount}/${totalCount}）`));
+          } else if (justReverted) {
+            batch.history.unshift(stamp('进度回退', `${item.process}从已完成回退为${req.body.status}（${completedCount}/${totalCount}）`));
+          }
         }
       }
     } else if (justCompleted) {
@@ -671,6 +687,14 @@ app.patch('/api/:collection/:id', async (req, res) => {
         scroll.updatedAt = new Date().toISOString();
         scroll.history = scroll.history || [];
         scroll.history.unshift(stamp('修补完成', `${item.process}修补完成，转入需审批`));
+      }
+    } else if (justReverted) {
+      const scroll = db.scrolls?.find((s) => s.id === item.scrollId);
+      if (scroll && scroll.borrowStatus === '需审批') {
+        scroll.borrowStatus = '修补中';
+        scroll.updatedAt = new Date().toISOString();
+        scroll.history = scroll.history || [];
+        scroll.history.unshift(stamp('修补中', `${item.process}修补回退，经卷重回修补中`));
       }
     }
   }
