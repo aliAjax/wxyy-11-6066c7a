@@ -410,51 +410,6 @@
         }
       ],
       "note": "开始修补"
-    },
-    {
-      "id": "repairs-1781959563718-d838f",
-      "scrollId": "scrolls-1781957739137-684f7",
-      "damageType": "测试破损",
-      "status": "待修补",
-      "createdAt": "2026-06-20T12:46:03.718Z",
-      "updatedAt": "2026-06-20T12:46:03.718Z",
-      "history": [
-        {
-          "at": "2026-06-20T12:46:03.718Z",
-          "action": "创建",
-          "note": ""
-        }
-      ]
-    },
-    {
-      "id": "repairs-1781959590461-e4d4c",
-      "scrollId": "scrolls-1781957739137-684f7",
-      "damageType": "虫蛀",
-      "status": "待修补",
-      "createdAt": "2026-06-20T12:46:30.461Z",
-      "updatedAt": "2026-06-20T12:46:30.461Z",
-      "history": [
-        {
-          "at": "2026-06-20T12:46:30.461Z",
-          "action": "创建",
-          "note": ""
-        }
-      ]
-    },
-    {
-      "id": "repairs-1781959802230-c868c",
-      "scrollId": "scrolls-1781957739137-684f7",
-      "damageType": "测试编码",
-      "status": "待修补",
-      "createdAt": "2026-06-20T12:50:02.230Z",
-      "updatedAt": "2026-06-20T12:50:02.230Z",
-      "history": [
-        {
-          "at": "2026-06-20T12:50:02.230Z",
-          "action": "创建",
-          "note": ""
-        }
-      ]
     }
   ],
   "loans": [
@@ -1224,85 +1179,25 @@
   ],
   "audits": [
     {
-      "id": "audit-1781959802230-b78f4",
-      "timestamp": "2026-06-20T12:50:02.230Z",
-      "operator": "王小明",
-      "operatorRole": "admin",
-      "operatorRoleName": "管理员",
-      "collection": "repairs",
-      "collectionLabel": "修补记录",
-      "itemId": "repairs-1781959802230-c868c",
-      "itemTitle": "repairs-1781959802230-c868c",
-      "action": "create",
-      "actionLabel": "新增",
-      "changes": {
-        "scrollId": "scrolls-1781957739137-684f7",
-        "damageType": "测试编码",
-        "status": "待修补"
-      },
-      "note": "",
-      "ip": "::1"
-    },
-    {
-      "id": "audit-1781959590461-eb3a4",
-      "timestamp": "2026-06-20T12:46:30.461Z",
-      "operator": "李修补师",
-      "operatorRole": "conservator",
-      "operatorRoleName": "修补人员",
-      "collection": "repairs",
-      "collectionLabel": "修补记录",
-      "itemId": "repairs-1781959590461-e4d4c",
-      "itemTitle": "repairs-1781959590461-e4d4c",
-      "action": "create",
-      "actionLabel": "新增",
-      "changes": {
-        "scrollId": "scrolls-1781957739137-684f7",
-        "damageType": "虫蛀",
-        "status": "待修补"
-      },
-      "note": "",
-      "ip": "::1"
-    },
-    {
-      "id": "audit-1781959563718-fde1d",
-      "timestamp": "2026-06-20T12:46:03.718Z",
-      "operator": "测试员小王",
-      "operatorRole": "admin",
-      "operatorRoleName": "管理员",
-      "collection": "repairs",
-      "collectionLabel": "修补记录",
-      "itemId": "repairs-1781959563718-d838f",
-      "itemTitle": "repairs-1781959563718-d838f",
-      "action": "create",
-      "actionLabel": "新增",
-      "changes": {
-        "scrollId": "scrolls-1781957739137-684f7",
-        "damageType": "测试破损",
-        "status": "待修补"
-      },
-      "note": "",
-      "ip": "::1"
-    },
-    {
       "id": "audit-1781957772449-f9963",
       "timestamp": "2026-06-20T12:16:12.449Z",
-      "operator": "å¼ ä¿®è¡¥",
+      "operator": "张修补",
       "operatorRole": "conservator",
       "operatorRoleName": "修补人员",
       "collection": "scrolls",
       "collectionLabel": "经卷档案",
       "itemId": "scrolls-1781957739137-684f7",
-      "itemTitle": null,
+      "itemTitle": "测试经卷123",
       "action": "statusChange",
       "actionLabel": "状态变更",
       "changes": null,
-      "note": "经卷状态变更为undefined（修补工序undefined修补中）",
+      "note": "经卷状态变更：修补工序进入修补中",
       "ip": "::1"
     },
     {
       "id": "audit-1781957772449-c1e37",
       "timestamp": "2026-06-20T12:16:12.449Z",
-      "operator": "å¼ ä¿®è¡¥",
+      "operator": "张修补",
       "operatorRole": "conservator",
       "operatorRoleName": "修补人员",
       "collection": "repairs",
@@ -1326,7 +1221,7 @@
     {
       "id": "audit-1781957754532-dd5c0",
       "timestamp": "2026-06-20T12:15:54.532Z",
-      "operator": "å¼ ä¿®è¡¥",
+      "operator": "张修补",
       "operatorRole": "conservator",
       "operatorRoleName": "修补人员",
       "collection": "repairs",
@@ -1346,7 +1241,7 @@
     {
       "id": "audit-1781957739137-de754",
       "timestamp": "2026-06-20T12:15:39.137Z",
-      "operator": "æµè¯ç®¡çå",
+      "operator": "测试管理员",
       "operatorRole": "admin",
       "operatorRoleName": "管理员",
       "collection": "scrolls",
