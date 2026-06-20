@@ -34,5 +34,22 @@
       ]
     }
   ],
-  "loans": []
+  "loans": [],
+  "imagings": [
+    {
+      "id": "imaging-seed-1",
+      "scrollId": "scroll-seed-1",
+      "batch": "2026-A-001",
+      "photographer": "李明",
+      "captureDate": "2026-06-20",
+      "imageCode": "IMG-2026-0620-001",
+      "clarity": "清晰",
+      "note": "卷首高清拍摄，完整覆盖",
+      "createdAt": "2026-06-20T08:00:00.000Z",
+      "updatedAt": "2026-06-20T08:00:00.000Z",
+      "history": [
+        { "at": "2026-06-20T08:00:00.000Z", "action": "创建", "note": "卷首高清拍摄，完整覆盖" }
+      ]
+    }
+  ]
 }

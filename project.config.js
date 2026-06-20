@@ -14,18 +14,24 @@ module.exports = {
     '进行中': 'warn',
     '限制借阅': 'bad',
     '修补中': 'bad',
-    '已拒绝': 'bad'
+    '已拒绝': 'bad',
+    '模糊': 'bad',
+    '待重拍': 'bad',
+    '清晰': 'ok',
+    '已归档': 'ok'
   },
   collections: {
     scrolls: { label: '经卷档案' },
     repairs: { label: '修补记录' },
-    loans: { label: '借阅申请' }
+    loans: { label: '借阅申请' },
+    imagings: { label: '影像采集档案' }
   },
   stats: [
     { label: '经卷档案', collection: 'scrolls' },
     { label: '一级保护', collection: 'scrolls', filter: { field: 'protectionLevel', value: '一级' } },
     { label: '修补记录', collection: 'repairs' },
-    { label: '借阅中', collection: 'loans', filter: { field: 'status', value: '已借出' } }
+    { label: '借阅中', collection: 'loans', filter: { field: 'status', value: '已借出' } },
+    { label: '影像采集', collection: 'imagings' }
   ],
   views: [
     {
@@ -121,6 +127,35 @@ module.exports = {
         { label: '预计归还', name: 'dueDate', type: 'date', required: true },
         { label: '限制原因或说明', name: 'reason', type: 'textarea', wide: true }
       ]
+    },
+    {
+      id: 'imagings',
+      label: '影像采集',
+      collection: 'imagings',
+      formTitle: '登记影像采集',
+      listTitle: '采集记录',
+      submitLabel: '保存采集记录',
+      searchPlaceholder: '搜索批次、人员、影像编号',
+      searchFields: ['batch', 'photographer', 'imageCode', 'note'],
+      statusField: 'clarity',
+      statusOptions: ['清晰', '模糊', '待重拍'],
+      titleFields: ['batch', 'photographer'],
+      relation: { collection: 'scrolls', localKey: 'scrollId', labelFields: ['title', 'protectionLevel'] },
+      summaryFields: ['imageCode', 'note'],
+      detailFields: [
+        { label: '采集日期', name: 'captureDate' },
+        { label: '清晰度', name: 'clarity' },
+        { label: '影像编号', name: 'imageCode' }
+      ],
+      fields: [
+        { label: '经卷', name: 'scrollId', type: 'relation', collection: 'scrolls', labelFields: ['title', 'protectionLevel'], required: true, wide: true },
+        { label: '拍摄批次', name: 'batch', required: true },
+        { label: '拍摄人员', name: 'photographer', required: true },
+        { label: '采集日期', name: 'captureDate', type: 'date', required: true },
+        { label: '影像编号', name: 'imageCode', required: true },
+        { label: '清晰度状态', name: 'clarity', type: 'select', options: ['清晰', '模糊', '待重拍'] },
+        { label: '备注', name: 'note', type: 'textarea', wide: true }
+      ]
     }
   ],
   actions: [
@@ -163,6 +198,9 @@ module.exports = {
         { target: 'related', field: 'borrowStatus', value: '需审批' }
       ]
     },
-    { id: 'loan-reject', label: '拒绝', collection: 'loans', danger: true, patches: [{ field: 'status', value: '已拒绝' }] }
+    { id: 'loan-reject', label: '拒绝', collection: 'loans', danger: true, patches: [{ field: 'status', value: '已拒绝' }] },
+    { id: 'imaging-clear', label: '清晰', collection: 'imagings', patches: [{ field: 'clarity', value: '清晰' }] },
+    { id: 'imaging-blur', label: '模糊', collection: 'imagings', patches: [{ field: 'clarity', value: '模糊' }] },
+    { id: 'imaging-reshoot', label: '待重拍', collection: 'imagings', danger: true, patches: [{ field: 'clarity', value: '待重拍' }] }
   ]
 };
