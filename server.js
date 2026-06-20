@@ -1796,28 +1796,48 @@ function runConsistencyCheck(db) {
       });
     }
 
-    if (scroll.borrowStatus === '修补中' && activeRepairs.length === 0 && completedRepairs.length > 0) {
-      const hasHistoryEntry = (scroll.history || []).some(
-        (h) => h.action === '修补完成' || (h.note && h.note.includes('修补完成'))
-      );
-      if (!hasHistoryEntry) {
-        const completedInfo = completedRepairs.map((r) => `${r.process}（${r.date || '无日期'}）`).join('、');
-        issues.push({
-          id: `cc-${scroll.id}-4`,
-          type: 'repaired-no-history',
-          severity: 'medium',
-          title: '修补完成但缺少历史记录',
-          description: `经卷「${scroll.title}」修补记录已全部完成（${completedInfo}），状态仍为「修补中」，且经卷历史中无修补完成记录`,
-          scrollId: scroll.id,
-          scrollTitle: scroll.title,
-          currentBorrowStatus: scroll.borrowStatus,
-          affectedLoans: [],
-          affectedRepairs: completedRepairs.map((r) => r.id),
-          suggestion: 'fix-repair-complete-no-history',
-          suggestionLabel: '补充修补完成历史记录并将状态修正为「需审批」',
-          autoFixable: true
-        });
+    const hasHistoryEntry = (scroll.history || []).some(
+      (h) => h.action === '修补完成' || (h.note && h.note.includes('修补完成'))
+    );
+    const batches = (db.repairBatches || []).filter((b) => b.scrollId === scroll.id);
+    const completedBatches = batches.filter((b) => b.status === '已完成');
+
+    if (activeRepairs.length === 0 && (completedRepairs.length > 0 || completedBatches.length > 0) && !hasHistoryEntry) {
+      const completedInfo = completedRepairs.length > 0
+        ? completedRepairs.map((r) => `${r.process}（${r.date || '无日期'}）`).join('、')
+        : completedBatches.map((b) => `${b.templateName}批次`).join('、');
+
+      let suggestion, suggestionLabel;
+      if (scroll.borrowStatus === '修补中') {
+        suggestion = 'fix-repair-complete-no-history';
+        suggestionLabel = '补充修补完成历史记录并将状态修正为「需审批」';
+      } else {
+        suggestion = 'fix-repair-history-only';
+        suggestionLabel = '补充修补完成历史记录（不改变当前状态）';
       }
+
+      let description;
+      if (scroll.borrowStatus === '修补中') {
+        description = `经卷「${scroll.title}」修补已全部完成（${completedInfo}），状态仍为「修补中」，且经卷历史中无修补完成记录`;
+      } else {
+        description = `经卷「${scroll.title}」修补已全部完成（${completedInfo}），当前借阅状态为「${scroll.borrowStatus}」，但经卷历史中缺少修补完成记录`;
+      }
+
+      issues.push({
+        id: `cc-${scroll.id}-4`,
+        type: 'repaired-no-history',
+        severity: 'medium',
+        title: '修补完成但缺少历史记录',
+        description,
+        scrollId: scroll.id,
+        scrollTitle: scroll.title,
+        currentBorrowStatus: scroll.borrowStatus,
+        affectedLoans: [],
+        affectedRepairs: [...completedRepairs.map((r) => r.id), ...completedBatches.map((b) => b.id)],
+        suggestion,
+        suggestionLabel,
+        autoFixable: true
+      });
     }
 
     if (scroll.borrowStatus === '修补中' && scrollRepairs.length === 0) {
@@ -1916,6 +1936,21 @@ const CONSISTENCY_FIX_MAP = {
     historyAction: '修补完成',
     historyNote: '巡检修复：修补已完成但缺少历史记录，补充修补完成记录并修正为需审批'
   },
+  'fix-repair-history-only': {
+    targetBorrowStatus: null,
+    validate: (db, scroll) => {
+      const active = (db.repairs || []).filter((r) => r.scrollId === scroll.id && (r.status === '计划中' || r.status === '进行中'));
+      const completed = (db.repairs || []).filter((r) => r.scrollId === scroll.id && r.status === '已完成');
+      const batches = (db.repairBatches || []).filter((b) => b.scrollId === scroll.id);
+      const completedBatches = batches.filter((b) => b.status === '已完成');
+      const hasHistoryEntry = (scroll.history || []).some(
+        (h) => h.action === '修补完成' || (h.note && h.note.includes('修补完成'))
+      );
+      return active.length === 0 && (completed.length > 0 || completedBatches.length > 0) && !hasHistoryEntry;
+    },
+    historyAction: '修补完成',
+    historyNote: '巡检修复：修补已完成但缺少历史记录，补充修补完成记录'
+  },
   'fix-level1-to-approval': {
     targetBorrowStatus: '需审批',
     validate: () => true,
@@ -1965,7 +2000,8 @@ app.post('/api/consistency-check/fix', requirePermission('scrolls', 'update'), a
   }
 
   const oldBorrowStatus = scroll.borrowStatus;
-  if (scroll.borrowStatus === fixConfig.targetBorrowStatus) {
+  const statusWillChange = fixConfig.targetBorrowStatus !== null;
+  if (statusWillChange && scroll.borrowStatus === fixConfig.targetBorrowStatus) {
     return res.status(409).json({ error: '经卷状态已是目标状态，无需修复' });
   }
 
@@ -1981,17 +2017,22 @@ app.post('/api/consistency-check/fix', requirePermission('scrolls', 'update'), a
     ? `一致性巡检修复：${issue.title} - ${fixConfig.historyNote} | 用户说明：${userNote}`
     : `一致性巡检修复：${issue.title} - ${fixConfig.historyNote}`;
 
-  scroll.borrowStatus = fixConfig.targetBorrowStatus;
+  if (statusWillChange) {
+    scroll.borrowStatus = fixConfig.targetBorrowStatus;
+  }
   scroll.updatedAt = new Date().toISOString();
   scroll.history = scroll.history || [];
   scroll.history.unshift(stamp(fixConfig.historyAction, finalHistoryNote));
 
+  const auditChanges = statusWillChange
+    ? { borrowStatus: { before: oldBorrowStatus, after: fixConfig.targetBorrowStatus } }
+    : { historyAdded: { action: fixConfig.historyAction, note: finalHistoryNote } };
   await writeAuditLog(db, req, {
     collection: 'scrolls',
     itemId: scroll.id,
     itemTitle: scroll.title,
-    action: 'statusChange',
-    changes: { borrowStatus: { before: oldBorrowStatus, after: fixConfig.targetBorrowStatus } },
+    action: statusWillChange ? 'statusChange' : 'historyAppend',
+    changes: auditChanges,
     note: finalAuditNote
   });
 
@@ -2012,7 +2053,9 @@ app.post('/api/consistency-check/fix', requirePermission('scrolls', 'update'), a
     scrollId: scroll.id,
     scrollTitle: scroll.title,
     oldBorrowStatus,
-    newBorrowStatus: fixConfig.targetBorrowStatus,
+    newBorrowStatus: fixConfig.targetBorrowStatus || oldBorrowStatus,
+    statusChanged: statusWillChange,
+    historyAppended: true,
     remainingSummary: fixSummary,
     fixedAt: new Date().toISOString()
   });

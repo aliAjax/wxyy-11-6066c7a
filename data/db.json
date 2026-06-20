@@ -11,8 +11,13 @@
       "protectionLevel": "一级",
       "borrowStatus": "限制借阅",
       "createdAt": "2026-06-12T08:00:00.000Z",
-      "updatedAt": "2026-06-18T08:00:00.000Z",
+      "updatedAt": "2026-06-20T14:21:14.382Z",
       "history": [
+        {
+          "at": "2026-06-20T14:21:14.382Z",
+          "action": "修补完成",
+          "note": "巡检修复：修补已完成但缺少历史记录，补充修补完成记录 | 用户说明：经卷于2026年6月18日完成除尘修补，当时忘记补充历史记录，现通过巡检修复功能补录"
+        },
         {
           "at": "2026-06-18T08:00:00.000Z",
           "action": "保护评估",
@@ -1183,6 +1188,27 @@
     }
   ],
   "audits": [
+    {
+      "id": "audit-1781965274382-c705e",
+      "timestamp": "2026-06-20T14:21:14.382Z",
+      "operator": "系统",
+      "operatorRole": "admin",
+      "operatorRoleName": "管理员",
+      "collection": "scrolls",
+      "collectionLabel": "经卷档案",
+      "itemId": "scroll-seed-1",
+      "itemTitle": "妙法莲华经卷第三",
+      "action": "historyAppend",
+      "actionLabel": "historyAppend",
+      "changes": {
+        "historyAdded": {
+          "action": "修补完成",
+          "note": "巡检修复：修补已完成但缺少历史记录，补充修补完成记录 | 用户说明：经卷于2026年6月18日完成除尘修补，当时忘记补充历史记录，现通过巡检修复功能补录"
+        }
+      },
+      "note": "一致性巡检修复：修补完成但缺少历史记录 - 巡检修复：修补已完成但缺少历史记录，补充修补完成记录 | 用户说明：经卷于2026年6月18日完成除尘修补，当时忘记补充历史记录，现通过巡检修复功能补录",
+      "ip": "::1"
+    },
     {
       "id": "audit-1781961855716-68b64",
       "timestamp": "2026-06-20T13:24:15.716Z",
