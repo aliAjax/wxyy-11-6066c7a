@@ -854,6 +854,316 @@ function runAction(db, action, item) {
   return { item };
 }
 
+const VALID_PROTECTION_LEVELS = ['一级', '二级', '三级'];
+const VALID_BORROW_STATUSES = ['可借阅', '需审批', '限制借阅', '修补中'];
+const SCROLL_REQUIRED_FIELDS = ['title', 'material', 'era', 'cabinet', 'damage'];
+
+const FIELD_ALIASES = {
+  title: ['卷名', '名称', '题名', '经卷名', 'title'],
+  material: ['材质', '材料', '质地', 'material'],
+  era: ['年代', '朝代', '时期', '时代', 'era'],
+  damage: ['残损', '破损', '损坏', '残损情况', '残损位置', 'damage'],
+  inscription: ['题跋', '题记', '跋文', '题跋信息', 'inscription'],
+  cabinet: ['柜位', '存放柜位', '位置', '存放位置', 'cabinet'],
+  protectionLevel: ['保护等级', '等级', 'protectionLevel', 'protection_level'],
+  borrowStatus: ['借阅状态', '状态', '借阅情况', 'borrowStatus', 'borrow_status']
+};
+
+function parseCsvText(text) {
+  const lines = text.split(/\r?\n/).filter((line) => line.trim().length > 0);
+  if (lines.length === 0) return { headers: [], rows: [] };
+
+  const detectDelimiter = (line) => {
+    const candidates = [',', '\t', ';', '，'];
+    let best = ',';
+    let maxCount = -1;
+    for (const d of candidates) {
+      const count = line.split(d).length;
+      if (count > maxCount) {
+        maxCount = count;
+        best = d;
+      }
+    }
+    return best;
+  };
+
+  const delimiter = detectDelimiter(lines[0]);
+
+  const parseLine = (line, delim) => {
+    const result = [];
+    let current = '';
+    let inQuotes = false;
+    for (let i = 0; i < line.length; i++) {
+      const ch = line[i];
+      if (ch === '"') {
+        if (inQuotes && line[i + 1] === '"') {
+          current += '"';
+          i++;
+        } else {
+          inQuotes = !inQuotes;
+        }
+      } else if (ch === delim && !inQuotes) {
+        result.push(current.trim());
+        current = '';
+      } else {
+        current += ch;
+      }
+    }
+    result.push(current.trim());
+    return result;
+  };
+
+  const rawHeaders = parseLine(lines[0], delimiter);
+  const rows = lines.slice(1).map((line) => parseLine(line, delimiter));
+  return { headers: rawHeaders, rows };
+}
+
+function mapHeadersToFields(rawHeaders) {
+  const mapping = {};
+  const recognized = [];
+  const unrecognized = [];
+
+  for (let i = 0; i < rawHeaders.length; i++) {
+    const header = rawHeaders[i].trim();
+    let mappedField = null;
+    for (const [field, aliases] of Object.entries(FIELD_ALIASES)) {
+      if (aliases.some((alias) => header === alias || header.includes(alias))) {
+        mappedField = field;
+        break;
+      }
+    }
+    if (mappedField) {
+      mapping[i] = mappedField;
+      recognized.push({ header, field: mappedField });
+    } else {
+      unrecognized.push(header);
+    }
+  }
+  return { mapping, recognized, unrecognized };
+}
+
+function buildRowObjects(rows, headerMapping, rawHeaders) {
+  return rows.map((cells, rowIndex) => {
+    const obj = {};
+    for (let i = 0; i < cells.length; i++) {
+      const field = headerMapping[i];
+      if (field) {
+        obj[field] = cells[i];
+      }
+    }
+    return {
+      rowNumber: rowIndex + 2,
+      rawHeaders,
+      rawCells: cells,
+      data: obj
+    };
+  });
+}
+
+function validateScrollRow(row, existingTitles, inputTitleCounts) {
+  const errors = [];
+  const warnings = [];
+  const data = row.data;
+  const title = (data.title || '').trim();
+
+  if (!title) {
+    errors.push({ type: 'missing', field: 'title', message: '卷名为空' });
+  } else {
+    if (existingTitles.has(title)) {
+      errors.push({ type: 'duplicate_db', field: 'title', message: `卷名"${title}"已存在于数据库中` });
+    }
+    if ((inputTitleCounts.get(title) || 0) > 1) {
+      errors.push({ type: 'duplicate_input', field: 'title', message: `卷名"${title}"在导入数据中重复出现` });
+    }
+  }
+
+  for (const field of SCROLL_REQUIRED_FIELDS) {
+    if (field === 'title') continue;
+    if (!data[field] || !String(data[field]).trim()) {
+      errors.push({ type: 'missing', field, message: `缺少必填字段：${field}` });
+    }
+  }
+
+  if (data.protectionLevel && !VALID_PROTECTION_LEVELS.includes(data.protectionLevel.trim())) {
+    errors.push({
+      type: 'invalid_protection',
+      field: 'protectionLevel',
+      message: `保护等级"${data.protectionLevel}"无效，有效值：${VALID_PROTECTION_LEVELS.join('、')}`
+    });
+  }
+
+  if (data.borrowStatus && !VALID_BORROW_STATUSES.includes(data.borrowStatus.trim())) {
+    errors.push({
+      type: 'invalid_borrow',
+      field: 'borrowStatus',
+      message: `借阅状态"${data.borrowStatus}"无效，有效值：${VALID_BORROW_STATUSES.join('、')}`
+    });
+  }
+
+  return { errors, warnings };
+}
+
+app.post('/api/scrolls/batch/preview', async (req, res) => {
+  const { csvText } = req.body || {};
+  if (!csvText || !csvText.trim()) {
+    return res.status(400).json({ error: '请提供CSV文本' });
+  }
+
+  const db = await readDb();
+  const existingTitles = new Set((db.scrolls || []).map((s) => (s.title || '').trim()));
+
+  let parsed;
+  try {
+    parsed = parseCsvText(csvText);
+  } catch (e) {
+    return res.status(400).json({ error: 'CSV解析失败：' + e.message });
+  }
+
+  if (parsed.rows.length === 0) {
+    return res.status(400).json({ error: 'CSV中没有数据行' });
+  }
+
+  const { mapping, recognized, unrecognized } = mapHeadersToFields(parsed.headers);
+  const rowObjects = buildRowObjects(parsed.rows, mapping, parsed.headers);
+
+  const titleCounts = new Map();
+  for (const row of rowObjects) {
+    const t = (row.data.title || '').trim();
+    if (t) titleCounts.set(t, (titleCounts.get(t) || 0) + 1);
+  }
+
+  let validCount = 0;
+  const validatedRows = rowObjects.map((row) => {
+    const { errors, warnings } = validateScrollRow(row, existingTitles, titleCounts);
+    if (errors.length === 0) validCount++;
+    return { ...row, errors, warnings, isValid: errors.length === 0 };
+  });
+
+  const duplicateTitles = [];
+  const seenInInput = new Set();
+  for (const row of validatedRows) {
+    const t = (row.data.title || '').trim();
+    if (!t) continue;
+    if (row.errors.some((e) => e.type === 'duplicate_db' || e.type === 'duplicate_input')) {
+      if (!seenInInput.has(t)) {
+        seenInInput.add(t);
+        duplicateTitles.push({
+          title: t,
+          inDb: existingTitles.has(t),
+          inInput: (titleCounts.get(t) || 0) > 1,
+          rows: validatedRows.filter((r) => (r.data.title || '').trim() === t).map((r) => r.rowNumber)
+        });
+      }
+    }
+  }
+
+  const missingRequiredByField = {};
+  for (const field of SCROLL_REQUIRED_FIELDS) {
+    const rowsMissing = validatedRows.filter((r) => r.errors.some((e) => e.type === 'missing' && e.field === field));
+    if (rowsMissing.length > 0) {
+      missingRequiredByField[field] = rowsMissing.map((r) => r.rowNumber);
+    }
+  }
+
+  const protectionErrors = validatedRows.filter((r) => r.errors.some((e) => e.type === 'invalid_protection')).map((r) => ({
+    rowNumber: r.rowNumber,
+    value: r.data.protectionLevel
+  }));
+
+  res.json({
+    totalRows: parsed.rows.length,
+    validCount,
+    invalidCount: parsed.rows.length - validCount,
+    headers: parsed.headers,
+    fieldRecognition: {
+      recognized,
+      unrecognized,
+      hasAllRequired: SCROLL_REQUIRED_FIELDS.every((f) => recognized.some((r) => r.field === f))
+    },
+    duplicateTitles,
+    missingRequired: missingRequiredByField,
+    protectionAnomalies: protectionErrors,
+    rows: validatedRows
+  });
+});
+
+app.post('/api/scrolls/batch/import', async (req, res) => {
+  const { csvText, importRows } = req.body || {};
+  if (!csvText || !csvText.trim()) {
+    return res.status(400).json({ error: '请提供CSV文本' });
+  }
+  if (!Array.isArray(importRows) || importRows.length === 0) {
+    return res.status(400).json({ error: '没有可导入的有效行' });
+  }
+
+  const db = await readDb();
+  const existingTitles = new Set((db.scrolls || []).map((s) => (s.title || '').trim()));
+
+  const parsed = parseCsvText(csvText);
+  const { mapping } = mapHeadersToFields(parsed.headers);
+  const rowObjects = buildRowObjects(parsed.rows, mapping, parsed.headers);
+
+  const titleCounts = new Map();
+  for (const idx of importRows) {
+    const row = rowObjects[idx];
+    if (!row) continue;
+    const t = (row.data.title || '').trim();
+    if (t) titleCounts.set(t, (titleCounts.get(t) || 0) + 1);
+  }
+
+  const selectedRowObjects = importRows.map((idx) => rowObjects[idx]).filter(Boolean);
+
+  for (const row of selectedRowObjects) {
+    const { errors } = validateScrollRow(row, existingTitles, titleCounts);
+    if (errors.length > 0) {
+      const firstError = errors[0];
+      return res.status(409).json({
+        error: `第${row.rowNumber}行校验失败：${firstError.message}`,
+        rowNumber: row.rowNumber,
+        errors
+      });
+    }
+  }
+
+  const now = new Date().toISOString();
+  const createdScrolls = [];
+
+  if (!Array.isArray(db.scrolls)) db.scrolls = [];
+
+  for (const row of selectedRowObjects) {
+    const data = row.data;
+    const item = {
+      id: `scrolls-${Date.now()}-${Math.random().toString(16).slice(2, 7)}`,
+      title: (data.title || '').trim(),
+      material: (data.material || '').trim(),
+      era: (data.era || '').trim(),
+      damage: (data.damage || '').trim(),
+      inscription: (data.inscription || '').trim(),
+      cabinet: (data.cabinet || '').trim(),
+      protectionLevel: data.protectionLevel ? data.protectionLevel.trim() : '三级',
+      borrowStatus: data.borrowStatus ? data.borrowStatus.trim() : '需审批',
+      createdAt: now,
+      updatedAt: now,
+      history: [
+        stamp(
+          '创建',
+          `批量导入（第${row.rowNumber}行），保护等级：${data.protectionLevel ? data.protectionLevel.trim() : '三级'}，借阅状态：${data.borrowStatus ? data.borrowStatus.trim() : '需审批'}`
+        )
+      ]
+    };
+    db.scrolls.push(item);
+    createdScrolls.push(item);
+  }
+
+  await writeDb(db);
+
+  res.status(201).json({
+    success: true,
+    importedCount: createdScrolls.length,
+    createdScrolls
+  });
+});
+
 app.listen(PORT, () => {
   console.log(`${config.title} running at http://localhost:${PORT}`);
 });

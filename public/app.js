@@ -9,7 +9,13 @@ const state = {
   riskPreview: null,
   timelineScrollId: null,
   timelineData: null,
-  timelineFilter: ''
+  timelineFilter: '',
+  batchImport: {
+    csvText: '',
+    previewData: null,
+    selectedRows: new Set(),
+    importing: false
+  }
 };
 
 const $ = (selector, root = document) => root.querySelector(selector);
@@ -759,6 +765,195 @@ function renderCrudView(view) {
   </section>`;
 }
 
+const FIELD_LABELS = {
+  title: '卷名',
+  material: '材质',
+  era: '年代',
+  damage: '残损',
+  inscription: '题跋',
+  cabinet: '柜位',
+  protectionLevel: '保护等级',
+  borrowStatus: '借阅状态'
+};
+
+function fieldLabel(field) {
+  return FIELD_LABELS[field] || field;
+}
+
+function renderBatchImportView(view) {
+  const bi = state.batchImport;
+  const preview = bi.previewData;
+
+  let summaryHtml = '';
+  let recognizedHtml = '';
+  let duplicatesHtml = '';
+  let missingHtml = '';
+  let protectionHtml = '';
+  let rowsHtml = '';
+  let actionsHtml = '';
+
+  if (preview) {
+    const hasErrors = preview.invalidCount > 0;
+    const okTone = preview.validCount > 0 ? 'ok' : '';
+    const badTone = preview.invalidCount > 0 ? 'bad' : '';
+
+    summaryHtml = `<div class="batch-summary">
+      <div class="batch-summary-item"><span>总行数</span><strong>${preview.totalRows}</strong></div>
+      <div class="batch-summary-item"><span>可导入</span><strong class="${okTone}">${preview.validCount}</strong></div>
+      <div class="batch-summary-item"><span>有问题</span><strong class="${badTone}">${preview.invalidCount}</strong></div>
+      <div class="batch-summary-item"><span>已勾选</span><strong>${bi.selectedRows.size}</strong></div>
+    </div>`;
+
+    const recognizedList = preview.fieldRecognition.recognized.map((r) =>
+      `<span class="batch-field-ok">✅ ${escapeHtml(r.header)} → ${escapeHtml(fieldLabel(r.field))}</span>`
+    ).join('');
+    const unrecognizedList = preview.fieldRecognition.unrecognized.map((h) =>
+      `<span class="batch-field-bad">⚠️ ${escapeHtml(h)}（无法识别）</span>`
+    ).join('');
+    const requiredStatus = preview.fieldRecognition.hasAllRequired
+      ? `<span class="batch-field-ok">✅ 所有必填字段已识别</span>`
+      : `<span class="batch-field-bad">⚠️ 缺少必填字段</span>`;
+    recognizedHtml = `<div class="batch-field-list">
+      <div class="batch-field-section-title">字段识别结果</div>
+      ${recognizedList}
+      ${unrecognizedList}
+      ${requiredStatus}
+    </div>`;
+
+    if (preview.duplicateTitles.length > 0) {
+      duplicatesHtml = `<div class="batch-issue-block">
+        <div class="batch-issue-title">⚠️ 重复卷名（${preview.duplicateTitles.length}）</div>
+        <div class="batch-issue-list">
+          ${preview.duplicateTitles.map((d) => `
+            <div class="batch-issue-item">
+              <span class="batch-issue-name">${escapeHtml(d.title)}</span>
+              <span class="batch-issue-tag ${d.inDb ? 'bad' : ''}">${d.inDb ? '数据库已存在' : ''}</span>
+              <span class="batch-issue-tag ${d.inInput ? 'warn' : ''}">${d.inInput ? '导入数据重复' : ''}</span>
+              <span class="batch-issue-rows">涉及行：${d.rows.join('、')}</span>
+            </div>
+          `).join('')}
+        </div>
+      </div>`;
+    }
+
+    const missingEntries = Object.entries(preview.missingRequired);
+    if (missingEntries.length > 0) {
+      missingHtml = `<div class="batch-issue-block">
+        <div class="batch-issue-title">⚠️ 缺失必填项</div>
+        <div class="batch-issue-list">
+          ${missingEntries.map(([field, rows]) => `
+            <div class="batch-issue-item">
+              <span class="batch-issue-name">${escapeHtml(fieldLabel(field))}</span>
+              <span class="batch-issue-rows">涉及行：${rows.join('、')}</span>
+            </div>
+          `).join('')}
+        </div>
+      </div>`;
+    }
+
+    if (preview.protectionAnomalies.length > 0) {
+      protectionHtml = `<div class="batch-issue-block">
+        <div class="batch-issue-title">⚠️ 保护等级异常</div>
+        <div class="batch-issue-list">
+          ${preview.protectionAnomalies.map((p) => `
+            <div class="batch-issue-item">
+              <span class="batch-issue-name">第${p.rowNumber}行</span>
+              <span class="batch-issue-rows">无效值：${escapeHtml(p.value || '(空)')}</span>
+            </div>
+          `).join('')}
+        </div>
+      </div>`;
+    }
+
+    rowsHtml = `<div class="batch-rows-wrap">
+      <div class="batch-rows-toolbar">
+        <label class="batch-checkbox-label">
+          <input type="checkbox" id="batch-select-all" ${bi.selectedRows.size === preview.rows.length && preview.rows.length > 0 ? 'checked' : ''}>
+          全选有效行
+        </label>
+        <span class="batch-rows-hint">提示：有错误的行无法勾选</span>
+      </div>
+      <div class="batch-rows-table">
+        <div class="batch-row batch-row-head">
+          <div class="batch-row-cell batch-row-check">选择</div>
+          <div class="batch-row-cell batch-row-num">行号</div>
+          <div class="batch-row-cell">卷名</div>
+          <div class="batch-row-cell">材质</div>
+          <div class="batch-row-cell">年代</div>
+          <div class="batch-row-cell">柜位</div>
+          <div class="batch-row-cell">残损</div>
+          <div class="batch-row-cell">保护等级</div>
+          <div class="batch-row-cell">借阅状态</div>
+          <div class="batch-row-cell batch-row-status">状态</div>
+        </div>
+        ${preview.rows.map((row, idx) => {
+          const d = row.data;
+          const isSelected = bi.selectedRows.has(idx);
+          const canSelect = row.isValid;
+          const rowClass = row.isValid ? 'batch-row-valid' : 'batch-row-invalid';
+          const statusHtml = row.isValid
+            ? `<span class="pill ok">✓ 有效</span>`
+            : row.errors.map((e) => `<span class="pill bad">${escapeHtml(e.message)}</span>`).join('');
+          return `<div class="batch-row ${rowClass}" data-batch-row="${idx}">
+            <div class="batch-row-cell batch-row-check">
+              <input type="checkbox" ${canSelect ? '' : 'disabled'} ${isSelected ? 'checked' : ''} data-batch-row-check="${idx}">
+            </div>
+            <div class="batch-row-cell batch-row-num">${row.rowNumber}</div>
+            <div class="batch-row-cell">${escapeHtml(d.title || '-')}</div>
+            <div class="batch-row-cell">${escapeHtml(d.material || '-')}</div>
+            <div class="batch-row-cell">${escapeHtml(d.era || '-')}</div>
+            <div class="batch-row-cell">${escapeHtml(d.cabinet || '-')}</div>
+            <div class="batch-row-cell">${escapeHtml(d.damage || '-')}</div>
+            <div class="batch-row-cell">${escapeHtml(d.protectionLevel || '-')}</div>
+            <div class="batch-row-cell">${escapeHtml(d.borrowStatus || '-')}</div>
+            <div class="batch-row-cell batch-row-status">${statusHtml}</div>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>`;
+
+    actionsHtml = `<div class="actions">
+      <button class="ghost" id="batch-reset-btn">重新输入</button>
+      <button id="batch-import-btn" ${bi.selectedRows.size === 0 || bi.importing ? 'disabled' : ''}>
+        ${bi.importing ? '导入中...' : `确认导入（${bi.selectedRows.size}条）`}
+      </button>
+    </div>`;
+  }
+
+  const sampleText = `卷名,材质,年代,残损,题跋,柜位,保护等级,借阅状态
+维摩诘经卷上,楮皮纸,唐代,首尾完整中部略有虫蛀,有贞观年款,恒湿柜A-01,一级,需审批
+楞伽阿跋多罗宝经,宣纸,宋代,边缘轻微磨损,无,恒湿柜B-02,二级,可借阅`;
+
+  return `<section class="view" id="${view.id}">
+    <div class="panel">
+      <h2>📥 批量导入预检 - 经卷档案</h2>
+      <p class="batch-hint">将CSV文本粘贴到下方文本框，点击"解析预检"进行校验。支持逗号、Tab、分号分隔。</p>
+
+      ${!preview ? `<div class="batch-sample">
+        <div class="batch-sample-title">📋 CSV格式参考：</div>
+        <pre class="batch-sample-text">${escapeHtml(sampleText)}</pre>
+        <button class="ghost" id="batch-fill-sample">填充示例</button>
+      </div>` : ''}
+
+      <label>CSV文本
+        <textarea id="batch-csv-input" rows="8" placeholder="在此粘贴CSV文本，第一行为表头..." ${preview ? 'disabled' : ''}>${escapeHtml(bi.csvText)}</textarea>
+      </label>
+
+      ${!preview ? `<div class="actions">
+        <button id="batch-preview-btn">🔍 解析预检</button>
+      </div>` : ''}
+
+      ${summaryHtml}
+      ${recognizedHtml}
+      ${duplicatesHtml}
+      ${missingHtml}
+      ${protectionHtml}
+      ${rowsHtml}
+      ${actionsHtml}
+    </div>
+  </section>`;
+}
+
 function render() {
   $('#title').textContent = state.config.title;
   document.title = state.config.title;
@@ -766,6 +961,7 @@ function render() {
   $('#main').innerHTML = state.config.views.map((view) => {
     if (view.type === 'dashboard') return renderDashboardView(view);
     if (view.type === 'calendar') return renderCalendarView(view);
+    if (view.type === 'batchImport') return renderBatchImportView(view);
     return renderCrudView(view);
   }).join('');
   setTab(state.activeTab || state.config.views[0].id);
@@ -860,6 +1056,122 @@ document.addEventListener('click', async (event) => {
   const timelineBtn = event.target.closest('[data-timeline]');
   const timelineClose = event.target.closest('[data-timeline-close]');
   const batchTasksBtn = event.target.closest('[data-batch-tasks]');
+
+  const batchPreviewBtn = event.target.closest('#batch-preview-btn');
+  const batchResetBtn = event.target.closest('#batch-reset-btn');
+  const batchImportBtn = event.target.closest('#batch-import-btn');
+  const batchFillSampleBtn = event.target.closest('#batch-fill-sample');
+  const batchSelectAll = event.target.closest('#batch-select-all');
+  const batchRowCheck = event.target.closest('[data-batch-row-check]');
+
+  if (batchFillSampleBtn) {
+    const sample = `卷名,材质,年代,残损,题跋,柜位,保护等级,借阅状态
+维摩诘经卷上,楮皮纸,唐代,首尾完整中部略有虫蛀,有贞观年款,恒湿柜A-01,一级,需审批
+楞伽阿跋多罗宝经,宣纸,宋代,边缘轻微磨损,无,恒湿柜B-02,二级,可借阅
+妙法莲华经卷第七,麻纸,元代,无明显残损,尾题完整,恒湿柜C-03,三级,可借阅`;
+    const input = $('#batch-csv-input');
+    if (input) input.value = sample;
+    return;
+  }
+
+  if (batchPreviewBtn) {
+    const input = $('#batch-csv-input');
+    const csvText = input?.value || '';
+    if (!csvText.trim()) {
+      toast('请输入CSV文本');
+      return;
+    }
+    state.batchImport.csvText = csvText;
+    try {
+      const preview = await api('/api/scrolls/batch/preview', {
+        method: 'POST',
+        body: JSON.stringify({ csvText })
+      });
+      state.batchImport.previewData = preview;
+      state.batchImport.selectedRows = new Set();
+      preview.rows.forEach((row, idx) => {
+        if (row.isValid) state.batchImport.selectedRows.add(idx);
+      });
+      render();
+      setTab('batch-import');
+      toast(`解析完成：共${preview.totalRows}行，${preview.validCount}行有效`);
+    } catch (e) {
+      toast(e.message);
+    }
+    return;
+  }
+
+  if (batchResetBtn) {
+    state.batchImport = {
+      csvText: '',
+      previewData: null,
+      selectedRows: new Set(),
+      importing: false
+    };
+    render();
+    setTab('batch-import');
+    return;
+  }
+
+  if (batchImportBtn) {
+    const bi = state.batchImport;
+    if (!bi.previewData || bi.selectedRows.size === 0) {
+      toast('请先选择要导入的行');
+      return;
+    }
+    bi.importing = true;
+    render();
+    setTab('batch-import');
+    try {
+      const result = await api('/api/scrolls/batch/import', {
+        method: 'POST',
+        body: JSON.stringify({
+          csvText: bi.csvText,
+          importRows: [...bi.selectedRows]
+        })
+      });
+      bi.importing = false;
+      bi.previewData = null;
+      bi.csvText = '';
+      bi.selectedRows = new Set();
+      await load();
+      toast(`成功导入${result.importedCount}条经卷档案`);
+    } catch (e) {
+      bi.importing = false;
+      render();
+      setTab('batch-import');
+      toast(e.message);
+    }
+    return;
+  }
+
+  if (batchSelectAll) {
+    const preview = state.batchImport.previewData;
+    if (!preview) return;
+    if (batchSelectAll.checked) {
+      preview.rows.forEach((row, idx) => {
+        if (row.isValid) state.batchImport.selectedRows.add(idx);
+      });
+    } else {
+      state.batchImport.selectedRows.clear();
+    }
+    render();
+    setTab('batch-import');
+    return;
+  }
+
+  if (batchRowCheck) {
+    const idx = Number(batchRowCheck.dataset.batchRowCheck);
+    if (isNaN(idx)) return;
+    if (batchRowCheck.checked) {
+      state.batchImport.selectedRows.add(idx);
+    } else {
+      state.batchImport.selectedRows.delete(idx);
+    }
+    render();
+    setTab('batch-import');
+    return;
+  }
 
   if (tab) setTab(tab.dataset.tab);
 

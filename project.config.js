@@ -294,6 +294,12 @@ module.exports = {
       ]
     },
     {
+      id: 'batch-import',
+      label: '批量导入预检',
+      type: 'batchImport',
+      targetCollection: 'scrolls'
+    },
+    {
       id: 'materials',
       label: '修补材料台账',
       collection: 'materials',
