@@ -25,7 +25,11 @@ module.exports = {
     '异常': 'bad',
     '低余量': 'warn',
     '即将到期': 'warn',
-    '已过期': 'bad'
+    '已过期': 'bad',
+    '低风险': 'ok',
+    '中风险': 'warn',
+    '高风险': 'bad',
+    '极高风险': 'extreme'
   },
   collections: {
     scrolls: { label: '经卷档案' },
@@ -144,7 +148,10 @@ module.exports = {
       detailFields: [
         { label: '借出日期', name: 'borrowDate' },
         { label: '预计归还', name: 'dueDate' },
-        { label: '状态', name: 'status' }
+        { label: '状态', name: 'status' },
+        { label: '风险等级', name: 'riskLevel' },
+        { label: '保护等级', name: 'scrollProtection' },
+        { label: '借阅状态', name: 'scrollBorrowStatus' }
       ],
       defaults: { status: '待审批' },
       fields: [

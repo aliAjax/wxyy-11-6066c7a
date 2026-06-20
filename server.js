@@ -9,6 +9,35 @@ const DB_FILE = path.join(__dirname, 'data', 'db.json');
 
 const ACTIVE_LOAN_STATUSES = ['待审批', '已批准', '已借出'];
 
+const PROTECTION_LEVEL_SCORE = { '一级': 30, '二级': 15, '三级': 5 };
+
+const BORROW_STATUS_SCORE = {
+  '可借阅': 0,
+  '需审批': 15,
+  '限制借阅': 35,
+  '修补中': 40
+};
+
+const PURPOSE_RISK = {
+  '学术研究': { score: 15, desc: '学术研究（中等风险，专业使用）' },
+  '文献校勘': { score: 18, desc: '文献校勘（需反复翻阅）' },
+  '展览筹备': { score: 28, desc: '展览筹备（高风险用途，需搬运和展示）' },
+  '外借展示': { score: 32, desc: '外借展示（极高风险用途，离开馆舍）' },
+  '教学使用': { score: 8, desc: '教学使用（低风险用途，短期使用）' },
+  '馆藏整理': { score: 12, desc: '馆藏整理（低风险用途，馆内操作）' },
+  '影像采集': { score: 10, desc: '影像采集（中等风险，操作需谨慎）' },
+  '出版印刷': { score: 25, desc: '出版印刷（高风险用途，需反复操作）' }
+};
+
+const DEFAULT_PURPOSE_RISK = { score: 20, desc: '（通用风险）' };
+
+const DAMAGE_KEYWORDS = [
+  { keywords: ['虫蛀', '霉斑', '脆化', '脆裂', '碳化'], score: 20, label: '严重残损' },
+  { keywords: ['残损', '断裂', '撕裂', '脱落'], score: 15, label: '明显残损' },
+  { keywords: ['水渍', '磨损', '褶皱', '脱胶', '卷曲', '受潮', '潮湿'], score: 10, label: '轻度残损' },
+  { keywords: ['轻微', '少量', '边缘'], score: -5, label: '轻微情况' }
+];
+
 function parseDate(dateStr) {
   return new Date(dateStr + 'T00:00:00');
 }
@@ -71,6 +100,137 @@ function getActiveLoansByScroll(db) {
   return Object.values(result);
 }
 
+function getLastRepair(db, scrollId) {
+  const repairs = (db.repairs || [])
+    .filter((r) => r.scrollId === scrollId)
+    .sort((a, b) => new Date(b.date || b.createdAt) - new Date(a.date || a.createdAt));
+  return repairs[0] || null;
+}
+
+function assessLoanRisk(db, loan) {
+  const scroll = (db.scrolls || []).find((s) => s.id === loan.scrollId);
+  if (!scroll) {
+    return {
+      level: '低风险',
+      score: 0,
+      reasons: ['未找到对应经卷档案'],
+      evaluatedAt: new Date().toISOString(),
+      protectionLevel: '未知',
+      borrowStatus: '未知',
+      lastRepair: null,
+      isStrictMode: false
+    };
+  }
+
+  const reasons = [];
+  let score = 0;
+
+  const protectionScore = PROTECTION_LEVEL_SCORE[scroll.protectionLevel] || 0;
+  if (protectionScore > 0) {
+    score += protectionScore;
+    reasons.push(`${scroll.protectionLevel}保护经卷`);
+  }
+
+  const statusScore = BORROW_STATUS_SCORE[scroll.borrowStatus] || 0;
+  if (statusScore > 0) {
+    score += statusScore;
+    if (scroll.borrowStatus === '修补中') {
+      reasons.push(`借阅状态：修补中（不可借阅）`);
+    } else if (scroll.borrowStatus === '限制借阅') {
+      reasons.push(`借阅状态：限制借阅`);
+    } else if (scroll.borrowStatus === '需审批') {
+      reasons.push(`借阅状态：需审批`);
+    }
+  }
+
+  const purposeRisk = PURPOSE_RISK[loan.purpose] || DEFAULT_PURPOSE_RISK;
+  score += purposeRisk.score;
+  reasons.push(`借阅用途：${purposeRisk.desc}`);
+
+  const damageText = (scroll.damage || '').trim();
+  if (damageText) {
+    let damageScore = 5;
+    let damageLabel = '存在残损记录';
+    for (const rule of DAMAGE_KEYWORDS) {
+      if (rule.keywords.some((kw) => damageText.includes(kw))) {
+        damageScore += rule.score;
+        damageLabel = rule.label;
+      }
+    }
+    damageScore = Math.max(0, damageScore);
+    if (damageScore > 0) {
+      score += damageScore;
+      reasons.push(`残损情况：${damageText}（${damageLabel}）`);
+    }
+  }
+
+  const lastRepair = getLastRepair(db, scroll.id);
+  if (lastRepair) {
+    if (lastRepair.status === '进行中') {
+      score += 20;
+      reasons.push(`最近修补：${lastRepair.process}进行中，未完成`);
+    } else if (lastRepair.status === '计划中') {
+      score += 10;
+      reasons.push(`最近修补：${lastRepair.process}计划中，待开始`);
+    } else if (lastRepair.status === '已完成') {
+      const daysSinceRepair = Math.floor((Date.now() - new Date(lastRepair.date || lastRepair.createdAt).getTime()) / (1000 * 60 * 60 * 24));
+      if (daysSinceRepair < 7) {
+        score += 5;
+        reasons.push(`最近修补：${lastRepair.process}已完成（${daysSinceRepair}天前，建议静养）`);
+      } else {
+        score -= 3;
+        reasons.push(`最近修补：${lastRepair.process}已完成（${daysSinceRepair}天前）`);
+      }
+    }
+  }
+
+  const borrowDate = loan.borrowDate ? parseDate(loan.borrowDate) : null;
+  const dueDate = loan.dueDate ? parseDate(loan.dueDate) : null;
+  if (borrowDate && dueDate && dueDate >= borrowDate) {
+    const days = Math.ceil((dueDate - borrowDate) / (1000 * 60 * 60 * 24)) + 1;
+    if (days > 21) {
+      score += 15;
+      reasons.push(`借阅周期过长（${days}天）`);
+    } else if (days > 14) {
+      score += 8;
+      reasons.push(`借阅周期偏长（${days}天）`);
+    } else if (days <= 7) {
+      score -= 2;
+      reasons.push(`借阅周期合理（${days}天）`);
+    }
+  }
+
+  score = Math.max(0, Math.min(100, score));
+
+  let level;
+  if (score >= 85) level = '极高风险';
+  else if (score >= 65) level = '高风险';
+  else if (score >= 40) level = '中风险';
+  else level = '低风险';
+
+  const isStrictMode = scroll.protectionLevel === '一级' || scroll.borrowStatus === '修补中';
+
+  return {
+    level,
+    score,
+    reasons,
+    evaluatedAt: new Date().toISOString(),
+    protectionLevel: scroll.protectionLevel,
+    borrowStatus: scroll.borrowStatus,
+    lastRepair: lastRepair ? {
+      date: lastRepair.date,
+      status: lastRepair.status,
+      process: lastRepair.process
+    } : null,
+    isStrictMode
+  };
+}
+
+function formatRiskNote(assessment, actionLabel) {
+  const reasonSummary = assessment.reasons.slice(0, 2).join('；');
+  return `风险评估：${assessment.level}（得分${assessment.score}${assessment.isStrictMode ? '，严格模式' : ''}）- ${reasonSummary}`;
+}
+
 app.use(express.json({ limit: '2mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
 
@@ -123,6 +283,20 @@ app.get('/api/loans/check-conflict', async (req, res) => {
   res.json({ conflicts, hasConflict: conflicts.length > 0 });
 });
 
+app.get('/api/loans/assess/:id', async (req, res) => {
+  const db = await readDb();
+  const loan = (db.loans || []).find((l) => l.id === req.params.id);
+  if (!loan) return res.status(404).json({ error: '借阅申请不存在' });
+  const assessment = assessLoanRisk(db, loan);
+  res.json(assessment);
+});
+
+app.post('/api/loans/assess-preview', async (req, res) => {
+  const db = await readDb();
+  const assessment = assessLoanRisk(db, req.body || {});
+  res.json(assessment);
+});
+
 app.post('/api/:collection', async (req, res) => {
   const db = await readDb();
   const { collection } = req.params;
@@ -147,9 +321,19 @@ app.post('/api/:collection', async (req, res) => {
     id: `${collection}-${Date.now()}-${Math.random().toString(16).slice(2, 7)}`,
     ...req.body,
     createdAt: now,
-    updatedAt: now,
-    history: [stamp('创建', req.body.note || req.body.memo || '')]
+    updatedAt: now
   };
+
+  if (collection === 'loans') {
+    const assessment = assessLoanRisk(db, item);
+    item.riskAssessment = assessment;
+    const riskNote = formatRiskNote(assessment, '创建');
+    const originalNote = req.body.note || req.body.memo || req.body.reason || '';
+    item.history = [stamp('创建', originalNote ? `${originalNote} | ${riskNote}` : riskNote)];
+  } else {
+    item.history = [stamp('创建', req.body.note || req.body.memo || '')];
+  }
+
   db[collection].push(item);
   await writeDb(db);
   res.status(201).json(item);
@@ -181,6 +365,13 @@ app.patch('/api/:collection/:id', async (req, res) => {
   const historyAction = req.body.historyAction;
   delete req.body.historyAction;
   Object.assign(item, req.body, { updatedAt: new Date().toISOString() });
+
+  if (collection === 'loans' && (req.body.scrollId || req.body.borrowDate || req.body.dueDate || req.body.purpose)) {
+    const mergedLoan = { ...item, ...req.body };
+    const assessment = assessLoanRisk(db, mergedLoan);
+    item.riskAssessment = assessment;
+  }
+
   item.history = item.history || [];
   if (historyAction || req.body.note || req.body.memo || req.body.status) {
     item.history.unshift(stamp(historyAction || req.body.status || '更新', req.body.note || req.body.memo || ''));
@@ -262,6 +453,13 @@ function runAction(db, action, item) {
       }
     }
   }
+
+  let assessment = null;
+  if (action.collection === 'loans') {
+    assessment = assessLoanRisk(db, item);
+    item.riskAssessment = assessment;
+  }
+
   for (const patch of action.patches || []) {
     const target = patch.target === 'related' ? related : item;
     if (!target) continue;
@@ -269,7 +467,14 @@ function runAction(db, action, item) {
     setValue(target, patch.field, next);
     target.updatedAt = new Date().toISOString();
     target.history = target.history || [];
-    target.history.unshift(stamp(action.label, action.note || '状态流转'));
+
+    if (action.collection === 'loans' && assessment && patch.target !== 'related') {
+      const riskNote = formatRiskNote(assessment, action.label);
+      const baseNote = action.note || '状态流转';
+      target.history.unshift(stamp(action.label, `${baseNote} | ${riskNote}`));
+    } else {
+      target.history.unshift(stamp(action.label, action.note || '状态流转'));
+    }
   }
   for (const delta of action.deltas || []) {
     const target = delta.target === 'related' ? related : item;

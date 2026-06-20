@@ -5,7 +5,8 @@ const state = {
   calendarData: [],
   calendarMonth: new Date(),
   selectedScrollId: '',
-  conflictCheck: { scrollId: '', borrowDate: '', dueDate: '', conflicts: [] }
+  conflictCheck: { scrollId: '', borrowDate: '', dueDate: '', conflicts: [] },
+  riskPreview: null
 };
 
 const $ = (selector, root = document) => root.querySelector(selector);
@@ -113,6 +114,59 @@ async function checkConflict(scrollId, borrowDate, dueDate) {
   }
 }
 
+async function previewRisk(loanData) {
+  if (!loanData || !loanData.scrollId) {
+    state.riskPreview = null;
+    return null;
+  }
+  try {
+    const result = await api('/api/loans/assess-preview', {
+      method: 'POST',
+      body: JSON.stringify(loanData)
+    });
+    state.riskPreview = result;
+    return result;
+  } catch (e) {
+    state.riskPreview = null;
+    return null;
+  }
+}
+
+function toneForRisk(level) {
+  if (level === '低风险') return 'risk-low';
+  if (level === '中风险') return 'risk-warn';
+  if (level === '高风险') return 'risk-bad';
+  if (level === '极高风险') return 'risk-extreme';
+  return '';
+}
+
+function renderRiskPanel(assessment) {
+  if (!assessment) return '';
+  const tone = toneForRisk(assessment.level);
+  const reasons = (assessment.reasons || []).map((r) => `<li>${escapeHtml(r)}</li>`).join('');
+  const strictHtml = assessment.isStrictMode
+    ? `<div class="risk-strict">⚠️ 严格模式：${assessment.protectionLevel === '一级' ? '一级保护经卷' : ''}${assessment.protectionLevel === '一级' && assessment.borrowStatus === '修补中' ? ' + ' : ''}${assessment.borrowStatus === '修补中' ? '经卷修补中' : ''}，审批需确认</div>`
+    : '';
+  return `
+    <div class="risk-panel ${tone}">
+      <div class="risk-panel-head">
+        <span>📊 ${pill(assessment.level, toneFor(assessment.level))}</span>
+        <span class="risk-score">得分 ${assessment.score} / 100</span>
+      </div>
+      <ul class="risk-reasons">${reasons}</ul>
+      ${strictHtml}
+    </div>
+  `;
+}
+
+function renderRiskPreview(assessment) {
+  if (!assessment) return '';
+  return `<div class="risk-preview">
+    <div class="risk-preview-title">🔍 实时风险预览</div>
+    ${renderRiskPanel(assessment)}
+  </div>`;
+}
+
 function renderConflictWarning(conflicts) {
   if (!conflicts || !conflicts.length) return '';
   const items = conflicts.map((c) => `
@@ -167,11 +221,29 @@ function valueByPath(source, pathName) {
   return pathName.split('.').reduce((value, key) => value?.[key], source);
 }
 
+function getRiskField(item, fieldName) {
+  const assessment = item.riskAssessment;
+  if (!assessment) return '-';
+  if (fieldName === 'riskLevel') {
+    return assessment.level || '-';
+  }
+  if (fieldName === 'scrollProtection') {
+    return assessment.protectionLevel || '-';
+  }
+  if (fieldName === 'scrollBorrowStatus') {
+    return assessment.borrowStatus || '-';
+  }
+  return item[fieldName] ?? '';
+}
+
 function displayField(item, field) {
   if (field.name === 'quantityWithUnit') {
     const qty = item.quantity ?? '';
     const unit = item.unit ?? '';
     return qty !== '' ? `${qty} ${unit}`.trim() : '-';
+  }
+  if (['riskLevel', 'scrollProtection', 'scrollBorrowStatus'].includes(field.name)) {
+    return getRiskField(item, field.name);
   }
   const value = item[field.name] ?? '';
   if (field.type === 'select' && field.options) return value || field.options[0];
@@ -274,20 +346,44 @@ function renderCard(item, collection, view) {
   const relation = view.relation ? `<div class="meta">${escapeHtml(relationLabel(view.relation, item[view.relation.localKey]))}</div>` : '';
   const details = (view.detailFields || []).map((field) => {
     const raw = displayField(item, field);
-    const value = field.type === 'relation' ? relationLabel(field, item[field.name]) : raw;
-    return `<div>${escapeHtml(field.label)}<br><strong>${escapeHtml(value || '-')}</strong></div>`;
+    let value = raw;
+    if (field.type === 'relation') {
+      value = relationLabel(field, item[field.name]);
+    } else if (field.name === 'riskLevel') {
+      value = pill(raw || '-', toneFor(raw));
+    } else {
+      value = escapeHtml(value || '-');
+    }
+    return `<div>${escapeHtml(field.label)}<br><strong>${value}</strong></div>`;
   }).join('');
   const summary = (view.summaryFields || []).map((field) => item[field]).filter(Boolean).join(' · ');
-  const actions = state.config.actions
-    .filter((action) => action.collection === collection)
-    .map((action) => `<button class="${action.danger ? 'danger' : 'ghost'}" data-action="${action.id}" data-id="${item.id}">${escapeHtml(action.label)}</button>`)
-    .join('');
+
+  const actionButtons = (itemId) => {
+    return state.config.actions
+      .filter((action) => action.collection === collection)
+      .map((action) => `<button class="${action.danger ? 'danger' : 'ghost'}" data-action="${action.id}" data-id="${itemId}">${escapeHtml(action.label)}</button>`)
+      .join('');
+  };
+
+  const actionsHtml = collection === 'loans' && item.riskAssessment?.isStrictMode
+    ? `<div class="actions">${state.config.actions
+        .filter((action) => action.collection === collection)
+        .map((action) => {
+          const extraClass = (action.id === 'loan-approve' || action.id === 'loan-reject') ? ' strict-action' : '';
+          return `<button class="${action.danger ? 'danger' : 'ghost'}${extraClass}" data-action="${action.id}" data-id="${item.id}" data-strict="true">${action.id === 'loan-approve' || action.id === 'loan-reject' ? '⚠️ ' : ''}${escapeHtml(action.label)}</button>`;
+        })
+        .join('')}</div>`
+    : `<div class="actions">${actionButtons(item.id)}</div>`;
+
+  const riskHtml = collection === 'loans' ? renderRiskPanel(item.riskAssessment) : '';
+
   return `<article class="card">
     <div class="card-head"><h3>${escapeHtml(title)}</h3>${statusValue ? pill(statusValue, toneFor(statusValue)) : ''}</div>
     ${relation}
     ${summary ? `<p>${escapeHtml(summary)}</p>` : ''}
     ${details ? `<div class="detail">${details}</div>` : ''}
-    ${actions ? `<div class="actions">${actions}</div>` : ''}
+    ${riskHtml}
+    ${actionsHtml}
     ${historyHtml(item)}
   </article>`;
 }
@@ -302,6 +398,13 @@ function renderList(view) {
   }
   if (status) {
     items = items.filter((item) => item[view.statusField] === status);
+  }
+  if (view.id === 'loans') {
+    items.sort((a, b) => {
+      const scoreA = a.riskAssessment?.score || 0;
+      const scoreB = b.riskAssessment?.score || 0;
+      return scoreB - scoreA;
+    });
   }
   return items.length ? items.map((item) => renderCard(item, collection, view)).join('') : `<div class="empty">暂无${escapeHtml(collectionLabel(collection))}</div>`;
 }
@@ -418,11 +521,15 @@ function renderCrudView(view) {
   const unavailableRanges = view.id === 'loans' && state.conflictCheck.scrollId
     ? renderUnavailableRanges(state.conflictCheck.scrollId)
     : '';
+  const riskPreviewHtml = view.id === 'loans' && state.riskPreview
+    ? renderRiskPreview(state.riskPreview)
+    : '';
   return `<section class="view" id="${view.id}">
     <div class="grid">
       <form class="panel" data-create="${view.collection}" data-view="${view.id}">
         <h2>${escapeHtml(view.formTitle)}</h2>
         <div class="form-grid">${view.fields.map((f) => formField(f, view.id)).join('')}</div>
+        ${riskPreviewHtml}
         ${conflictWarning}
         ${unavailableRanges}
         <div class="actions"><button ${state.conflictCheck.conflicts.length ? 'disabled' : ''}>${escapeHtml(view.submitLabel || '保存')}</button></div>
@@ -464,6 +571,76 @@ async function load() {
   render();
 }
 
+function openStrictConfirmModal(action, item, onConfirm) {
+  const assessment = item.riskAssessment || {};
+  const scroll = state.db.scrolls?.find((s) => s.id === item.scrollId);
+  const isApprove = action.id === 'loan-approve';
+  const actionName = isApprove ? '批准' : '拒绝';
+  const warnText = isApprove
+    ? '此操作涉及严格模式经卷，批准后将不可撤销！请确认已充分评估风险。'
+    : '确认拒绝此借阅申请？风险评估记录将保存至历史。';
+
+  const reasons = (assessment.reasons || []).slice(0, 5).map((r) => `<li>${escapeHtml(r)}</li>`).join('');
+  const strictReason = [];
+  if (assessment.protectionLevel === '一级') strictReason.push('一级保护经卷');
+  if (assessment.borrowStatus === '修补中') strictReason.push('经卷处于修补中状态');
+
+  const modal = document.createElement('div');
+  modal.className = 'modal-backdrop';
+  modal.id = 'strict-modal';
+  modal.innerHTML = `
+    <div class="modal">
+      <div class="modal-head">
+        <h3>⚠️ 严格模式 - 确认${actionName}</h3>
+        <button class="modal-close" data-modal-close>×</button>
+      </div>
+      <div class="modal-body">
+        <div class="modal-warn-icon">🔒</div>
+        <div class="modal-warning-text">${escapeHtml(warnText)}</div>
+        <div class="modal-info-grid">
+          <div class="modal-info-row"><span class="label">经卷名称</span><span><strong>${escapeHtml(scroll?.title || '-')}</strong></span></div>
+          <div class="modal-info-row"><span class="label">借阅人</span><span>${escapeHtml(item.borrower || '-')}</span></div>
+          <div class="modal-info-row"><span class="label">借阅用途</span><span>${escapeHtml(item.purpose || '-')}</span></div>
+          <div class="modal-info-row"><span class="label">风险等级</span><span>${pill(assessment.level || '-', toneFor(assessment.level))} <span style="font-family:monospace;color:var(--muted)">(${assessment.score || 0}/100)</span></span></div>
+          <div class="modal-info-row"><span class="label">触发原因</span><span style="color:var(--bad);font-weight:700">${escapeHtml(strictReason.join(' + '))}</span></div>
+        </div>
+        <div style="font-size:13px;color:var(--muted);font-weight:700;margin:10px 0 4px">风险评估详情：</div>
+        <ul class="risk-reasons">${reasons}</ul>
+        <div style="margin-top:14px">
+          <label style="color:var(--bad);font-size:13px;font-weight:700">请输入${actionName}理由（必填）：
+            <textarea class="modal-confirm-textarea" id="strict-note" placeholder="请详细说明${actionName}此借阅申请的原因，特别是对于严格模式经卷..."></textarea>
+          </label>
+        </div>
+      </div>
+      <div class="modal-foot">
+        <button class="ghost" data-modal-close>取消</button>
+        <button class="${isApprove ? '' : 'danger'}" id="strict-confirm-btn">确认${actionName}</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modal);
+
+  const close = () => {
+    modal.remove();
+    document.removeEventListener('keydown', onKey);
+  };
+  const onKey = (e) => { if (e.key === 'Escape') close(); };
+  document.addEventListener('keydown', onKey);
+
+  modal.addEventListener('click', (e) => {
+    if (e.target.closest('[data-modal-close]') || e.target === modal) close();
+    if (e.target.id === 'strict-confirm-btn') {
+      const note = $('#strict-note', modal)?.value.trim();
+      if (!note) {
+        toast(`请输入${actionName}理由`);
+        return;
+      }
+      close();
+      onConfirm(note);
+    }
+  });
+}
+
 document.addEventListener('click', async (event) => {
   const tab = event.target.closest('.tab');
   const action = event.target.closest('[data-action]');
@@ -472,9 +649,34 @@ document.addEventListener('click', async (event) => {
   const todayBtn = event.target.closest('[data-calendar-today]');
 
   if (tab) setTab(tab.dataset.tab);
+
   if (action) {
+    const actionId = action.dataset.action;
+    const itemId = action.dataset.id;
+    const actionConfig = state.config.actions.find((a) => a.id === actionId);
+    const item = state.db[actionConfig?.collection]?.find((i) => i.id === itemId);
+
+    if (actionConfig?.collection === 'loans' &&
+        (actionId === 'loan-approve' || actionId === 'loan-reject') &&
+        item?.riskAssessment?.isStrictMode) {
+      openStrictConfirmModal(actionConfig, item, async (note) => {
+        try {
+          await api(`/api/${actionConfig.collection}/${itemId}`, {
+            method: 'PATCH',
+            body: JSON.stringify({ note, historyAction: actionConfig.label })
+          });
+          await api(`/api/action/${actionId}/${itemId}`, { method: 'POST' });
+          await load();
+          toast(`已${actionConfig.label}`);
+        } catch (error) {
+          toast(error.message);
+        }
+      });
+      return;
+    }
+
     try {
-      await api(`/api/action/${action.dataset.action}/${action.dataset.id}`, { method: 'POST' });
+      await api(`/api/action/${actionId}/${itemId}`, { method: 'POST' });
       await load();
       toast('已更新');
     } catch (error) {
@@ -496,6 +698,7 @@ document.addEventListener('click', async (event) => {
 });
 
 let conflictCheckTimeout = null;
+let riskPreviewTimeout = null;
 
 document.addEventListener('input', async (event) => {
   const view = state.config.views.find((entry) => entry.id && (event.target.id === `search-${entry.id}` || event.target.id === `status-${entry.id}`));
@@ -512,6 +715,31 @@ document.addEventListener('input', async (event) => {
     const scrollId = form.querySelector('[name="scrollId"]')?.value;
     const borrowDate = form.querySelector('[name="borrowDate"]')?.value;
     const dueDate = form.querySelector('[name="dueDate"]')?.value;
+    const purpose = form.querySelector('[name="purpose"]')?.value;
+
+    if (riskPreviewTimeout) clearTimeout(riskPreviewTimeout);
+    riskPreviewTimeout = setTimeout(async () => {
+      if (scrollId) {
+        const preview = await previewRisk({ scrollId, borrowDate, dueDate, purpose });
+        const previewEl = form.querySelector('.risk-preview');
+        const newPreviewHtml = renderRiskPreview(preview);
+        if (previewEl) {
+          previewEl.outerHTML = newPreviewHtml || '';
+        } else if (newPreviewHtml) {
+          const actionsDiv = form.querySelector('.actions');
+          const conflictWarning = form.querySelector('.conflict-warning');
+          if (conflictWarning) {
+            conflictWarning.insertAdjacentHTML('beforebegin', newPreviewHtml);
+          } else {
+            actionsDiv.insertAdjacentHTML('beforebegin', newPreviewHtml);
+          }
+        }
+      } else {
+        state.riskPreview = null;
+        const previewEl = form.querySelector('.risk-preview');
+        if (previewEl) previewEl.remove();
+      }
+    }, 250);
 
     if (scrollId && borrowDate && dueDate) {
       if (conflictCheckTimeout) clearTimeout(conflictCheckTimeout);
@@ -571,6 +799,7 @@ document.addEventListener('submit', async (event) => {
     await api(`/api/${form.dataset.create}`, { method: 'POST', body: JSON.stringify(values(form, view)) });
     form.reset();
     state.conflictCheck = { scrollId: '', borrowDate: '', dueDate: '', conflicts: [] };
+    state.riskPreview = null;
     await load();
     toast('已保存');
   } catch (error) {
