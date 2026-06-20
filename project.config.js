@@ -157,6 +157,16 @@ module.exports = {
       ]
     },
     {
+      id: 'loan-calendar',
+      label: '借阅预约日历',
+      type: 'calendar',
+      collection: 'loans',
+      relation: { collection: 'scrolls', localKey: 'scrollId', labelFields: ['title'] },
+      statusField: 'status',
+      activeStatuses: ['待审批', '已批准', '已借出'],
+      titleFields: ['borrower', 'purpose']
+    },
+    {
       id: 'imagings',
       label: '影像采集',
       collection: 'imagings',

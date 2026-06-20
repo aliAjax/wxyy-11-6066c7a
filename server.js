@@ -7,6 +7,70 @@ const config = require('./project.config');
 const PORT = process.env.PORT || config.port || 3900;
 const DB_FILE = path.join(__dirname, 'data', 'db.json');
 
+const ACTIVE_LOAN_STATUSES = ['待审批', '已批准', '已借出'];
+
+function parseDate(dateStr) {
+  return new Date(dateStr + 'T00:00:00');
+}
+
+function dateOverlap(start1, end1, start2, end2) {
+  const s1 = parseDate(start1).getTime();
+  const e1 = parseDate(end1).getTime();
+  const s2 = parseDate(start2).getTime();
+  const e2 = parseDate(end2).getTime();
+  return s1 <= e2 && e1 >= s2;
+}
+
+function checkLoanConflict(db, scrollId, borrowDate, dueDate, excludeId = null) {
+  const loans = db.loans || [];
+  const conflicts = [];
+  for (const loan of loans) {
+    if (excludeId && loan.id === excludeId) continue;
+    if (loan.scrollId !== scrollId) continue;
+    if (!ACTIVE_LOAN_STATUSES.includes(loan.status)) continue;
+    if (dateOverlap(borrowDate, dueDate, loan.borrowDate, loan.dueDate)) {
+      const scroll = db.scrolls?.find((s) => s.id === scrollId);
+      conflicts.push({
+        id: loan.id,
+        borrower: loan.borrower,
+        purpose: loan.purpose,
+        borrowDate: loan.borrowDate,
+        dueDate: loan.dueDate,
+        status: loan.status,
+        scrollTitle: scroll?.title || '未知经卷'
+      });
+    }
+  }
+  return conflicts;
+}
+
+function getActiveLoansByScroll(db) {
+  const result = {};
+  const scrolls = db.scrolls || [];
+  const loans = db.loans || [];
+  for (const scroll of scrolls) {
+    result[scroll.id] = {
+      scrollId: scroll.id,
+      title: scroll.title,
+      borrowStatus: scroll.borrowStatus,
+      reservations: []
+    };
+  }
+  for (const loan of loans) {
+    if (!ACTIVE_LOAN_STATUSES.includes(loan.status)) continue;
+    if (!result[loan.scrollId]) continue;
+    result[loan.scrollId].reservations.push({
+      id: loan.id,
+      borrower: loan.borrower,
+      purpose: loan.purpose,
+      borrowDate: loan.borrowDate,
+      dueDate: loan.dueDate,
+      status: loan.status
+    });
+  }
+  return Object.values(result);
+}
+
 app.use(express.json({ limit: '2mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
 
@@ -43,10 +107,41 @@ app.get('/api/db', async (req, res) => {
   res.json(db);
 });
 
+app.get('/api/loans/calendar', async (req, res) => {
+  const db = await readDb();
+  const data = getActiveLoansByScroll(db);
+  res.json(data);
+});
+
+app.get('/api/loans/check-conflict', async (req, res) => {
+  const db = await readDb();
+  const { scrollId, borrowDate, dueDate, excludeId } = req.query;
+  if (!scrollId || !borrowDate || !dueDate) {
+    return res.status(400).json({ error: '缺少必要参数：scrollId, borrowDate, dueDate' });
+  }
+  const conflicts = checkLoanConflict(db, scrollId, borrowDate, dueDate, excludeId);
+  res.json({ conflicts, hasConflict: conflicts.length > 0 });
+});
+
 app.post('/api/:collection', async (req, res) => {
   const db = await readDb();
   const { collection } = req.params;
   if (!Array.isArray(db[collection])) return res.status(404).json({ error: 'unknown collection' });
+
+  if (collection === 'loans') {
+    const { scrollId, borrowDate, dueDate } = req.body;
+    if (scrollId && borrowDate && dueDate) {
+      const conflicts = checkLoanConflict(db, scrollId, borrowDate, dueDate);
+      if (conflicts.length > 0) {
+        const conflictInfo = conflicts.map((c) => `${c.borrower}（${c.borrowDate} 至 ${c.dueDate}，状态：${c.status}）`).join('；');
+        return res.status(409).json({
+          error: `日期冲突：该经卷在 ${borrowDate} 至 ${dueDate} 期间已被预约。冲突记录：${conflictInfo}`,
+          conflicts
+        });
+      }
+    }
+  }
+
   const now = new Date().toISOString();
   const item = {
     id: `${collection}-${Date.now()}-${Math.random().toString(16).slice(2, 7)}`,
@@ -66,6 +161,23 @@ app.patch('/api/:collection/:id', async (req, res) => {
   if (!Array.isArray(db[collection])) return res.status(404).json({ error: 'unknown collection' });
   const item = db[collection].find((entry) => entry.id === id);
   if (!item) return res.status(404).json({ error: 'not found' });
+
+  if (collection === 'loans') {
+    const scrollId = req.body.scrollId || item.scrollId;
+    const borrowDate = req.body.borrowDate || item.borrowDate;
+    const dueDate = req.body.dueDate || item.dueDate;
+    if (scrollId && borrowDate && dueDate) {
+      const conflicts = checkLoanConflict(db, scrollId, borrowDate, dueDate, id);
+      if (conflicts.length > 0) {
+        const conflictInfo = conflicts.map((c) => `${c.borrower}（${c.borrowDate} 至 ${c.dueDate}，状态：${c.status}）`).join('；');
+        return res.status(409).json({
+          error: `日期冲突：该经卷在 ${borrowDate} 至 ${dueDate} 期间已被预约。冲突记录：${conflictInfo}`,
+          conflicts
+        });
+      }
+    }
+  }
+
   const historyAction = req.body.historyAction;
   delete req.body.historyAction;
   Object.assign(item, req.body, { updatedAt: new Date().toISOString() });

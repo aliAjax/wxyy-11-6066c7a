@@ -19,6 +19,66 @@
           "note": "限制借阅"
         }
       ]
+    },
+    {
+      "id": "scroll-seed-2",
+      "title": "金刚般若波罗蜜经",
+      "material": "宣纸",
+      "era": "清代乾隆",
+      "damage": "边缘轻微磨损",
+      "inscription": "有乾隆御览印",
+      "cabinet": "恒湿柜A-03",
+      "protectionLevel": "一级",
+      "borrowStatus": "可借阅",
+      "createdAt": "2026-06-10T08:00:00.000Z",
+      "updatedAt": "2026-06-15T08:00:00.000Z",
+      "history": [
+        {
+          "at": "2026-06-15T08:00:00.000Z",
+          "action": "保护评估",
+          "note": "可借阅"
+        }
+      ]
+    },
+    {
+      "id": "scroll-seed-3",
+      "title": "大方广佛华严经卷第十七",
+      "material": "麻纸",
+      "era": "宋代",
+      "damage": "首尾有残损，中部完好",
+      "inscription": "刻工精美，为北宋浙刻本",
+      "cabinet": "恒湿柜B-02",
+      "protectionLevel": "一级",
+      "borrowStatus": "需审批",
+      "createdAt": "2026-06-08T08:00:00.000Z",
+      "updatedAt": "2026-06-18T08:00:00.000Z",
+      "history": [
+        {
+          "at": "2026-06-18T08:00:00.000Z",
+          "action": "保护评估",
+          "note": "需审批"
+        }
+      ]
+    },
+    {
+      "id": "scroll-seed-4",
+      "title": "般若波罗蜜多心经",
+      "material": "绫本",
+      "era": "明代万历",
+      "damage": "有少量水渍痕迹",
+      "inscription": "董其昌款，书法精妙",
+      "cabinet": "恒湿柜A-05",
+      "protectionLevel": "二级",
+      "borrowStatus": "可借阅",
+      "createdAt": "2026-06-05T08:00:00.000Z",
+      "updatedAt": "2026-06-12T08:00:00.000Z",
+      "history": [
+        {
+          "at": "2026-06-12T08:00:00.000Z",
+          "action": "保护评估",
+          "note": "可借阅"
+        }
+      ]
     }
   ],
   "repairs": [
@@ -42,7 +102,175 @@
       ]
     }
   ],
-  "loans": [],
+  "loans": [
+    {
+      "id": "loan-seed-1",
+      "scrollId": "scroll-seed-2",
+      "borrower": "张教授",
+      "purpose": "学术研究",
+      "borrowDate": "2026-06-25",
+      "dueDate": "2026-07-05",
+      "reason": "用于敦煌学论文写作",
+      "status": "已借出",
+      "createdAt": "2026-06-15T09:00:00.000Z",
+      "updatedAt": "2026-06-20T09:00:00.000Z",
+      "history": [
+        {
+          "at": "2026-06-20T09:00:00.000Z",
+          "action": "借出",
+          "note": "经卷已出库"
+        },
+        {
+          "at": "2026-06-16T09:00:00.000Z",
+          "action": "批准",
+          "note": "批准借阅"
+        },
+        {
+          "at": "2026-06-15T09:00:00.000Z",
+          "action": "创建",
+          "note": "用于敦煌学论文写作"
+        }
+      ]
+    },
+    {
+      "id": "loan-seed-2",
+      "scrollId": "scroll-seed-2",
+      "borrower": "李研究员",
+      "purpose": "展览筹备",
+      "borrowDate": "2026-07-10",
+      "dueDate": "2026-07-20",
+      "reason": "佛教艺术展预展",
+      "status": "已批准",
+      "createdAt": "2026-06-18T10:00:00.000Z",
+      "updatedAt": "2026-06-19T10:00:00.000Z",
+      "history": [
+        {
+          "at": "2026-06-19T10:00:00.000Z",
+          "action": "批准",
+          "note": "批准展览使用"
+        },
+        {
+          "at": "2026-06-18T10:00:00.000Z",
+          "action": "创建",
+          "note": "佛教艺术展预展"
+        }
+      ]
+    },
+    {
+      "id": "loan-seed-3",
+      "scrollId": "scroll-seed-3",
+      "borrower": "王博士",
+      "purpose": "文献校勘",
+      "borrowDate": "2026-06-28",
+      "dueDate": "2026-07-15",
+      "reason": "宋代佛经版本比对",
+      "status": "待审批",
+      "createdAt": "2026-06-19T14:00:00.000Z",
+      "updatedAt": "2026-06-19T14:00:00.000Z",
+      "history": [
+        {
+          "at": "2026-06-19T14:00:00.000Z",
+          "action": "创建",
+          "note": "宋代佛经版本比对"
+        }
+      ]
+    },
+    {
+      "id": "loan-seed-4",
+      "scrollId": "scroll-seed-3",
+      "borrower": "赵馆长",
+      "purpose": "馆藏整理",
+      "borrowDate": "2026-06-20",
+      "dueDate": "2026-06-27",
+      "reason": "已完成核对",
+      "status": "已归还",
+      "createdAt": "2026-06-10T09:00:00.000Z",
+      "updatedAt": "2026-06-26T09:00:00.000Z",
+      "history": [
+        {
+          "at": "2026-06-26T09:00:00.000Z",
+          "action": "归还",
+          "note": "经卷完好归还"
+        },
+        {
+          "at": "2026-06-20T09:00:00.000Z",
+          "action": "借出",
+          "note": "馆藏整理"
+        },
+        {
+          "at": "2026-06-11T09:00:00.000Z",
+          "action": "批准",
+          "note": "批准整理使用"
+        },
+        {
+          "at": "2026-06-10T09:00:00.000Z",
+          "action": "创建",
+          "note": "馆藏整理"
+        }
+      ]
+    },
+    {
+      "id": "loan-seed-5",
+      "scrollId": "scroll-seed-4",
+      "borrower": "陈主任",
+      "purpose": "外借展示",
+      "borrowDate": "2026-07-01",
+      "dueDate": "2026-07-30",
+      "reason": "外借时间过长，不予批准",
+      "status": "已拒绝",
+      "createdAt": "2026-06-12T11:00:00.000Z",
+      "updatedAt": "2026-06-13T11:00:00.000Z",
+      "history": [
+        {
+          "at": "2026-06-13T11:00:00.000Z",
+          "action": "拒绝",
+          "note": "外借时间过长，不予批准"
+        },
+        {
+          "at": "2026-06-12T11:00:00.000Z",
+          "action": "创建",
+          "note": "外借展示"
+        }
+      ]
+    },
+    {
+      "id": "loan-seed-6",
+      "scrollId": "scroll-seed-4",
+      "borrower": "刘老师",
+      "purpose": "教学使用",
+      "borrowDate": "2026-07-05",
+      "dueDate": "2026-07-12",
+      "reason": "书法专业研究生课程示范",
+      "status": "待审批",
+      "createdAt": "2026-06-20T08:00:00.000Z",
+      "updatedAt": "2026-06-20T08:00:00.000Z",
+      "history": [
+        {
+          "at": "2026-06-20T08:00:00.000Z",
+          "action": "创建",
+          "note": "书法专业研究生课程示范"
+        }
+      ]
+    },
+    {
+      "id": "loans-1781940493272-03ea8",
+      "scrollId": "scroll-seed-2",
+      "borrower": "测试用户2",
+      "purpose": "测试无冲突",
+      "borrowDate": "2026-07-25",
+      "dueDate": "2026-07-30",
+      "reason": "测试无冲突日期",
+      "createdAt": "2026-06-20T07:28:13.272Z",
+      "updatedAt": "2026-06-20T07:28:13.272Z",
+      "history": [
+        {
+          "at": "2026-06-20T07:28:13.272Z",
+          "action": "创建",
+          "note": ""
+        }
+      ]
+    }
+  ],
   "imagings": [
     {
       "id": "imaging-seed-1",
