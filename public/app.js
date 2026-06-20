@@ -15,6 +15,22 @@ const state = {
     previewData: null,
     selectedRows: new Set(),
     importing: false
+  },
+  currentRole: 'admin',
+  currentRoleName: '管理员',
+  currentUser: '系统',
+  roles: [],
+  auditLogs: {
+    items: [],
+    total: 0,
+    page: 1,
+    pageSize: 50,
+    filters: {
+      operator: '',
+      collection: '',
+      startTime: '',
+      endTime: ''
+    }
   }
 };
 
@@ -221,9 +237,15 @@ function toast(message) {
 }
 
 async function api(path, options = {}) {
+  const headers = {
+    'Content-Type': 'application/json',
+    'X-User-Role': state.currentRole,
+    'X-User-Name': encodeURIComponent(state.currentUser),
+    ...(options.headers || {})
+  };
   const res = await fetch(path, {
-    headers: { 'Content-Type': 'application/json' },
-    ...options
+    ...options,
+    headers
   });
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
@@ -954,17 +976,38 @@ function renderBatchImportView(view) {
   </section>`;
 }
 
+function getVisibleViews() {
+  const allViews = state.config.views || [];
+  if (state.currentRole === 'admin') return allViews;
+  return allViews.filter((view) => {
+    if (view.type === 'audit') return false;
+    return true;
+  });
+}
+
 function render() {
   $('#title').textContent = state.config.title;
   document.title = state.config.title;
   $('#lede').textContent = state.config.lede;
-  $('#main').innerHTML = state.config.views.map((view) => {
+
+  const visibleViews = getVisibleViews();
+  const tabsHtml = visibleViews.map((view, index) => `
+    <button class="tab${index === 0 ? ' active' : ''}" data-tab="${view.id}">${escapeHtml(view.label)}</button>
+  `).join('');
+  $('#tabs').innerHTML = tabsHtml;
+
+  $('#main').innerHTML = visibleViews.map((view) => {
     if (view.type === 'dashboard') return renderDashboardView(view);
     if (view.type === 'calendar') return renderCalendarView(view);
     if (view.type === 'batchImport') return renderBatchImportView(view);
+    if (view.type === 'audit') return renderAuditView(view);
     return renderCrudView(view);
   }).join('');
-  setTab(state.activeTab || state.config.views[0].id);
+
+  if (!visibleViews.find((v) => v.id === state.activeTab)) {
+    state.activeTab = visibleViews[0]?.id || '';
+  }
+  setTab(state.activeTab || visibleViews[0]?.id || '');
 }
 
 async function load() {
@@ -1568,9 +1611,248 @@ document.addEventListener('submit', async (event) => {
 
 $('#refreshBtn').addEventListener('click', () => load().then(() => toast('已刷新')));
 
+async function loadRoles() {
+  try {
+    const result = await api('/api/roles');
+    state.roles = result.roles;
+    state.currentRole = result.currentRole;
+    state.currentRoleName = result.currentRoleName;
+    state.currentUser = result.currentUser;
+  } catch (e) {
+    console.warn('加载角色信息失败', e);
+  }
+}
+
+async function switchRole(roleId) {
+  const role = state.roles.find((r) => r.id === roleId);
+  if (!role) return;
+  state.currentRole = roleId;
+  state.currentRoleName = role.name;
+  renderRoleBadge();
+  if (roleId === 'admin') {
+    await loadAuditLogs();
+  }
+  await load();
+  toast(`已切换为「${role.name}」身份`);
+}
+
+function renderRoleBadge() {
+  const badge = $('#role-badge');
+  if (!badge) return;
+  const role = state.roles.find((r) => r.id === state.currentRole);
+  badge.innerHTML = `
+    <span class="role-icon">👤</span>
+    <span class="role-name">${escapeHtml(state.currentRoleName)}</span>
+    <span class="role-arrow">▼</span>
+  `;
+}
+
+function renderRoleSelector() {
+  const existing = $('#role-selector');
+  if (existing) existing.remove();
+
+  const selector = document.createElement('div');
+  selector.id = 'role-selector';
+  selector.className = 'role-selector';
+  selector.innerHTML = `
+    <div class="role-selector-head">
+      <h4>切换身份</h4>
+      <button class="modal-close" data-role-close>×</button>
+    </div>
+    <div class="role-selector-body">
+      <p class="role-selector-hint">选择不同身份体验不同权限</p>
+      <div class="role-list">
+        ${state.roles.map((role) => `
+          <div class="role-item ${role.id === state.currentRole ? 'active' : ''}" data-role="${role.id}">
+            <div class="role-item-head">
+              <span class="role-item-name">${escapeHtml(role.name)}</span>
+              ${role.id === state.currentRole ? '<span class="role-item-current">当前</span>' : ''}
+            </div>
+            <div class="role-item-desc">${escapeHtml(role.description)}</div>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+  `;
+  document.body.appendChild(selector);
+
+  selector.addEventListener('click', (e) => {
+    if (e.target.closest('[data-role-close]') || e.target === selector) {
+      selector.remove();
+      return;
+    }
+    const roleItem = e.target.closest('[data-role]');
+    if (roleItem) {
+      const roleId = roleItem.dataset.role;
+      switchRole(roleId);
+      selector.remove();
+    }
+  });
+}
+
+async function loadAuditLogs() {
+  if (state.currentRole !== 'admin') return;
+  try {
+    const { operator, collection, startTime, endTime } = state.auditLogs.filters;
+    const params = new URLSearchParams({
+      page: state.auditLogs.page,
+      pageSize: state.auditLogs.pageSize
+    });
+    if (operator) params.set('operator', operator);
+    if (collection) params.set('collection', collection);
+    if (startTime) params.set('startTime', startTime);
+    if (endTime) params.set('endTime', endTime);
+
+    const result = await api(`/api/audits?${params.toString()}`);
+    state.auditLogs.items = result.items;
+    state.auditLogs.total = result.total;
+  } catch (e) {
+    toast(e.message);
+  }
+}
+
+function renderAuditView(view) {
+  const logs = state.auditLogs.items;
+  const total = state.auditLogs.total;
+  const f = state.auditLogs.filters;
+
+  const collectionOptions = [
+    { value: '', label: '全部类型' },
+    { value: 'scrolls', label: '经卷档案' },
+    { value: 'repairs', label: '修补记录' },
+    { value: 'loans', label: '借阅申请' },
+    { value: 'imagings', label: '影像采集' },
+    { value: 'inventories', label: '柜位盘点' },
+    { value: 'materials', label: '修补材料' },
+    { value: 'observations', label: '人工观察' },
+    { value: 'repairTemplates', label: '修补模板' },
+    { value: 'repairBatches', label: '修补批次' }
+  ];
+
+  const actionLabels = {
+    create: '新增',
+    update: '修改',
+    delete: '删除',
+    statusChange: '状态变更',
+    approve: '批准',
+    reject: '拒绝',
+    lend: '借出',
+    return: '归还'
+  };
+
+  const actionTones = {
+    create: 'ok',
+    update: 'warn',
+    delete: 'bad',
+    statusChange: 'warn',
+    approve: 'ok',
+    reject: 'bad',
+    lend: 'warn',
+    return: 'ok'
+  };
+
+  const logListHtml = logs.length
+    ? logs.map((log) => `
+        <div class="audit-item">
+          <div class="audit-item-head">
+            <span class="audit-collection">${escapeHtml(log.collectionLabel)}</span>
+            ${pill(actionLabels[log.action] || log.action, actionTones[log.action] || '')}
+            <span class="audit-time">${fmtDate(log.timestamp)}</span>
+          </div>
+          <div class="audit-item-body">
+            <div class="audit-item-title">${escapeHtml(log.itemTitle || log.itemId || '-')}</div>
+            <div class="audit-item-meta">
+              <span>操作者：<strong>${escapeHtml(log.operator)}</strong></span>
+              <span>（${escapeHtml(log.operatorRoleName)}）</span>
+            </div>
+            ${log.note ? `<div class="audit-item-note">${escapeHtml(log.note)}</div>` : ''}
+            ${log.changes ? `
+              <details class="audit-changes">
+                <summary>查看变更详情</summary>
+                <pre>${escapeHtml(JSON.stringify(log.changes, null, 2))}</pre>
+              </details>
+            ` : ''}
+          </div>
+        </div>
+      `).join('')
+    : '<div class="empty">暂无审计日志</div>';
+
+  const totalPages = Math.ceil(total / state.auditLogs.pageSize);
+  const paginationHtml = total > state.auditLogs.pageSize ? `
+    <div class="audit-pagination">
+      <button class="ghost" ${state.auditLogs.page <= 1 ? 'disabled' : ''} data-audit-prev>上一页</button>
+      <span>第 ${state.auditLogs.page} / ${totalPages} 页，共 ${total} 条</span>
+      <button class="ghost" ${state.auditLogs.page >= totalPages ? 'disabled' : ''} data-audit-next>下一页</button>
+    </div>
+  ` : '';
+
+  return `<section class="view" id="${view.id}">
+    <div class="panel">
+      <h2>📋 操作审计日志</h2>
+      <p class="audit-hint">记录所有关键操作，可按操作者、类型和时间筛选</p>
+      <div class="audit-filters">
+        <label>操作者
+          <input type="text" id="audit-filter-operator" value="${escapeHtml(f.operator)}" placeholder="搜索操作者姓名">
+        </label>
+        <label>操作类型
+          <select id="audit-filter-collection">
+            ${collectionOptions.map((opt) => `<option value="${opt.value}" ${f.collection === opt.value ? 'selected' : ''}>${opt.label}</option>`).join('')}
+          </select>
+        </label>
+        <label>开始时间
+          <input type="date" id="audit-filter-start" value="${escapeHtml(f.startTime)}">
+        </label>
+        <label>结束时间
+          <input type="date" id="audit-filter-end" value="${escapeHtml(f.endTime)}">
+        </label>
+        <button id="audit-filter-btn">筛选</button>
+        <button class="ghost" id="audit-reset-btn">重置</button>
+      </div>
+      <div class="audit-list">${logListHtml}</div>
+      ${paginationHtml}
+    </div>
+  </section>`;
+}
+
+document.addEventListener('click', (e) => {
+  if (e.target.closest('#role-badge')) {
+    renderRoleSelector();
+  }
+  if (e.target.closest('#audit-filter-btn')) {
+    state.auditLogs.filters.operator = $('#audit-filter-operator')?.value || '';
+    state.auditLogs.filters.collection = $('#audit-filter-collection')?.value || '';
+    state.auditLogs.filters.startTime = $('#audit-filter-start')?.value || '';
+    state.auditLogs.filters.endTime = $('#audit-filter-end')?.value || '';
+    state.auditLogs.page = 1;
+    loadAuditLogs().then(() => render());
+  }
+  if (e.target.closest('#audit-reset-btn')) {
+    state.auditLogs.filters = { operator: '', collection: '', startTime: '', endTime: '' };
+    state.auditLogs.page = 1;
+    loadAuditLogs().then(() => render());
+  }
+  if (e.target.closest('[data-audit-prev]')) {
+    if (state.auditLogs.page > 1) {
+      state.auditLogs.page--;
+      loadAuditLogs().then(() => render());
+    }
+  }
+  if (e.target.closest('[data-audit-next]')) {
+    const totalPages = Math.ceil(state.auditLogs.total / state.auditLogs.pageSize);
+    if (state.auditLogs.page < totalPages) {
+      state.auditLogs.page++;
+      loadAuditLogs().then(() => render());
+    }
+  }
+});
+
 async function boot() {
+  await loadRoles();
   state.config = await api('/api/config');
-  renderTabs();
+  renderRoleBadge();
+  if (state.currentRole === 'admin') {
+    await loadAuditLogs();
+  }
   await load();
 }
 

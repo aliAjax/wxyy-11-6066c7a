@@ -300,6 +300,12 @@ module.exports = {
       targetCollection: 'scrolls'
     },
     {
+      id: 'audits',
+      label: '操作审计',
+      type: 'audit',
+      collection: 'audits'
+    },
+    {
       id: 'materials',
       label: '修补材料台账',
       collection: 'materials',

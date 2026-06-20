@@ -7,6 +7,205 @@ const config = require('./project.config');
 const PORT = process.env.PORT || config.port || 3900;
 const DB_FILE = path.join(__dirname, 'data', 'db.json');
 
+const ROLES = {
+  admin: {
+    id: 'admin',
+    name: '管理员',
+    description: '拥有全部操作权限'
+  },
+  conservator: {
+    id: 'conservator',
+    name: '修补人员',
+    description: '负责修补、影像采集、盘点等操作'
+  },
+  approver: {
+    id: 'approver',
+    name: '借阅审批人',
+    description: '负责借阅审批、借出归还'
+  },
+  guest: {
+    id: 'guest',
+    name: '只读访客',
+    description: '只能查看，不能修改'
+  }
+};
+
+const DEFAULT_ROLE = 'admin';
+
+const PERMISSIONS = {
+  scrolls: {
+    view: ['admin', 'conservator', 'approver', 'guest'],
+    create: ['admin'],
+    update: ['admin'],
+    delete: ['admin'],
+    statusChange: ['admin']
+  },
+  repairs: {
+    view: ['admin', 'conservator', 'approver', 'guest'],
+    create: ['admin', 'conservator'],
+    update: ['admin', 'conservator'],
+    delete: ['admin'],
+    statusChange: ['admin', 'conservator']
+  },
+  repairBatches: {
+    view: ['admin', 'conservator', 'approver', 'guest'],
+    create: ['admin', 'conservator'],
+    update: ['admin', 'conservator'],
+    delete: ['admin'],
+    statusChange: ['admin', 'conservator']
+  },
+  repairTemplates: {
+    view: ['admin', 'conservator', 'approver', 'guest'],
+    create: ['admin', 'conservator'],
+    update: ['admin', 'conservator'],
+    delete: ['admin'],
+    statusChange: ['admin', 'conservator']
+  },
+  loans: {
+    view: ['admin', 'conservator', 'approver', 'guest'],
+    create: ['admin', 'conservator', 'approver'],
+    update: ['admin', 'approver'],
+    delete: ['admin'],
+    approve: ['admin', 'approver'],
+    reject: ['admin', 'approver'],
+    lend: ['admin', 'approver'],
+    return: ['admin', 'approver']
+  },
+  imagings: {
+    view: ['admin', 'conservator', 'approver', 'guest'],
+    create: ['admin', 'conservator'],
+    update: ['admin', 'conservator'],
+    delete: ['admin'],
+    statusChange: ['admin', 'conservator']
+  },
+  inventories: {
+    view: ['admin', 'conservator', 'approver', 'guest'],
+    create: ['admin', 'conservator'],
+    update: ['admin', 'conservator'],
+    delete: ['admin'],
+    statusChange: ['admin', 'conservator']
+  },
+  materials: {
+    view: ['admin', 'conservator', 'approver', 'guest'],
+    create: ['admin'],
+    update: ['admin'],
+    delete: ['admin'],
+    statusChange: ['admin']
+  },
+  observations: {
+    view: ['admin', 'conservator', 'approver', 'guest'],
+    create: ['admin', 'conservator', 'approver'],
+    update: ['admin'],
+    delete: ['admin']
+  },
+  audits: {
+    view: ['admin'],
+    create: [],
+    update: [],
+    delete: []
+  }
+};
+
+function getCurrentRole(req) {
+  const role = req.headers['x-user-role'] || req.query.role || DEFAULT_ROLE;
+  return ROLES[role] ? role : DEFAULT_ROLE;
+}
+
+function getCurrentUser(req) {
+  const name = req.headers['x-user-name'] || req.query.user || '系统';
+  try {
+    return decodeURIComponent(name);
+  } catch (e) {
+    return name;
+  }
+}
+
+function hasPermission(role, collection, action) {
+  const perms = PERMISSIONS[collection];
+  if (!perms) return false;
+  const allowed = perms[action];
+  if (!allowed) return false;
+  return allowed.includes(role);
+}
+
+function requirePermission(collection, action) {
+  return (req, res, next) => {
+    const col = collection.startsWith(':') ? req.params[collection.slice(1)] : collection;
+    const act = action.startsWith(':') ? req.params[action.slice(1)] : action;
+    const role = getCurrentRole(req);
+    if (!hasPermission(role, col, act)) {
+      const roleInfo = ROLES[role];
+      return res.status(403).json({
+        error: `权限不足：当前身份为"${roleInfo?.name || role}"，没有${collectionLabel(col)}的${actionLabel(act)}权限`,
+        role: role,
+        roleName: roleInfo?.name || role,
+        collection: col,
+        action: act
+      });
+    }
+    next();
+  };
+}
+
+function collectionLabel(collection) {
+  const labels = {
+    scrolls: '经卷档案',
+    repairs: '修补记录',
+    repairBatches: '修补批次',
+    repairTemplates: '修补方案模板',
+    loans: '借阅申请',
+    imagings: '影像采集',
+    inventories: '柜位盘点',
+    materials: '修补材料',
+    observations: '人工观察记录',
+    audits: '审计日志'
+  };
+  return labels[collection] || collection;
+}
+
+function actionLabel(action) {
+  const labels = {
+    view: '查看',
+    create: '新增',
+    update: '修改',
+    delete: '删除',
+    statusChange: '状态变更',
+    approve: '批准',
+    reject: '拒绝',
+    lend: '借出',
+    return: '归还'
+  };
+  return labels[action] || action;
+}
+
+async function writeAuditLog(db, req, options = {}) {
+  const { collection, itemId, itemTitle, action, changes, note } = options;
+  const role = getCurrentRole(req);
+  const operator = getCurrentUser(req);
+  const roleInfo = ROLES[role];
+
+  const logEntry = {
+    id: `audit-${Date.now()}-${Math.random().toString(16).slice(2, 7)}`,
+    timestamp: new Date().toISOString(),
+    operator: operator,
+    operatorRole: role,
+    operatorRoleName: roleInfo?.name || role,
+    collection: collection,
+    collectionLabel: collectionLabel(collection),
+    itemId: itemId || null,
+    itemTitle: itemTitle || null,
+    action: action,
+    actionLabel: actionLabel(action),
+    changes: changes || null,
+    note: note || '',
+    ip: req.ip || req.connection?.remoteAddress || ''
+  };
+
+  if (!Array.isArray(db.audits)) db.audits = [];
+  db.audits.unshift(logEntry);
+  return logEntry;
+}
+
 const ACTIVE_LOAN_STATUSES = ['待审批', '已批准', '已借出'];
 
 const PROTECTION_LEVEL_SCORE = { '一级': 30, '二级': 15, '三级': 5 };
@@ -424,6 +623,18 @@ app.get('/api/scrolls/:id/timeline', async (req, res) => {
 });
 
 app.post('/api/scrolls/:id/observation', async (req, res) => {
+  const role = getCurrentRole(req);
+  if (!hasPermission(role, 'observations', 'create')) {
+    const roleInfo = ROLES[role];
+    return res.status(403).json({
+      error: `权限不足：当前身份为"${roleInfo?.name || role}"，没有人工观察记录的新增权限`,
+      role: role,
+      roleName: roleInfo?.name || role,
+      collection: 'observations',
+      action: 'create'
+    });
+  }
+
   const db = await readDb();
   const scrollId = req.params.id;
   const scroll = (db.scrolls || []).find((s) => s.id === scrollId);
@@ -442,12 +653,74 @@ app.post('/api/scrolls/:id/observation', async (req, res) => {
     history: [{ at: now, action: '创建', note: content }]
   };
   db.observations.push(item);
+
+  await writeAuditLog(db, req, {
+    collection: 'observations',
+    itemId: item.id,
+    itemTitle: observer,
+    action: 'create',
+    changes: { observer, content },
+    note: `经卷：${scroll.title} - ${content.slice(0, 50)}`
+  });
+
   await writeDb(db);
   res.status(201).json(item);
 });
 
+app.get('/api/roles', (req, res) => {
+  const role = getCurrentRole(req);
+  const user = getCurrentUser(req);
+  res.json({
+    currentRole: role,
+    currentRoleName: ROLES[role]?.name || role,
+    currentUser: user,
+    roles: Object.values(ROLES),
+    permissions: PERMISSIONS
+  });
+});
+
 app.get('/api/config', (req, res) => {
-  res.json(config);
+  const role = getCurrentRole(req);
+  res.json({
+    ...config,
+    currentRole: role,
+    currentRoleName: ROLES[role]?.name || role
+  });
+});
+
+app.get('/api/audits', requirePermission('audits', 'view'), async (req, res) => {
+  const db = await readDb();
+  let audits = db.audits || [];
+
+  const { operator, collection, startTime, endTime, itemId } = req.query;
+
+  if (operator) {
+    audits = audits.filter((a) => a.operator.includes(operator));
+  }
+  if (collection) {
+    audits = audits.filter((a) => a.collection === collection);
+  }
+  if (itemId) {
+    audits = audits.filter((a) => a.itemId === itemId);
+  }
+  if (startTime) {
+    audits = audits.filter((a) => new Date(a.timestamp) >= new Date(startTime));
+  }
+  if (endTime) {
+    audits = audits.filter((a) => new Date(a.timestamp) <= new Date(endTime));
+  }
+
+  const page = Number(req.query.page) || 1;
+  const pageSize = Number(req.query.pageSize) || 50;
+  const start = (page - 1) * pageSize;
+  const paginated = audits.slice(start, start + pageSize);
+
+  res.json({
+    total: audits.length,
+    page,
+    pageSize,
+    items: paginated
+  });
 });
 
 app.get('/api/db', async (req, res) => {
@@ -495,7 +768,22 @@ app.post('/api/loans/assess-preview', async (req, res) => {
   res.json(assessment);
 });
 
-app.post('/api/:collection', async (req, res) => {
+app.post('/api/:collection', requirePermission(':collection', 'create'), async (req, res, next) => {
+  const { collection } = req.params;
+  if (!PERMISSIONS[collection]) return res.status(404).json({ error: 'unknown collection' });
+  const role = getCurrentRole(req);
+  if (!hasPermission(role, collection, 'create')) {
+    const roleInfo = ROLES[role];
+    return res.status(403).json({
+      error: `权限不足：当前身份为"${roleInfo?.name || role}"，没有${collectionLabel(collection)}的新增权限`,
+      role: role,
+      roleName: roleInfo?.name || role,
+      collection: collection,
+      action: 'create'
+    });
+  }
+  next();
+}, async (req, res) => {
   const db = await readDb();
   const { collection } = req.params;
   if (!Array.isArray(db[collection])) return res.status(404).json({ error: 'unknown collection' });
@@ -571,6 +859,22 @@ app.post('/api/:collection', async (req, res) => {
       scroll.history.unshift(stamp('修补中', `启动修补批次"${template.name}"`));
     }
 
+    const scrollTitle = scroll?.title || '';
+    await writeAuditLog(db, req, {
+      collection: 'repairBatches',
+      itemId: batchItem.id,
+      itemTitle: `${template.name} - ${scrollTitle}`,
+      action: 'create',
+      note: `生成${processList.length}道修补工序`
+    });
+    await writeAuditLog(db, req, {
+      collection: 'scrolls',
+      itemId: scrollId,
+      itemTitle: scrollTitle,
+      action: 'statusChange',
+      note: `状态变更为修补中（启动修补批次"${template.name}"）`
+    });
+
     await writeDb(db);
     return res.status(201).json({ batch: batchItem, repairs: repairItems });
   }
@@ -594,16 +898,78 @@ app.post('/api/:collection', async (req, res) => {
   }
 
   db[collection].push(item);
+
+  const titleFields = {
+    scrolls: 'title',
+    repairs: 'process',
+    loans: 'borrower',
+    imagings: 'batch',
+    inventories: 'cabinet',
+    materials: 'name',
+    repairTemplates: 'name',
+    repairBatches: 'templateName',
+    observations: 'observer'
+  };
+  const itemTitle = item[titleFields[collection]] || item.title || item.id;
+  await writeAuditLog(db, req, {
+    collection,
+    itemId: item.id,
+    itemTitle: String(itemTitle),
+    action: 'create',
+    changes: { ...req.body },
+    note: req.body.note || req.body.memo || ''
+  });
+
   await writeDb(db);
   res.status(201).json(item);
 });
 
 app.patch('/api/:collection/:id', async (req, res) => {
-  const db = await readDb();
   const { collection, id } = req.params;
+  if (!PERMISSIONS[collection]) return res.status(404).json({ error: 'unknown collection' });
+  const role = getCurrentRole(req);
+  const hasUpdatePerm = hasPermission(role, collection, 'update');
+  const hasStatusPerm = hasPermission(role, collection, 'statusChange');
+  if (!hasUpdatePerm && !hasStatusPerm) {
+    const roleInfo = ROLES[role];
+    return res.status(403).json({
+      error: `权限不足：当前身份为"${roleInfo?.name || role}"，没有${collectionLabel(collection)}的修改权限`,
+      role: role,
+      roleName: roleInfo?.name || role,
+      collection: collection,
+      action: 'update'
+    });
+  }
+
+  const isStatusOnly = Object.keys(req.body).every((k) => ['status', 'note', 'memo', 'historyAction'].includes(k)) && req.body.status;
+  if (isStatusOnly && !hasStatusPerm) {
+    const roleInfo = ROLES[role];
+    return res.status(403).json({
+      error: `权限不足：当前身份为"${roleInfo?.name || role}"，没有${collectionLabel(collection)}的状态变更权限`,
+      role: role,
+      roleName: roleInfo?.name || role,
+      collection: collection,
+      action: 'statusChange'
+    });
+  }
+  if (!isStatusOnly && !hasUpdatePerm) {
+    const roleInfo = ROLES[role];
+    return res.status(403).json({
+      error: `权限不足：当前身份为"${roleInfo?.name || role}"，没有${collectionLabel(collection)}的修改权限`,
+      role: role,
+      roleName: roleInfo?.name || role,
+      collection: collection,
+      action: 'update'
+    });
+  }
+
+  const db = await readDb();
   if (!Array.isArray(db[collection])) return res.status(404).json({ error: 'unknown collection' });
   const item = db[collection].find((entry) => entry.id === id);
   if (!item) return res.status(404).json({ error: 'not found' });
+
+  const oldItem = { ...item };
+  const actionType = isStatusOnly ? 'statusChange' : 'update';
 
   if (collection === 'loans') {
     const scrollId = req.body.scrollId || item.scrollId;
@@ -703,27 +1069,147 @@ app.patch('/api/:collection/:id', async (req, res) => {
   if (historyAction || req.body.note || req.body.memo || req.body.status) {
     item.history.unshift(stamp(historyAction || req.body.status || '更新', req.body.note || req.body.memo || ''));
   }
+
+  const titleFields = {
+    scrolls: 'title',
+    repairs: 'process',
+    loans: 'borrower',
+    imagings: 'batch',
+    inventories: 'cabinet',
+    materials: 'name',
+    repairTemplates: 'name',
+    repairBatches: 'templateName',
+    observations: 'observer'
+  };
+  const itemTitle = item[titleFields[collection]] || item.title || item.id;
+
+  const changes = {};
+  for (const key of Object.keys(req.body)) {
+    if (key === 'historyAction') continue;
+    if (oldItem[key] !== item[key]) {
+      changes[key] = { before: oldItem[key], after: item[key] };
+    }
+  }
+
+  await writeAuditLog(db, req, {
+    collection,
+    itemId: item.id,
+    itemTitle: String(itemTitle),
+    action: actionType,
+    changes: Object.keys(changes).length ? changes : null,
+    note: req.body.note || req.body.memo || historyAction || ''
+  });
+
+  if (collection === 'repairs' && req.body.status && req.body.status !== prevStatus) {
+    const scroll = db.scrolls?.find((s) => s.id === item.scrollId);
+    if (scroll) {
+      const scrollStatus = scroll.status || scroll.borrowStatus || '未知';
+      const processName = item.process || '-';
+      await writeAuditLog(db, req, {
+        collection: 'scrolls',
+        itemId: scroll.id,
+        itemTitle: scroll.title || scroll.name || scroll.id,
+        action: 'statusChange',
+        note: `经卷状态变更（修补工序${processName}：${req.body.status}）`
+      });
+    }
+    if (item.batchId) {
+      const batch = db.repairBatches?.find((b) => b.id === item.batchId);
+      if (batch) {
+        await writeAuditLog(db, req, {
+          collection: 'repairBatches',
+          itemId: batch.id,
+          itemTitle: batch.templateName || batch.name || batch.id,
+          action: 'statusChange',
+          note: `批次进度更新：${batch.progressSummary || '进行中'}`
+        });
+      }
+    }
+  }
+
   await writeDb(db);
   res.json(item);
 });
 
 app.delete('/api/:collection/:id', async (req, res) => {
-  const db = await readDb();
   const { collection, id } = req.params;
+  if (!PERMISSIONS[collection]) return res.status(404).json({ error: 'unknown collection' });
+  const role = getCurrentRole(req);
+  if (!hasPermission(role, collection, 'delete')) {
+    const roleInfo = ROLES[role];
+    return res.status(403).json({
+      error: `权限不足：当前身份为"${roleInfo?.name || role}"，没有${collectionLabel(collection)}的删除权限`,
+      role: role,
+      roleName: roleInfo?.name || role,
+      collection: collection,
+      action: 'delete'
+    });
+  }
+
+  const db = await readDb();
   if (!Array.isArray(db[collection])) return res.status(404).json({ error: 'unknown collection' });
+  const item = db[collection].find((entry) => entry.id === id);
+  if (!item) return res.status(404).json({ error: 'not found' });
+
+  const titleFields = {
+    scrolls: 'title',
+    repairs: 'process',
+    loans: 'borrower',
+    imagings: 'batch',
+    inventories: 'cabinet',
+    materials: 'name',
+    repairTemplates: 'name',
+    repairBatches: 'templateName',
+    observations: 'observer'
+  };
+  const itemTitle = item[titleFields[collection]] || item.title || item.id;
+
   const before = db[collection].length;
   db[collection] = db[collection].filter((entry) => entry.id !== id);
   if (db[collection].length === before) return res.status(404).json({ error: 'not found' });
+
+  await writeAuditLog(db, req, {
+    collection,
+    itemId: id,
+    itemTitle: String(itemTitle),
+    action: 'delete',
+    note: '删除记录'
+  });
+
   await writeDb(db);
   res.status(204).end();
 });
 
 app.post('/api/action/:actionId/:id', async (req, res) => {
-  const db = await readDb();
-  const action = config.actions.find((entry) => entry.id === req.params.actionId);
+  const actionId = req.params.actionId;
+  const action = config.actions.find((entry) => entry.id === actionId);
   if (!action) return res.status(404).json({ error: 'unknown action' });
-  const item = db[action.collection]?.find((entry) => entry.id === req.params.id);
+
+  const collection = action.collection;
+  const role = getCurrentRole(req);
+
+  let actionType = 'statusChange';
+  if (actionId === 'loan-approve') actionType = 'approve';
+  else if (actionId === 'loan-reject') actionType = 'reject';
+  else if (actionId === 'loan-out') actionType = 'lend';
+  else if (actionId === 'loan-return') actionType = 'return';
+
+  if (!hasPermission(role, collection, actionType) && !hasPermission(role, collection, 'statusChange')) {
+    const roleInfo = ROLES[role];
+    return res.status(403).json({
+      error: `权限不足：当前身份为"${roleInfo?.name || role}"，没有${collectionLabel(collection)}的${action.label}权限`,
+      role: role,
+      roleName: roleInfo?.name || role,
+      collection: collection,
+      action: actionType
+    });
+  }
+
+  const db = await readDb();
+  const item = db[collection]?.find((entry) => entry.id === req.params.id);
   if (!item) return res.status(404).json({ error: 'not found' });
+
+  const oldItem = { ...item };
   const result = runAction(db, action, item);
   if (result.error) return res.status(409).json({ error: result.error });
 
@@ -759,6 +1245,52 @@ app.post('/api/action/:actionId/:id', async (req, res) => {
         scroll.history = scroll.history || [];
         scroll.history.unshift(stamp('修补完成', `${item.process}修补完成，转入需审批`));
       }
+    }
+  }
+
+  const titleFields = {
+    scrolls: 'title',
+    repairs: 'process',
+    loans: 'borrower',
+    imagings: 'batch',
+    inventories: 'cabinet',
+    materials: 'name',
+    repairTemplates: 'name',
+    repairBatches: 'templateName',
+    observations: 'observer'
+  };
+  const itemTitle = item[titleFields[collection]] || item.title || item.id;
+
+  const changes = {};
+  const patches = action.patches || [];
+  for (const patch of patches) {
+    const field = patch.field;
+    const target = patch.target === 'related' ? null : item;
+    if (target && oldItem[field] !== item[field]) {
+      changes[field] = { before: oldItem[field], after: item[field] };
+    }
+  }
+
+  await writeAuditLog(db, req, {
+    collection,
+    itemId: item.id,
+    itemTitle: String(itemTitle),
+    action: actionType,
+    changes: Object.keys(changes).length ? changes : null,
+    note: action.note || action.label
+  });
+
+  if (collection === 'loans' && action.relation) {
+    const scroll = db.scrolls?.find((s) => s.id === item.scrollId);
+    if (scroll) {
+      const scrollStatus = scroll.status || scroll.borrowStatus || '未知';
+      await writeAuditLog(db, req, {
+        collection: 'scrolls',
+        itemId: scroll.id,
+        itemTitle: scroll.title || scroll.name || scroll.id,
+        action: 'statusChange',
+        note: `经卷状态变更（借阅${action.label}）`
+      });
     }
   }
 
@@ -1088,6 +1620,18 @@ app.post('/api/scrolls/batch/preview', async (req, res) => {
 });
 
 app.post('/api/scrolls/batch/import', async (req, res) => {
+  const role = getCurrentRole(req);
+  if (!hasPermission(role, 'scrolls', 'create')) {
+    const roleInfo = ROLES[role];
+    return res.status(403).json({
+      error: `权限不足：当前身份为"${roleInfo?.name || role}"，没有经卷档案的新增权限`,
+      role: role,
+      roleName: roleInfo?.name || role,
+      collection: 'scrolls',
+      action: 'create'
+    });
+  }
+
   const { csvText, importRows } = req.body || {};
   if (!csvText || !csvText.trim()) {
     return res.status(400).json({ error: '请提供CSV文本' });
@@ -1154,6 +1698,15 @@ app.post('/api/scrolls/batch/import', async (req, res) => {
     db.scrolls.push(item);
     createdScrolls.push(item);
   }
+
+  const titles = createdScrolls.map((s) => s.title).join('、');
+  await writeAuditLog(db, req, {
+    collection: 'scrolls',
+    itemId: null,
+    itemTitle: `批量导入${createdScrolls.length}条`,
+    action: 'create',
+    note: `批量导入经卷档案${createdScrolls.length}条：${titles.slice(0, 100)}${titles.length > 100 ? '...' : ''}`
+  });
 
   await writeDb(db);
 

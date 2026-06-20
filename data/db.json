@@ -104,6 +104,22 @@
           "note": "可借阅"
         }
       ]
+    },
+    {
+      "id": "scrolls-1781957739137-684f7",
+      "name": "测试经卷123",
+      "dynasty": "测试",
+      "status": "完好",
+      "location": "测试柜",
+      "createdAt": "2026-06-20T12:15:39.137Z",
+      "updatedAt": "2026-06-20T12:15:39.137Z",
+      "history": [
+        {
+          "at": "2026-06-20T12:15:39.137Z",
+          "action": "创建",
+          "note": ""
+        }
+      ]
     }
   ],
   "repairs": [
@@ -373,6 +389,27 @@
           "note": "批次生成：装函"
         }
       ]
+    },
+    {
+      "id": "repairs-1781957754532-6cb17",
+      "scrollId": "scrolls-1781957739137-684f7",
+      "damageType": "破损",
+      "status": "修补中",
+      "createdAt": "2026-06-20T12:15:54.532Z",
+      "updatedAt": "2026-06-20T12:16:12.449Z",
+      "history": [
+        {
+          "at": "2026-06-20T12:16:12.449Z",
+          "action": "修补中",
+          "note": "开始修补"
+        },
+        {
+          "at": "2026-06-20T12:15:54.532Z",
+          "action": "创建",
+          "note": ""
+        }
+      ],
+      "note": "开始修补"
     }
   ],
   "loans": [
@@ -1138,6 +1175,89 @@
           "note": "从模板\"测试模板-标准修复\"生成5道工序"
         }
       ]
+    }
+  ],
+  "audits": [
+    {
+      "id": "audit-1781957772449-f9963",
+      "timestamp": "2026-06-20T12:16:12.449Z",
+      "operator": "å¼ ä¿®è¡¥",
+      "operatorRole": "conservator",
+      "operatorRoleName": "修补人员",
+      "collection": "scrolls",
+      "collectionLabel": "经卷档案",
+      "itemId": "scrolls-1781957739137-684f7",
+      "itemTitle": null,
+      "action": "statusChange",
+      "actionLabel": "状态变更",
+      "changes": null,
+      "note": "经卷状态变更为undefined（修补工序undefined修补中）",
+      "ip": "::1"
+    },
+    {
+      "id": "audit-1781957772449-c1e37",
+      "timestamp": "2026-06-20T12:16:12.449Z",
+      "operator": "å¼ ä¿®è¡¥",
+      "operatorRole": "conservator",
+      "operatorRoleName": "修补人员",
+      "collection": "repairs",
+      "collectionLabel": "修补记录",
+      "itemId": "repairs-1781957754532-6cb17",
+      "itemTitle": "repairs-1781957754532-6cb17",
+      "action": "statusChange",
+      "actionLabel": "状态变更",
+      "changes": {
+        "status": {
+          "before": "待修补",
+          "after": "修补中"
+        },
+        "note": {
+          "after": "开始修补"
+        }
+      },
+      "note": "开始修补",
+      "ip": "::1"
+    },
+    {
+      "id": "audit-1781957754532-dd5c0",
+      "timestamp": "2026-06-20T12:15:54.532Z",
+      "operator": "å¼ ä¿®è¡¥",
+      "operatorRole": "conservator",
+      "operatorRoleName": "修补人员",
+      "collection": "repairs",
+      "collectionLabel": "修补记录",
+      "itemId": "repairs-1781957754532-6cb17",
+      "itemTitle": "repairs-1781957754532-6cb17",
+      "action": "create",
+      "actionLabel": "新增",
+      "changes": {
+        "scrollId": "scrolls-1781957739137-684f7",
+        "damageType": "破损",
+        "status": "待修补"
+      },
+      "note": "",
+      "ip": "::1"
+    },
+    {
+      "id": "audit-1781957739137-de754",
+      "timestamp": "2026-06-20T12:15:39.137Z",
+      "operator": "æµè¯ç®¡çå",
+      "operatorRole": "admin",
+      "operatorRoleName": "管理员",
+      "collection": "scrolls",
+      "collectionLabel": "经卷档案",
+      "itemId": "scrolls-1781957739137-684f7",
+      "itemTitle": "scrolls-1781957739137-684f7",
+      "action": "create",
+      "actionLabel": "新增",
+      "changes": {
+        "name": "测试经卷123",
+        "dynasty": "测试",
+        "status": "完好",
+        "location": "测试柜"
+      },
+      "note": "",
+      "ip": "::1"
     }
   ]
 }
