@@ -620,6 +620,43 @@ async function writeDb(db) {
   await fs.writeFile(DB_FILE, JSON.stringify(db, null, 2) + '\n');
 }
 
+const MATERIAL_LOW_STOCK = {
+  '张': 20, '瓶': 3, '套': 3, '把': 2,
+  '袋': 5, '米': 10, '卷': 5, '盒': 2, '个': 5
+};
+const EXPIRY_WARN_DAYS = 30;
+
+function computeMaterialStatus(m) {
+  const now = new Date();
+  now.setHours(0, 0, 0, 0);
+  const reasons = [];
+  if (m.expiryDate) {
+    const exp = new Date(m.expiryDate + 'T00:00:00');
+    if (exp < now) {
+      reasons.push('已过期');
+    } else {
+      const days = Math.ceil((exp - now) / 86400000);
+      if (days <= EXPIRY_WARN_DAYS) reasons.push(`即将到期（剩余${days}天）`);
+    }
+  }
+  const threshold = MATERIAL_LOW_STOCK[m.unit] || 5;
+  const qtyRaw = m.quantity;
+  if (qtyRaw !== undefined && qtyRaw !== null && qtyRaw !== '') {
+    const qty = Number(qtyRaw) || 0;
+    if (qty <= 0) {
+      reasons.push('已耗尽');
+    } else if (qty <= threshold) {
+      reasons.push(`低余量（${qty}${m.unit}，阈值${threshold}）`);
+    }
+  }
+  let status;
+  if (reasons.some((r) => r.startsWith('已过期'))) status = '已过期';
+  else if (reasons.some((r) => r.startsWith('即将到期'))) status = '即将到期';
+  else if (reasons.some((r) => r.startsWith('低余量') || r.startsWith('已耗尽'))) status = '低余量';
+  else status = '正常';
+  return { status, reasons };
+}
+
 function stamp(action, note) {
   return {
     at: new Date().toISOString(),
@@ -909,10 +946,25 @@ app.get('/api/audits', requirePermission('audits', 'view'), async (req, res) => 
   });
 });
 
+app.post('/api/materials/status-preview', (req, res) => {
+  const result = computeMaterialStatus(req.body || {});
+  res.json(result);
+});
+
 app.get('/api/db', async (req, res) => {
   const db = await readDb();
   for (const key of Object.keys(db)) {
     if (Array.isArray(db[key])) db[key].sort(sortNewest);
+  }
+  if (Array.isArray(db.materials)) {
+    for (const m of db.materials) {
+      const computed = computeMaterialStatus(m);
+      if (m.status !== computed.status) {
+        m.status = computed.status;
+        m.updatedAt = new Date().toISOString();
+      }
+      m.statusReasons = computed.reasons;
+    }
   }
   const role = getCurrentRole(req);
   const result = { ...db };
@@ -1091,6 +1143,13 @@ app.post('/api/:collection', requirePermission(':collection', 'create'), async (
     const originalNote = req.body.note || req.body.memo || '';
     const adviceSummary = advice.damageLabels.length > 0 ? `保护建议已生成（${advice.damageLabels.join('、')}）` : '保护建议已生成';
     item.history = [stamp('创建', originalNote ? `${originalNote} | ${adviceSummary}` : adviceSummary)];
+  } else if (collection === 'materials') {
+    const computed = computeMaterialStatus(item);
+    item.status = computed.status;
+    item.statusReasons = computed.reasons;
+    const reasonText = computed.reasons.length > 0 ? `自动判定：${computed.status}（${computed.reasons.join('；')}）` : '自动判定：正常';
+    const originalNote = req.body.note || req.body.memo || '';
+    item.history = [stamp('创建', originalNote ? `${originalNote} | ${reasonText}` : reasonText)];
   } else {
     item.history = [stamp('创建', req.body.note || req.body.memo || '')];
   }
@@ -1208,6 +1267,20 @@ app.patch('/api/:collection/:id', async (req, res) => {
       if (!historyAction && !req.body.note && !req.body.memo) {
         item.history.unshift(stamp('保护建议更新', adviceSummary));
       }
+    }
+  }
+
+  if (collection === 'materials') {
+    const computed = computeMaterialStatus(item);
+    const oldStatus = item.status;
+    item.status = computed.status;
+    item.statusReasons = computed.reasons;
+    if (computed.status !== oldStatus) {
+      const reasonText = computed.reasons.length > 0
+        ? `自动判定：${computed.status}（${computed.reasons.join('；')}）`
+        : '自动判定：正常';
+      item.history = item.history || [];
+      item.history.unshift(stamp('状态变更', reasonText));
     }
   }
 

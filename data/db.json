@@ -40,7 +40,10 @@
           "限制借阅的经卷原则上不对外提供原件，可提供影印或数字化版本借阅",
           "限制借阅状态下如需调阅原件，须经馆长审批并全程监护"
         ],
-        "damageLabels": ["明显残损", "严重残损"],
+        "damageLabels": [
+          "明显残损",
+          "严重残损"
+        ],
         "protectionLevel": "一级",
         "borrowStatus": "限制借阅",
         "generatedAt": "2026-06-20T14:21:14.382Z"
@@ -85,7 +88,9 @@
           "限制借阅的经卷原则上不对外提供原件，可提供影印或数字化版本借阅",
           "限制借阅状态下如需调阅原件，须经馆长审批并全程监护"
         ],
-        "damageLabels": ["轻度残损"],
+        "damageLabels": [
+          "轻度残损"
+        ],
         "protectionLevel": "一级",
         "borrowStatus": "限制借阅",
         "generatedAt": "2026-06-20T13:24:15.716Z"
@@ -130,7 +135,9 @@
           "修补中的经卷由专业修复人员保管，不得擅自出库或移动",
           "修补完成后需经修复主管和保管部门双重验收，合格后方可重新入库"
         ],
-        "damageLabels": ["明显残损"],
+        "damageLabels": [
+          "明显残损"
+        ],
         "protectionLevel": "一级",
         "borrowStatus": "修补中",
         "generatedAt": "2026-06-19T10:00:00.000Z"
@@ -190,7 +197,9 @@
           "需审批借阅时需核验借阅人身份与研究用途，由保管部门负责人批准",
           "需审批借阅出库前需做影像留存和状态记录，归还时比对检查"
         ],
-        "damageLabels": ["明显残损"],
+        "damageLabels": [
+          "明显残损"
+        ],
         "protectionLevel": "二级",
         "borrowStatus": "需审批",
         "generatedAt": "2026-06-20T09:59:18.116Z"
@@ -943,11 +952,26 @@
       "unit": "瓶",
       "location": "冷藏柜B-01",
       "expiryDate": "2026-08-15",
-      "status": "即将到期",
+      "status": "低余量",
       "note": "手工熬制，浓度中等",
       "createdAt": "2026-05-15T08:00:00.000Z",
-      "updatedAt": "2026-06-18T08:00:00.000Z",
+      "updatedAt": "2026-06-20T16:08:33.069Z",
       "history": [
+        {
+          "at": "2026-06-20T16:08:33.069Z",
+          "action": "状态变更",
+          "note": "自动判定：低余量（低余量（2瓶，阈值3））"
+        },
+        {
+          "at": "2026-06-20T16:05:13.494Z",
+          "action": "更新",
+          "note": "手工熬制，浓度中等"
+        },
+        {
+          "at": "2026-06-20T16:05:13.494Z",
+          "action": "状态变更",
+          "note": "自动判定：正常"
+        },
         {
           "at": "2026-05-15T08:00:00.000Z",
           "action": "创建",
@@ -958,6 +982,9 @@
           "action": "更新",
           "note": "余量更新为2瓶"
         }
+      ],
+      "statusReasons": [
+        "低余量（2瓶，阈值3）"
       ]
     },
     {
@@ -1269,6 +1296,110 @@
     }
   ],
   "audits": [
+    {
+      "id": "audit-1781971713069-94427",
+      "timestamp": "2026-06-20T16:08:33.069Z",
+      "operator": "系统",
+      "operatorRole": "admin",
+      "operatorRoleName": "管理员",
+      "collection": "materials",
+      "collectionLabel": "修补材料",
+      "itemId": "material-seed-2",
+      "itemTitle": "小麦浆糊",
+      "action": "update",
+      "actionLabel": "修改",
+      "changes": {
+        "quantity": {
+          "before": 10,
+          "after": 2
+        }
+      },
+      "note": "",
+      "ip": "::1"
+    },
+    {
+      "id": "audit-1781971513494-05d47",
+      "timestamp": "2026-06-20T16:05:13.495Z",
+      "operator": "系统",
+      "operatorRole": "admin",
+      "operatorRoleName": "管理员",
+      "collection": "materials",
+      "collectionLabel": "修补材料",
+      "itemId": "material-seed-2",
+      "itemTitle": "小麦浆糊",
+      "action": "update",
+      "actionLabel": "修改",
+      "changes": {
+        "quantity": {
+          "before": 2,
+          "after": 10
+        }
+      },
+      "note": "手工熬制，浓度中等",
+      "ip": "::1"
+    },
+    {
+      "id": "audit-1781970927872-9dbb2",
+      "timestamp": "2026-06-20T15:55:27.872Z",
+      "operator": "系统",
+      "operatorRole": "admin",
+      "operatorRoleName": "管理员",
+      "collection": "materials",
+      "collectionLabel": "修补材料",
+      "itemId": "materials-1781970893376-3ca30",
+      "itemTitle": "测试材料",
+      "action": "delete",
+      "actionLabel": "删除",
+      "changes": null,
+      "note": "删除记录",
+      "ip": "::1"
+    },
+    {
+      "id": "audit-1781970909266-f968b",
+      "timestamp": "2026-06-20T15:55:09.266Z",
+      "operator": "系统",
+      "operatorRole": "admin",
+      "operatorRoleName": "管理员",
+      "collection": "materials",
+      "collectionLabel": "修补材料",
+      "itemId": "materials-1781970893376-3ca30",
+      "itemTitle": "测试材料",
+      "action": "update",
+      "actionLabel": "修改",
+      "changes": {
+        "quantity": {
+          "before": 3,
+          "after": 25
+        }
+      },
+      "note": "更新",
+      "ip": "::1"
+    },
+    {
+      "id": "audit-1781970893376-47f75",
+      "timestamp": "2026-06-20T15:54:53.376Z",
+      "operator": "系统",
+      "operatorRole": "admin",
+      "operatorRoleName": "管理员",
+      "collection": "materials",
+      "collectionLabel": "修补材料",
+      "itemId": "materials-1781970893376-3ca30",
+      "itemTitle": "测试材料",
+      "action": "create",
+      "actionLabel": "新增",
+      "changes": {
+        "name": "测试材料",
+        "category": "纸张",
+        "batch": "TEST-001",
+        "quantity": 3,
+        "unit": "张",
+        "location": "测试柜",
+        "expiryDate": "2026-07-20",
+        "note": "测试用"
+      },
+      "note": "测试用",
+      "ip": "::1"
+    },
     {
       "id": "audit-1781965274382-c705e",
       "timestamp": "2026-06-20T14:21:14.382Z",

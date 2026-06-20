@@ -44,6 +44,10 @@ module.exports = {
     repairTemplates: { label: '修补方案模板' },
     repairBatches: { label: '修补任务批次' }
   },
+  materialWarning: {
+    lowStockThresholds: { '张': 20, '瓶': 3, '套': 3, '把': 2, '袋': 5, '米': 10, '卷': 5, '盒': 2, '个': 5 },
+    expiryWarningDays: 30
+  },
   stats: [
     { label: '经卷档案', collection: 'scrolls' },
     { label: '一级保护', collection: 'scrolls', filter: { field: 'protectionLevel', value: '一级' } },
@@ -53,7 +57,7 @@ module.exports = {
     { label: '盘点记录', collection: 'inventories' },
     { label: '待复核', collection: 'inventories', filter: { field: 'status', value: '待复核' } },
     { label: '材料品类', collection: 'materials' },
-    { label: '低余量/到期', collection: 'materials', filter: { field: 'status', value: '低余量' } },
+    { label: '材料预警', collection: 'materials', filter: { field: 'status', anyOf: ['低余量', '即将到期', '已过期'] } },
     { label: '方案模板', collection: 'repairTemplates' },
     { label: '进行中批次', collection: 'repairBatches', filter: { field: 'status', value: '进行中' } }
   ],
@@ -334,7 +338,7 @@ module.exports = {
         { label: '到期日期', name: 'expiryDate' },
         { label: '状态', name: 'status' }
       ],
-      defaults: { status: '正常', unit: '张' },
+      defaults: { unit: '张' },
       fields: [
         { label: '材料名称', name: 'name', required: true },
         { label: '分类', name: 'category', type: 'select', options: ['纸张', '浆糊', '装函材料', '软刷', '其他'], required: true },
@@ -343,7 +347,6 @@ module.exports = {
         { label: '单位', name: 'unit', type: 'select', options: ['张', '瓶', '套', '把', '袋', '米', '卷', '盒', '个'], required: true },
         { label: '保管位置', name: 'location', required: true },
         { label: '到期日期', name: 'expiryDate', type: 'date' },
-        { label: '状态', name: 'status', type: 'select', options: ['正常', '低余量', '即将到期', '已过期'] },
         { label: '备注', name: 'note', type: 'textarea', wide: true }
       ]
     }
@@ -393,10 +396,6 @@ module.exports = {
     { id: 'inventory-normal', label: '正常', collection: 'inventories', patches: [{ field: 'status', value: '正常' }, { field: 'result', value: '正常' }] },
     { id: 'inventory-review', label: '待复核', collection: 'inventories', patches: [{ field: 'status', value: '待复核' }, { field: 'result', value: '异常' }] },
     { id: 'inventory-processed', label: '已处理', collection: 'inventories', patches: [{ field: 'status', value: '已处理' }] },
-    { id: 'material-normal', label: '正常', collection: 'materials', patches: [{ field: 'status', value: '正常' }] },
-    { id: 'material-low', label: '低余量', collection: 'materials', patches: [{ field: 'status', value: '低余量' }] },
-    { id: 'material-soonexpiry', label: '即将到期', collection: 'materials', patches: [{ field: 'status', value: '即将到期' }] },
-    { id: 'material-expired', label: '已过期', collection: 'materials', danger: true, patches: [{ field: 'status', value: '已过期' }] },
     { id: 'template-enable', label: '启用', collection: 'repairTemplates', patches: [{ field: 'status', value: '启用' }] },
     { id: 'template-disable', label: '停用', collection: 'repairTemplates', danger: true, patches: [{ field: 'status', value: '停用' }] }
   ]

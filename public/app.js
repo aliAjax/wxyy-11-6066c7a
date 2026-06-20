@@ -173,6 +173,83 @@ function toneForRisk(level) {
   return '';
 }
 
+const MATERIAL_LOW_STOCK = { '张': 20, '瓶': 3, '套': 3, '把': 2, '袋': 5, '米': 10, '卷': 5, '盒': 2, '个': 5 };
+const EXPIRY_WARN_DAYS = 30;
+
+function computeMaterialStatusLocal(m) {
+  const now = new Date();
+  now.setHours(0, 0, 0, 0);
+  const reasons = [];
+  if (m.expiryDate) {
+    const exp = new Date(m.expiryDate + 'T00:00:00');
+    if (exp < now) {
+      reasons.push('已过期');
+    } else {
+      const days = Math.ceil((exp - now) / 86400000);
+      if (days <= EXPIRY_WARN_DAYS) reasons.push(`即将到期（剩余${days}天）`);
+    }
+  }
+  const threshold = MATERIAL_LOW_STOCK[m.unit] || 5;
+  const qtyRaw = m.quantity;
+  if (qtyRaw !== undefined && qtyRaw !== null && qtyRaw !== '') {
+    const qty = Number(qtyRaw) || 0;
+    if (qty <= 0) {
+      reasons.push('已耗尽');
+    } else if (qty <= threshold) {
+      reasons.push(`低余量（${qty}${m.unit}，阈值${threshold}）`);
+    }
+  }
+  let status;
+  if (reasons.some((r) => r.startsWith('已过期'))) status = '已过期';
+  else if (reasons.some((r) => r.startsWith('即将到期'))) status = '即将到期';
+  else if (reasons.some((r) => r.startsWith('低余量') || r.startsWith('已耗尽'))) status = '低余量';
+  else status = '正常';
+  return { status, reasons };
+}
+
+function renderMaterialStatusPreview(result) {
+  if (!result) return '';
+  const tone = toneFor(result.status);
+  const reasonsHtml = result.reasons.length
+    ? `<ul class="material-status-reasons">${result.reasons.map((r) => `<li>${escapeHtml(r)}</li>`).join('')}</ul>`
+    : '<div class="material-status-ok">✅ 余量充足，无需预警</div>';
+  return `<div class="material-status-preview ${tone}">
+    <div class="material-status-preview-head">
+      <span>🔔 自动状态判定</span>
+      ${pill(result.status, tone)}
+    </div>
+    ${reasonsHtml}
+  </div>`;
+}
+
+function renderMaterialEditForm(material) {
+  if (!material) return '';
+  const view = state.config.views.find((v) => v.id === 'materials');
+  const fields = view?.fields || [];
+  const statusResult = computeMaterialStatusLocal(material);
+  return `
+    <div class="material-edit-form" data-material-edit-form="${material.id}">
+      <div class="form-grid">
+        ${fields.map((f) => {
+          const value = material[f.name] !== undefined ? material[f.name] : (f.default || '');
+          if (f.type === 'textarea') {
+            return `<label class="${f.wide ? 'wide' : ''}">${escapeHtml(f.label)}<textarea name="${f.name}" ${f.required ? 'required' : ''}>${escapeHtml(value)}</textarea></label>`;
+          }
+          if (f.type === 'select') {
+            return `<label class="${f.wide ? 'wide' : ''}">${escapeHtml(f.label)}<select name="${f.name}" ${f.required ? 'required' : ''}>${f.options.map((opt) => `<option${value === opt ? ' selected' : ''}>${escapeHtml(opt)}</option>`).join('')}</select></label>`;
+          }
+          return `<label class="${f.wide ? 'wide' : ''}">${escapeHtml(f.label)}<input type="${f.type || 'text'}" name="${f.name}" value="${escapeHtml(value)}" ${f.required ? 'required' : ''}></label>`;
+        }).join('')}
+      </div>
+      ${renderMaterialStatusPreview(statusResult)}
+      <div class="actions">
+        <button class="ghost" data-material-save="${material.id}">💾 保存</button>
+        <button class="ghost secondary" data-material-cancel="${material.id}">取消</button>
+      </div>
+    </div>
+  `;
+}
+
 function isStrictRiskAssessment(assessment) {
   if (!assessment) return false;
   return assessment.isStrictMode === true ||
@@ -586,7 +663,16 @@ function setTab(tabId) {
 function renderStats() {
   return `<div class="stats">${state.config.stats.map((stat) => {
     const items = state.db[stat.collection] || [];
-    const value = stat.filter ? items.filter((item) => item[stat.filter.field] === stat.filter.value).length : items.length;
+    let value;
+    if (stat.filter) {
+      if (stat.filter.anyOf) {
+        value = items.filter((item) => stat.filter.anyOf.includes(item[stat.filter.field])).length;
+      } else {
+        value = items.filter((item) => item[stat.filter.field] === stat.filter.value).length;
+      }
+    } else {
+      value = items.length;
+    }
     return `<div class="stat"><span>${escapeHtml(stat.label)}</span><strong>${value}</strong></div>`;
   }).join('')}</div>`;
 }
@@ -616,19 +702,40 @@ function renderCard(item, collection, view) {
       .join('');
   };
 
-  const actionsHtml = collection === 'loans' && isStrictRiskAssessment(item.riskAssessment)
-    ? `<div class="actions">${state.config.actions
+  let actionsHtml;
+  if (collection === 'loans' && isStrictRiskAssessment(item.riskAssessment)) {
+    actionsHtml = `<div class="actions">${state.config.actions
         .filter((action) => action.collection === collection)
         .map((action) => {
           const extraClass = (action.id === 'loan-approve' || action.id === 'loan-reject') ? ' strict-action' : '';
           return `<button class="${action.danger ? 'danger' : 'ghost'}${extraClass}" data-action="${action.id}" data-id="${item.id}" data-strict="true">${action.id === 'loan-approve' || action.id === 'loan-reject' ? '⚠️ ' : ''}${escapeHtml(action.label)}</button>`;
         })
-        .join('')}</div>`
-    : `<div class="actions">${actionButtons(item.id)}</div>`;
+        .join('')}</div>`;
+  } else if (collection === 'materials') {
+    actionsHtml = `<div class="actions">
+      <button class="ghost" data-material-edit="${item.id}">✏️ 编辑</button>
+      <button class="ghost danger" data-material-delete="${item.id}">🗑️ 删除</button>
+    </div>`;
+  } else {
+    actionsHtml = `<div class="actions">${actionButtons(item.id)}</div>`;
+  }
 
   const riskHtml = collection === 'loans' ? renderRiskPanel(item.riskAssessment) : '';
 
   const adviceHtml = collection === 'scrolls' ? renderProtectionAdvice(item.protectionAdvice) : '';
+
+  let materialStatusHtml = '';
+  if (collection === 'materials') {
+    const reasons = item.statusReasons || [];
+    const isWarning = ['低余量', '即将到期', '已过期'].includes(item.status);
+    if (isWarning && reasons.length > 0) {
+      const tone = toneFor(item.status);
+      materialStatusHtml = `<div class="material-card-status ${tone}">
+        <span class="material-card-status-label">🔔 预警原因</span>
+        <ul class="material-card-reasons">${reasons.map((r) => `<li>${escapeHtml(r)}</li>`).join('')}</ul>
+      </div>`;
+    }
+  }
 
   const timelineBtn = collection === 'scrolls'
     ? `<button class="ghost" data-timeline="${item.id}">📜 时间轴</button>`
@@ -648,12 +755,19 @@ function renderCard(item, collection, view) {
     <button class="ghost" data-batch-tasks="${item.id}">📋 查看任务</button>`;
   }
 
-  return `<article class="card">
-    <div class="card-head"><h3>${escapeHtml(title)}</h3>${statusValue ? pill(statusValue, toneFor(statusValue)) : ''}</div>
+  let cardTitleHtml = escapeHtml(title);
+  if (collection === 'materials' && ['低余量', '即将到期', '已过期'].includes(item.status)) {
+    const warnIcon = item.status === '已过期' ? '🚨' : '⚠️';
+    cardTitleHtml = `${warnIcon} ${escapeHtml(title)}`;
+  }
+
+  return `<article class="card${collection === 'materials' && ['低余量', '即将到期', '已过期'].includes(item.status) ? ' material-warning material-' + toneFor(item.status) : ''}">
+    <div class="card-head"><h3>${cardTitleHtml}</h3>${statusValue ? pill(statusValue, toneFor(statusValue)) : ''}</div>
     ${relation}
     ${summary ? `<p>${escapeHtml(summary)}</p>` : ''}
     ${details ? `<div class="detail">${details}</div>` : ''}
     ${adviceHtml}
+    ${materialStatusHtml}
     ${batchProgressHtml}
     ${riskHtml}
     ${actionsHtml}
@@ -680,6 +794,10 @@ function renderList(view) {
       const scoreB = b.riskAssessment?.score || 0;
       return scoreB - scoreA;
     });
+  }
+  if (view.id === 'materials') {
+    const statusRank = { '已过期': 3, '即将到期': 2, '低余量': 1, '正常': 0 };
+    items.sort((a, b) => (statusRank[b.status] || 0) - (statusRank[a.status] || 0));
   }
   return items.length ? items.map((item) => renderCard(item, collection, view)).join('') : `<div class="empty">暂无${escapeHtml(collectionLabel(collection))}</div>`;
 }
@@ -799,12 +917,16 @@ function renderCrudView(view) {
   const riskPreviewHtml = view.id === 'loans' && state.riskPreview
     ? renderRiskPreview(state.riskPreview)
     : '';
+  const materialPreviewHtml = view.id === 'materials'
+    ? renderMaterialStatusPreview(computeMaterialStatusLocal({ quantity: '', unit: '张', expiryDate: '' }))
+    : '';
   return `<section class="view" id="${view.id}">
     <div class="grid">
       <form class="panel" data-create="${view.collection}" data-view="${view.id}">
         <h2>${escapeHtml(view.formTitle)}</h2>
         <div class="form-grid">${view.fields.map((f) => formField(f, view.id)).join('')}</div>
         ${riskPreviewHtml}
+        ${materialPreviewHtml}
         ${conflictWarning}
         ${unavailableRanges}
         <div class="actions"><button ${state.conflictCheck.conflicts.length ? 'disabled' : ''}>${escapeHtml(view.submitLabel || '保存')}</button></div>
@@ -1278,6 +1400,100 @@ document.addEventListener('click', async (event) => {
     return;
   }
 
+  const materialEditBtn = event.target.closest('[data-material-edit]');
+  if (materialEditBtn) {
+    const materialId = materialEditBtn.dataset.materialEdit;
+    const material = (state.db.materials || []).find((m) => m.id === materialId);
+    const card = materialEditBtn.closest('.card');
+    if (!material || !card) return;
+    const cardContent = card.querySelector('.card-head, .meta, p, .detail, .material-card-status, .actions, .history');
+    const editForm = card.querySelector('.material-edit-form');
+    if (editForm) return;
+    const formHtml = renderMaterialEditForm(material);
+    const actionsEl = card.querySelector('.actions');
+    if (actionsEl) {
+      actionsEl.insertAdjacentHTML('beforebegin', formHtml);
+      actionsEl.style.display = 'none';
+    }
+    const detailEl = card.querySelector('.detail');
+    if (detailEl) detailEl.style.display = 'none';
+    const summaryEl = card.querySelector('p');
+    if (summaryEl) summaryEl.style.display = 'none';
+    const materialStatusEl = card.querySelector('.material-card-status');
+    if (materialStatusEl) materialStatusEl.style.display = 'none';
+    const historyEl = card.querySelector('.history');
+    if (historyEl) historyEl.style.display = 'none';
+    return;
+  }
+
+  const materialCancelBtn = event.target.closest('[data-material-cancel]');
+  if (materialCancelBtn) {
+    const materialId = materialCancelBtn.dataset.materialCancel;
+    const card = materialCancelBtn.closest('.card');
+    if (!card) return;
+    const editForm = card.querySelector('.material-edit-form');
+    if (editForm) editForm.remove();
+    const actionsEl = card.querySelector('.actions');
+    if (actionsEl) actionsEl.style.display = '';
+    const detailEl = card.querySelector('.detail');
+    if (detailEl) detailEl.style.display = '';
+    const summaryEl = card.querySelector('p');
+    if (summaryEl) summaryEl.style.display = '';
+    const materialStatusEl = card.querySelector('.material-card-status');
+    if (materialStatusEl) materialStatusEl.style.display = '';
+    const historyEl = card.querySelector('.history');
+    if (historyEl) historyEl.style.display = '';
+    return;
+  }
+
+  const materialSaveBtn = event.target.closest('[data-material-save]');
+  if (materialSaveBtn) {
+    const materialId = materialSaveBtn.dataset.materialSave;
+    const card = materialSaveBtn.closest('.card');
+    const editForm = card?.querySelector('.material-edit-form');
+    if (!card || !editForm) return;
+    const data = {};
+    const fields = ['name', 'category', 'batch', 'quantity', 'unit', 'location', 'expiryDate', 'note'];
+    fields.forEach((f) => {
+      const input = editForm.querySelector(`[name="${f}"]`);
+      if (input) data[f] = input.value.trim();
+    });
+    if (!data.name) { toast('材料名称不能为空'); return; }
+    if (!data.category) { toast('分类不能为空'); return; }
+    if (!data.batch) { toast('批次号不能为空'); return; }
+    if (data.quantity === '' || data.quantity === undefined) { toast('余量不能为空'); return; }
+    if (!data.unit) { toast('单位不能为空'); return; }
+    if (!data.location) { toast('保管位置不能为空'); return; }
+    try {
+      data.quantity = Number(data.quantity);
+      await api(`/api/materials/${encodeURIComponent(materialId)}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ ...data, historyAction: '更新' })
+      });
+      await load();
+      toast('材料已更新');
+    } catch (e) {
+      toast(e.message);
+    }
+    return;
+  }
+
+  const materialDeleteBtn = event.target.closest('[data-material-delete]');
+  if (materialDeleteBtn) {
+    const materialId = materialDeleteBtn.dataset.materialDelete;
+    const material = (state.db.materials || []).find((m) => m.id === materialId);
+    if (!material) return;
+    if (!confirm(`确定要删除材料"${material.name}"（${material.batch}）吗？`)) return;
+    try {
+      await api(`/api/materials/${encodeURIComponent(materialId)}`, { method: 'DELETE' });
+      await load();
+      toast('材料已删除');
+    } catch (e) {
+      toast(e.message);
+    }
+    return;
+  }
+
   const taskEditBtn = event.target.closest('[data-task-edit]');
   if (taskEditBtn) {
     const taskId = taskEditBtn.dataset.taskEdit;
@@ -1586,6 +1802,35 @@ document.addEventListener('input', async (event) => {
       }
     } else {
       if (previewEl) previewEl.remove();
+    }
+  }
+
+  const materialForm = event.target.closest('[data-create="materials"]');
+  if (materialForm) {
+    const quantity = materialForm.querySelector('[name="quantity"]')?.value;
+    const unit = materialForm.querySelector('[name="unit"]')?.value;
+    const expiryDate = materialForm.querySelector('[name="expiryDate"]')?.value;
+    const result = computeMaterialStatusLocal({ quantity: quantity || 0, unit: unit || '张', expiryDate: expiryDate || '' });
+    const previewEl = materialForm.querySelector('.material-status-preview');
+    const newHtml = renderMaterialStatusPreview(result);
+    if (previewEl) {
+      previewEl.outerHTML = newHtml;
+    } else {
+      const actionsDiv = materialForm.querySelector('.actions');
+      actionsDiv.insertAdjacentHTML('beforebegin', newHtml);
+    }
+  }
+
+  const materialEditForm = event.target.closest('[data-material-edit-form]');
+  if (materialEditForm) {
+    const quantity = materialEditForm.querySelector('[name="quantity"]')?.value;
+    const unit = materialEditForm.querySelector('[name="unit"]')?.value;
+    const expiryDate = materialEditForm.querySelector('[name="expiryDate"]')?.value;
+    const result = computeMaterialStatusLocal({ quantity: quantity || 0, unit: unit || '张', expiryDate: expiryDate || '' });
+    const previewEl = materialEditForm.querySelector('.material-status-preview');
+    const newHtml = renderMaterialStatusPreview(result);
+    if (previewEl) {
+      previewEl.outerHTML = newHtml;
     }
   }
 });
