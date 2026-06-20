@@ -6,7 +6,10 @@ const state = {
   calendarMonth: new Date(),
   selectedScrollId: '',
   conflictCheck: { scrollId: '', borrowDate: '', dueDate: '', conflicts: [] },
-  riskPreview: null
+  riskPreview: null,
+  timelineScrollId: null,
+  timelineData: null,
+  timelineFilter: ''
 };
 
 const $ = (selector, root = document) => root.querySelector(selector);
@@ -318,6 +321,132 @@ function historyHtml(item) {
   `).join('')}</div>`;
 }
 
+const TIMELINE_TYPE_ICONS = {
+  '建档': '📜',
+  '修补': '🔧',
+  '借阅': '📖',
+  '归还': '↩️',
+  '状态变更': '🔄',
+  '影像采集': '📷',
+  '盘点': '📋',
+  '人工观察': '👁️'
+};
+
+const TIMELINE_TYPE_TONES = {
+  '建档': 'ok',
+  '修补': 'warn',
+  '借阅': 'warn',
+  '归还': 'ok',
+  '状态变更': '',
+  '影像采集': '',
+  '盘点': '',
+  '人工观察': 'obs'
+};
+
+function timelineTypeBadge(type) {
+  const icon = TIMELINE_TYPE_ICONS[type] || '📌';
+  const tone = TIMELINE_TYPE_TONES[type] || '';
+  return `<span class="timeline-type-badge ${tone}">${icon} ${escapeHtml(type)}</span>`;
+}
+
+async function openTimeline(scrollId) {
+  state.timelineScrollId = scrollId;
+  state.timelineFilter = '';
+  try {
+    state.timelineData = await api(`/api/scrolls/${encodeURIComponent(scrollId)}/timeline`);
+  } catch (e) {
+    state.timelineData = null;
+    toast(e.message);
+    return;
+  }
+  renderTimelineOverlay();
+}
+
+function closeTimeline() {
+  state.timelineScrollId = null;
+  state.timelineData = null;
+  state.timelineFilter = '';
+  const overlay = $('#timeline-overlay');
+  if (overlay) overlay.remove();
+}
+
+function renderTimelineOverlay() {
+  const existing = $('#timeline-overlay');
+  if (existing) existing.remove();
+
+  const data = state.timelineData;
+  if (!data) return;
+
+  const allTypes = [...new Set(data.events.map((e) => e.type))];
+  const filterOptions = `<option value="">全部事件</option>${allTypes.map((t) => `<option value="${escapeHtml(t)}" ${state.timelineFilter === t ? 'selected' : ''}>${TIMELINE_TYPE_ICONS[t] || '📌'} ${escapeHtml(t)}</option>`).join('')}`;
+
+  let filtered = data.events;
+  if (state.timelineFilter) {
+    filtered = filtered.filter((e) => e.type === state.timelineFilter);
+  }
+
+  const scroll = state.db.scrolls?.find((s) => s.id === data.scrollId);
+  const scrollTitle = data.scrollTitle || scroll?.title || data.scrollId;
+  const scrollStatus = scroll?.borrowStatus || '';
+  const scrollProtection = scroll?.protectionLevel || '';
+
+  const eventListHtml = filtered.length
+    ? filtered.map((ev) => `
+      <div class="timeline-event" data-event-type="${escapeHtml(ev.type)}">
+        <div class="timeline-dot"></div>
+        <div class="timeline-content">
+          <div class="timeline-head">
+            ${timelineTypeBadge(ev.type)}
+            <span class="timeline-time">${fmtDate(ev.timestamp)}</span>
+          </div>
+          <div class="timeline-title">${escapeHtml(ev.title)}</div>
+          ${ev.detail ? `<div class="timeline-detail">${escapeHtml(ev.detail)}</div>` : ''}
+          <div class="timeline-source">来源：${escapeHtml(state.config.collections[ev.source]?.label || ev.source)}</div>
+        </div>
+      </div>
+    `).join('')
+    : '<div class="empty">暂无匹配的事件记录</div>';
+
+  const overlay = document.createElement('div');
+  overlay.id = 'timeline-overlay';
+  overlay.className = 'timeline-overlay';
+  overlay.innerHTML = `
+    <div class="timeline-modal">
+      <div class="timeline-modal-head">
+        <div>
+          <h3>📜 经卷生命周期时间轴</h3>
+          <div class="timeline-scroll-info">
+            <strong>${escapeHtml(scrollTitle)}</strong>
+            ${scrollStatus ? pill(scrollStatus, toneFor(scrollStatus)) : ''}
+            ${scrollProtection ? `<span class="timeline-protection">保护等级：${escapeHtml(scrollProtection)}</span>` : ''}
+          </div>
+        </div>
+        <button class="modal-close" data-timeline-close>×</button>
+      </div>
+      <div class="timeline-toolbar">
+        <label>按类型筛选：<select id="timeline-filter">${filterOptions}</select></label>
+        <span class="timeline-count">共 ${filtered.length} 条事件${state.timelineFilter ? '（已筛选）' : ''}</span>
+      </div>
+      <div class="timeline-body">
+        <div class="timeline-line">
+          ${eventListHtml}
+        </div>
+      </div>
+      <div class="timeline-obs-form">
+        <h4>📝 追加人工观察记录</h4>
+        <form data-observation="${data.scrollId}">
+          <div class="obs-form-grid">
+            <label>观察人<input type="text" name="observer" required placeholder="填写观察人姓名"></label>
+            <label>观察内容<textarea name="content" required placeholder="记录观察发现，不影响业务状态"></textarea></label>
+          </div>
+          <div class="actions"><button type="submit">追加观察记录</button></div>
+        </form>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(overlay);
+}
+
 function values(form, view) {
   const payload = Object.fromEntries(new FormData(form).entries());
   for (const field of view.fields) {
@@ -384,6 +513,10 @@ function renderCard(item, collection, view) {
 
   const riskHtml = collection === 'loans' ? renderRiskPanel(item.riskAssessment) : '';
 
+  const timelineBtn = collection === 'scrolls'
+    ? `<button class="ghost" data-timeline="${item.id}">📜 时间轴</button>`
+    : '';
+
   return `<article class="card">
     <div class="card-head"><h3>${escapeHtml(title)}</h3>${statusValue ? pill(statusValue, toneFor(statusValue)) : ''}</div>
     ${relation}
@@ -391,6 +524,7 @@ function renderCard(item, collection, view) {
     ${details ? `<div class="detail">${details}</div>` : ''}
     ${riskHtml}
     ${actionsHtml}
+    ${timelineBtn ? `<div class="actions">${timelineBtn}</div>` : ''}
     ${historyHtml(item)}
   </article>`;
 }
@@ -654,8 +788,26 @@ document.addEventListener('click', async (event) => {
   const prevMonth = event.target.closest('[data-calendar-prev]');
   const nextMonth = event.target.closest('[data-calendar-next]');
   const todayBtn = event.target.closest('[data-calendar-today]');
+  const timelineBtn = event.target.closest('[data-timeline]');
+  const timelineClose = event.target.closest('[data-timeline-close]');
 
   if (tab) setTab(tab.dataset.tab);
+
+  if (timelineBtn) {
+    await openTimeline(timelineBtn.dataset.timeline);
+    return;
+  }
+
+  if (timelineClose) {
+    closeTimeline();
+    return;
+  }
+
+  const overlay = $('#timeline-overlay');
+  if (overlay && event.target === overlay) {
+    closeTimeline();
+    return;
+  }
 
   if (action) {
     const actionId = action.dataset.action;
@@ -710,6 +862,12 @@ let riskPreviewTimeout = null;
 document.addEventListener('input', async (event) => {
   const view = state.config.views.find((entry) => entry.id && (event.target.id === `search-${entry.id}` || event.target.id === `status-${entry.id}`));
   if (view) $(`#list-${view.id}`).innerHTML = renderList(view);
+
+  if (event.target.id === 'timeline-filter') {
+    state.timelineFilter = event.target.value;
+    renderTimelineOverlay();
+    return;
+  }
 
   if (event.target.id === 'calendar-scroll-filter') {
     state.selectedScrollId = event.target.value;
@@ -798,6 +956,29 @@ document.addEventListener('input', async (event) => {
 });
 
 document.addEventListener('submit', async (event) => {
+  const obsForm = event.target.closest('[data-observation]');
+  if (obsForm) {
+    event.preventDefault();
+    const scrollId = obsForm.dataset.observation;
+    const observer = obsForm.querySelector('[name="observer"]')?.value.trim();
+    const content = obsForm.querySelector('[name="content"]')?.value.trim();
+    if (!observer || !content) {
+      toast('观察人和观察内容不能为空');
+      return;
+    }
+    try {
+      await api(`/api/scrolls/${encodeURIComponent(scrollId)}/observation`, {
+        method: 'POST',
+        body: JSON.stringify({ observer, content })
+      });
+      toast('观察记录已追加');
+      await openTimeline(scrollId);
+    } catch (e) {
+      toast(e.message);
+    }
+    return;
+  }
+
   const form = event.target.closest('[data-create]');
   if (!form) return;
   event.preventDefault();

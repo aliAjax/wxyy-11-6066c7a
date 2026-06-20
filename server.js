@@ -255,6 +255,171 @@ function sortNewest(a, b) {
   return new Date(b.updatedAt || b.createdAt || 0) - new Date(a.updatedAt || a.createdAt || 0);
 }
 
+app.get('/api/scrolls/:id/timeline', async (req, res) => {
+  const db = await readDb();
+  const scrollId = req.params.id;
+  const scroll = (db.scrolls || []).find((s) => s.id === scrollId);
+  if (!scroll) return res.status(404).json({ error: '经卷不存在' });
+  const events = [];
+  events.push({
+    id: `ev-scroll-create-${scroll.id}`,
+    timestamp: scroll.createdAt,
+    type: '建档',
+    source: 'scrolls',
+    sourceId: scroll.id,
+    title: `建档：${scroll.title}`,
+    detail: `材质：${scroll.material || '-'}，年代：${scroll.era || '-'}，保护等级：${scroll.protectionLevel || '-'}，柜位：${scroll.cabinet || '-'}`,
+    meta: { protectionLevel: scroll.protectionLevel, borrowStatus: scroll.borrowStatus }
+  });
+  for (const entry of scroll.history || []) {
+    if (entry.action === '创建') continue;
+    const isStatusChange = ['保护评估', '状态变更', '可借阅', '需审批', '修补中', '限制借阅'].includes(entry.action);
+    events.push({
+      id: `ev-scroll-hist-${scroll.id}-${entry.at}`,
+      timestamp: entry.at,
+      type: isStatusChange ? '状态变更' : '状态变更',
+      source: 'scrolls',
+      sourceId: scroll.id,
+      title: `${entry.action}`,
+      detail: entry.note || '',
+      meta: { action: entry.action }
+    });
+  }
+  for (const repair of db.repairs || []) {
+    if (repair.scrollId !== scrollId) continue;
+    events.push({
+      id: `ev-repair-create-${repair.id}`,
+      timestamp: repair.createdAt,
+      type: '修补',
+      source: 'repairs',
+      sourceId: repair.id,
+      title: `修补：${repair.process}（${repair.status}）`,
+      detail: `修补人员：${repair.conservator || '-'}，日期：${repair.date || '-'}${repair.materialUsed ? '，材料：' + repair.materialUsed : ''}${repair.note ? '，' + repair.note : ''}`,
+      meta: { process: repair.process, status: repair.status }
+    });
+    for (const entry of repair.history || []) {
+      if (entry.action === '创建') continue;
+      events.push({
+        id: `ev-repair-hist-${repair.id}-${entry.at}`,
+        timestamp: entry.at,
+        type: '修补',
+        source: 'repairs',
+        sourceId: repair.id,
+        title: `修补${entry.action}`,
+        detail: entry.note || '',
+        meta: { process: repair.process, action: entry.action }
+      });
+    }
+  }
+  for (const loan of db.loans || []) {
+    if (loan.scrollId !== scrollId) continue;
+    const loanTypeMap = { '待审批': '借阅', '已批准': '借阅', '已借出': '借阅', '已归还': '归还', '已拒绝': '借阅' };
+    for (const entry of loan.history || []) {
+      const evType = entry.action === '归还' ? '归还' : (entry.action === '创建' ? '借阅' : loanTypeMap[entry.action] || '借阅');
+      events.push({
+        id: `ev-loan-hist-${loan.id}-${entry.at}`,
+        timestamp: entry.at,
+        type: evType,
+        source: 'loans',
+        sourceId: loan.id,
+        title: `${entry.action}：${loan.borrower || '-'} - ${loan.purpose || '-'}`,
+        detail: entry.note || '',
+        meta: { borrower: loan.borrower, purpose: loan.purpose, status: loan.status, borrowDate: loan.borrowDate, dueDate: loan.dueDate }
+      });
+    }
+  }
+  for (const imaging of db.imagings || []) {
+    if (imaging.scrollId !== scrollId) continue;
+    events.push({
+      id: `ev-imaging-${imaging.id}`,
+      timestamp: imaging.createdAt,
+      type: '影像采集',
+      source: 'imagings',
+      sourceId: imaging.id,
+      title: `影像采集：${imaging.batch || '-'}（${imaging.clarity || '-'}）`,
+      detail: `拍摄人员：${imaging.photographer || '-'}，影像编号：${imaging.imageCode || '-'}${imaging.note ? '，' + imaging.note : ''}`,
+      meta: { clarity: imaging.clarity, batch: imaging.batch }
+    });
+    for (const entry of imaging.history || []) {
+      if (entry.action === '创建') continue;
+      events.push({
+        id: `ev-imaging-hist-${imaging.id}-${entry.at}`,
+        timestamp: entry.at,
+        type: '影像采集',
+        source: 'imagings',
+        sourceId: imaging.id,
+        title: `影像${entry.action}`,
+        detail: entry.note || '',
+        meta: { clarity: imaging.clarity }
+      });
+    }
+  }
+  for (const inv of db.inventories || []) {
+    if (inv.scrollId !== scrollId) continue;
+    events.push({
+      id: `ev-inventory-${inv.id}`,
+      timestamp: inv.createdAt,
+      type: '盘点',
+      source: 'inventories',
+      sourceId: inv.id,
+      title: `盘点：${inv.cabinet || '-'}（${inv.result || '-'}）`,
+      detail: `盘点人：${inv.inventoryPerson || '-'}，日期：${inv.inventoryDate || '-'}${inv.exceptionNote ? '，异常：' + inv.exceptionNote : ''}`,
+      meta: { result: inv.result, status: inv.status }
+    });
+    for (const entry of inv.history || []) {
+      if (entry.action === '创建') continue;
+      events.push({
+        id: `ev-inventory-hist-${inv.id}-${entry.at}`,
+        timestamp: entry.at,
+        type: '盘点',
+        source: 'inventories',
+        sourceId: inv.id,
+        title: `盘点${entry.action}`,
+        detail: entry.note || '',
+        meta: { result: inv.result }
+      });
+    }
+  }
+  for (const obs of db.observations || []) {
+    if (obs.scrollId !== scrollId) continue;
+    events.push({
+      id: `ev-obs-${obs.id}`,
+      timestamp: obs.createdAt,
+      type: '人工观察',
+      source: 'observations',
+      sourceId: obs.id,
+      title: `人工观察：${obs.observer || '-'}`,
+      detail: obs.content || '',
+      meta: { observer: obs.observer }
+    });
+  }
+  events.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+  res.json({ scrollId, scrollTitle: scroll.title, events });
+});
+
+app.post('/api/scrolls/:id/observation', async (req, res) => {
+  const db = await readDb();
+  const scrollId = req.params.id;
+  const scroll = (db.scrolls || []).find((s) => s.id === scrollId);
+  if (!scroll) return res.status(404).json({ error: '经卷不存在' });
+  const { observer, content } = req.body || {};
+  if (!observer || !content) return res.status(400).json({ error: '观察人和观察内容不能为空' });
+  if (!Array.isArray(db.observations)) db.observations = [];
+  const now = new Date().toISOString();
+  const item = {
+    id: `obs-${Date.now()}-${Math.random().toString(16).slice(2, 7)}`,
+    scrollId,
+    observer,
+    content,
+    createdAt: now,
+    updatedAt: now,
+    history: [{ at: now, action: '创建', note: content }]
+  };
+  db.observations.push(item);
+  await writeDb(db);
+  res.status(201).json(item);
+});
+
 app.get('/api/config', (req, res) => {
   res.json(config);
 });

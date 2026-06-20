@@ -37,7 +37,8 @@ module.exports = {
     loans: { label: '借阅申请' },
     imagings: { label: '影像采集档案' },
     inventories: { label: '柜位盘点' },
-    materials: { label: '修补材料台账' }
+    materials: { label: '修补材料台账' },
+    observations: { label: '人工观察记录' }
   },
   stats: [
     { label: '经卷档案', collection: 'scrolls' },
