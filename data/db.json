@@ -29,10 +29,15 @@
       "inscription": "有乾隆御览印",
       "cabinet": "恒湿柜A-03",
       "protectionLevel": "一级",
-      "borrowStatus": "可借阅",
+      "borrowStatus": "需审批",
       "createdAt": "2026-06-10T08:00:00.000Z",
-      "updatedAt": "2026-06-15T08:00:00.000Z",
+      "updatedAt": "2026-06-20T07:50:20.478Z",
       "history": [
+        {
+          "at": "2026-06-20T07:50:20.478Z",
+          "action": "归还",
+          "note": "状态流转"
+        },
         {
           "at": "2026-06-15T08:00:00.000Z",
           "action": "保护评估",
@@ -111,10 +116,15 @@
       "borrowDate": "2026-06-25",
       "dueDate": "2026-07-05",
       "reason": "用于敦煌学论文写作",
-      "status": "已借出",
+      "status": "已归还",
       "createdAt": "2026-06-15T09:00:00.000Z",
-      "updatedAt": "2026-06-20T09:00:00.000Z",
+      "updatedAt": "2026-06-20T07:50:20.478Z",
       "history": [
+        {
+          "at": "2026-06-20T07:50:20.478Z",
+          "action": "归还",
+          "note": "状态流转"
+        },
         {
           "at": "2026-06-20T09:00:00.000Z",
           "action": "借出",
@@ -164,10 +174,15 @@
       "borrowDate": "2026-06-28",
       "dueDate": "2026-07-15",
       "reason": "宋代佛经版本比对",
-      "status": "待审批",
+      "status": "已拒绝",
       "createdAt": "2026-06-19T14:00:00.000Z",
-      "updatedAt": "2026-06-19T14:00:00.000Z",
+      "updatedAt": "2026-06-20T07:50:20.459Z",
       "history": [
+        {
+          "at": "2026-06-20T07:50:20.459Z",
+          "action": "拒绝",
+          "note": "状态流转"
+        },
         {
           "at": "2026-06-19T14:00:00.000Z",
           "action": "创建",
@@ -267,6 +282,49 @@
           "at": "2026-06-20T07:28:13.272Z",
           "action": "创建",
           "note": ""
+        }
+      ]
+    },
+    {
+      "id": "loans-1781941532694-71c0a",
+      "scrollId": "scroll-seed-2",
+      "borrower": "测试申请人A",
+      "purpose": "学术研究A",
+      "borrowDate": "2026-08-01",
+      "dueDate": "2026-08-10",
+      "reason": "测试批准冲突A",
+      "status": "已批准",
+      "createdAt": "2026-06-20T07:45:32.694Z",
+      "updatedAt": "2026-06-20T07:46:17.335Z",
+      "history": [
+        {
+          "at": "2026-06-20T07:46:17.335Z",
+          "action": "批准",
+          "note": "状态流转"
+        },
+        {
+          "at": "2026-06-20T07:45:32.694Z",
+          "action": "创建",
+          "note": ""
+        }
+      ]
+    },
+    {
+      "id": "loan-test-conflict-B",
+      "scrollId": "scroll-seed-2",
+      "borrower": "冲突测试申请人B",
+      "purpose": "测试批准冲突B",
+      "borrowDate": "2026-08-05",
+      "dueDate": "2026-08-15",
+      "reason": "测试批准时的日期冲突拦截",
+      "status": "待审批",
+      "createdAt": "2026-06-20T07:30:00.000Z",
+      "updatedAt": "2026-06-20T07:30:00.000Z",
+      "history": [
+        {
+          "at": "2026-06-20T07:30:00.000Z",
+          "action": "创建",
+          "note": "测试批准冲突"
         }
       ]
     }

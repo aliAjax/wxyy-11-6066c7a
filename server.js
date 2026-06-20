@@ -246,6 +246,22 @@ function runAction(db, action, item) {
     if (guard.op === 'levelGte' && (levelRank[left] || 0) < (levelRank[right] || 0)) return { error: guard.message };
     if (guard.op === 'notIn' && guard.values.includes(left)) return { error: guard.message };
   }
+  if (action.collection === 'loans') {
+    const statusPatch = action.patches?.find((p) => p.field === 'status' && p.target !== 'related');
+    const targetStatus = statusPatch?.value;
+    if (targetStatus && ACTIVE_LOAN_STATUSES.includes(targetStatus)) {
+      if (item.scrollId && item.borrowDate && item.dueDate) {
+        const conflicts = checkLoanConflict(db, item.scrollId, item.borrowDate, item.dueDate, item.id);
+        if (conflicts.length > 0) {
+          const conflictInfo = conflicts.map((c) => `${c.borrower}（${c.borrowDate} 至 ${c.dueDate}，状态：${c.status}）`).join('；');
+          return {
+            error: `日期冲突：无法${action.label}，该经卷在 ${item.borrowDate} 至 ${item.dueDate} 期间已有预约。冲突记录：${conflictInfo}`,
+            conflicts
+          };
+        }
+      }
+    }
+  }
   for (const patch of action.patches || []) {
     const target = patch.target === 'related' ? related : item;
     if (!target) continue;
