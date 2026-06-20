@@ -620,13 +620,21 @@ async function writeDb(db) {
   await fs.writeFile(DB_FILE, JSON.stringify(db, null, 2) + '\n');
 }
 
-const MATERIAL_LOW_STOCK = {
+const DEFAULT_MATERIAL_LOW_STOCK = {
   '张': 20, '瓶': 3, '套': 3, '把': 2,
   '袋': 5, '米': 10, '卷': 5, '盒': 2, '个': 5
 };
-const EXPIRY_WARN_DAYS = 30;
+const DEFAULT_EXPIRY_WARN_DAYS = 30;
+
+function materialWarningConfig() {
+  return {
+    lowStockThresholds: config.materialWarning?.lowStockThresholds || DEFAULT_MATERIAL_LOW_STOCK,
+    expiryWarningDays: Number(config.materialWarning?.expiryWarningDays) || DEFAULT_EXPIRY_WARN_DAYS
+  };
+}
 
 function computeMaterialStatus(m) {
+  const warningConfig = materialWarningConfig();
   const now = new Date();
   now.setHours(0, 0, 0, 0);
   const reasons = [];
@@ -636,10 +644,10 @@ function computeMaterialStatus(m) {
       reasons.push('已过期');
     } else {
       const days = Math.ceil((exp - now) / 86400000);
-      if (days <= EXPIRY_WARN_DAYS) reasons.push(`即将到期（剩余${days}天）`);
+      if (days <= warningConfig.expiryWarningDays) reasons.push(`即将到期（剩余${days}天）`);
     }
   }
-  const threshold = MATERIAL_LOW_STOCK[m.unit] || 5;
+  const threshold = warningConfig.lowStockThresholds[m.unit] || 5;
   const qtyRaw = m.quantity;
   if (qtyRaw !== undefined && qtyRaw !== null && qtyRaw !== '') {
     const qty = Number(qtyRaw) || 0;
