@@ -1,0 +1,38 @@
+{
+  "scrolls": [
+    {
+      "id": "scroll-seed-1",
+      "title": "妙法莲华经卷第三",
+      "material": "楮皮纸",
+      "era": "明末清初",
+      "damage": "卷首脆裂，第三段虫蛀",
+      "inscription": "尾题残缺，有朱笔圈点",
+      "cabinet": "恒湿柜C-01",
+      "protectionLevel": "一级",
+      "borrowStatus": "限制借阅",
+      "createdAt": "2026-06-12T08:00:00.000Z",
+      "updatedAt": "2026-06-18T08:00:00.000Z",
+      "history": [
+        { "at": "2026-06-18T08:00:00.000Z", "action": "保护评估", "note": "限制借阅" }
+      ]
+    }
+  ],
+  "repairs": [
+    {
+      "id": "repair-seed-1",
+      "scrollId": "scroll-seed-1",
+      "process": "除尘",
+      "conservator": "周问",
+      "date": "2026-06-18",
+      "materialUsed": "软羊毫刷",
+      "status": "已完成",
+      "note": "卷首碎屑单独封存",
+      "createdAt": "2026-06-18T09:00:00.000Z",
+      "updatedAt": "2026-06-18T09:00:00.000Z",
+      "history": [
+        { "at": "2026-06-18T09:00:00.000Z", "action": "创建", "note": "除尘记录" }
+      ]
+    }
+  ],
+  "loans": []
+}
