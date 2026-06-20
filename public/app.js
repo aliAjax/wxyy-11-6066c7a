@@ -5,6 +5,8 @@ const state = {
   calendarData: [],
   calendarMonth: new Date(),
   selectedScrollId: '',
+  calendarStatusFilter: '',
+  calendarRiskFilter: '',
   conflictCheck: { scrollId: '', borrowDate: '', dueDate: '', conflicts: [] },
   riskPreview: null,
   timelineScrollId: null,
@@ -107,14 +109,23 @@ function isToday(d) {
     d.getDate() === today.getDate();
 }
 
+function reservationMatchesFilters(res) {
+  if (state.calendarStatusFilter && res.status !== state.calendarStatusFilter) return false;
+  if (state.calendarRiskFilter) {
+    const riskLevel = res.riskAssessment?.level || '低风险';
+    if (riskLevel !== state.calendarRiskFilter) return false;
+  }
+  return true;
+}
+
 function getReservationsForDate(dateStr, scrollId = null) {
   const result = [];
   for (const entry of state.calendarData) {
     if (scrollId && entry.scrollId !== scrollId) continue;
     for (const res of entry.reservations) {
-      if (dateOverlap(dateStr, dateStr, res.borrowDate, res.dueDate)) {
-        result.push({ ...res, scrollId: entry.scrollId, scrollTitle: entry.title });
-      }
+      if (!dateOverlap(dateStr, dateStr, res.borrowDate, res.dueDate)) continue;
+      if (!reservationMatchesFilters(res)) continue;
+      result.push({ ...res, scrollId: entry.scrollId, scrollTitle: entry.title });
     }
   }
   return result;
@@ -841,6 +852,19 @@ function renderCalendarView(view) {
     ? `<option value="">全部经卷</option>${scrolls.map((s) => `<option value="${s.id}" ${state.selectedScrollId === s.id ? 'selected' : ''}>${escapeHtml(s.title)}</option>`).join('')}`
     : '<option value="">暂无经卷</option>';
 
+  const statusOptions = ['全部', '待审批', '已批准', '已借出'].map((label) => {
+    const value = label === '全部' ? '' : label;
+    const selected = state.calendarStatusFilter === value ? 'selected' : '';
+    return `<option value="${escapeHtml(value)}" ${selected}>${escapeHtml(label)}</option>`;
+  }).join('');
+
+  const riskLevels = ['全部', '低风险', '中风险', '高风险', '极高风险'];
+  const riskOptions = riskLevels.map((label) => {
+    const value = label === '全部' ? '' : label;
+    const selected = state.calendarRiskFilter === value ? 'selected' : '';
+    return `<option value="${escapeHtml(value)}" ${selected}>${escapeHtml(label)}</option>`;
+  }).join('');
+
   const calendarHtml = `
     <div class="calendar-header">
       <button class="ghost" data-calendar-prev>◀ 上月</button>
@@ -849,12 +873,15 @@ function renderCalendarView(view) {
     </div>
     <div class="calendar-filter">
       <label>筛选经卷：<select id="calendar-scroll-filter">${scrollOptions}</select></label>
+      <label>借阅状态：<select id="calendar-status-filter">${statusOptions}</select></label>
+      <label>风险等级：<select id="calendar-risk-filter">${riskOptions}</select></label>
       <button class="ghost" data-calendar-today>今天</button>
     </div>
     <div class="calendar-legend">
       <span class="legend-item"><span class="legend-dot legend-today"></span>今天</span>
       <span class="legend-item"><span class="legend-dot legend-reserved"></span>已预约</span>
       <span class="legend-item"><span class="legend-dot legend-multiple"></span>多卷预约</span>
+      <span class="legend-item"><span class="legend-risk risk-low">低</span><span class="legend-risk risk-warn">中</span><span class="legend-risk risk-bad">高</span><span class="legend-risk risk-extreme">极高</span></span>
     </div>
     <div class="calendar-grid">
       ${weekdayNames.map((name) => `<div class="calendar-weekday">${name}</div>`).join('')}
@@ -864,12 +891,18 @@ function renderCalendarView(view) {
         const hasReservation = reservations.length > 0;
         const hasMultiple = reservations.length > 1;
         const today = isToday(date);
-        const reservationHtml = hasReservation ? reservations.slice(0, 2).map((r) => `
-          <div class="calendar-event" title="${escapeHtml(r.scrollTitle)} - ${escapeHtml(r.borrower)}: ${escapeHtml(r.purpose)} (${r.status})">
+        const reservationHtml = hasReservation ? reservations.slice(0, 2).map((r) => {
+          const riskTone = toneForRisk(r.riskAssessment?.level || '低风险');
+          const riskLevel = r.riskAssessment?.level || '低风险';
+          return `
+          <div class="calendar-event ${riskTone}" title="${escapeHtml(r.scrollTitle)} - ${escapeHtml(r.borrower)}: ${escapeHtml(r.purpose)} (${r.status}｜${riskLevel})">
             <span class="event-scroll">${escapeHtml(r.scrollTitle)}</span>
-            <span class="event-borrower">${escapeHtml(r.borrower)}</span>
+            <span class="event-meta">
+              <span class="event-borrower">${escapeHtml(r.borrower)}</span>
+              <span class="event-risk ${toneForRisk(riskLevel)}">${escapeHtml(riskLevel)}</span>
+            </span>
           </div>
-        `).join('') + (reservations.length > 2 ? `<div class="calendar-event more">+${reservations.length - 2} 更多</div>` : '') : '';
+        `}).join('') + (reservations.length > 2 ? `<div class="calendar-event more">+${reservations.length - 2} 更多</div>` : '') : '';
         return `<div class="calendar-day ${inMonth ? '' : 'other-month'} ${today ? 'today' : ''} ${hasReservation ? 'has-reservation' : ''} ${hasMultiple ? 'multiple' : ''}">
           <div class="day-number">${date.getDate()}</div>
           ${reservationHtml}
@@ -881,20 +914,26 @@ function renderCalendarView(view) {
   const scrollListHtml = state.calendarData.length
     ? state.calendarData.map((entry) => {
       if (state.selectedScrollId && entry.scrollId !== state.selectedScrollId) return '';
-      const reservations = entry.reservations;
+      const reservations = entry.reservations.filter(reservationMatchesFilters);
       if (!reservations.length) return '';
       return `<div class="scroll-reservations">
         <h4>${escapeHtml(entry.title)} ${pill(entry.borrowStatus, toneFor(entry.borrowStatus))}</h4>
         <div class="reservation-list">
-          ${reservations.map((r) => `
+          ${reservations.map((r) => {
+            const riskLevel = r.riskAssessment?.level || '低风险';
+            const riskTone = toneForRisk(riskLevel);
+            return `
             <div class="reservation-item">
               <div class="reservation-dates">${escapeHtml(r.borrowDate)} ~ ${escapeHtml(r.dueDate)}</div>
               <div class="reservation-info">
                 <span>${escapeHtml(r.borrower)} - ${escapeHtml(r.purpose)}</span>
-                ${pill(r.status, toneFor(r.status))}
+                <span class="reservation-tags">
+                  ${pill(r.status, toneFor(r.status))}
+                  ${pill(riskLevel, riskTone)}
+                </span>
               </div>
             </div>
-          `).join('')}
+          `}).join('')}
         </div>
       </div>`;
     }).filter(Boolean).join('')
@@ -1698,6 +1737,18 @@ document.addEventListener('input', async (event) => {
 
   if (event.target.id === 'calendar-scroll-filter') {
     state.selectedScrollId = event.target.value;
+    render();
+    return;
+  }
+
+  if (event.target.id === 'calendar-status-filter') {
+    state.calendarStatusFilter = event.target.value;
+    render();
+    return;
+  }
+
+  if (event.target.id === 'calendar-risk-filter') {
+    state.calendarRiskFilter = event.target.value;
     render();
     return;
   }

@@ -898,6 +898,25 @@
         }
       ],
       "note": "经馆长办公会特别审议通过，用于宋代刻本专题学术研讨会重点展示，期间安排专人24小时看护，每日检查经卷状态，签署三方责任书。"
+    },
+    {
+      "id": "loans-compat-no-risk-1",
+      "status": "待审批",
+      "scrollId": "scroll-seed-1",
+      "borrower": "李兼容",
+      "purpose": "文献影印",
+      "borrowDate": "2026-06-22",
+      "dueDate": "2026-06-27",
+      "reason": "历史数据兼容性测试用例：无 riskAssessment 字段",
+      "createdAt": "2026-06-20T10:00:00.000Z",
+      "updatedAt": "2026-06-20T10:00:00.000Z",
+      "history": [
+        {
+          "at": "2026-06-20T10:00:00.000Z",
+          "action": "创建",
+          "note": "历史遗留数据，缺少 riskAssessment 字段，用于兼容测试"
+        }
+      ]
     }
   ],
   "imagings": [

@@ -450,11 +450,13 @@ function checkLoanConflict(db, scrollId, borrowDate, dueDate, excludeId = null) 
   return conflicts;
 }
 
-function getActiveLoansByScroll(db) {
+function getActiveLoansByScroll(db, filters = {}) {
+  const { scrollIdFilter, statusFilter, riskLevelFilter } = filters;
   const result = {};
   const scrolls = db.scrolls || [];
   const loans = db.loans || [];
   for (const scroll of scrolls) {
+    if (scrollIdFilter && scroll.id !== scrollIdFilter) continue;
     result[scroll.id] = {
       scrollId: scroll.id,
       title: scroll.title,
@@ -464,14 +466,32 @@ function getActiveLoansByScroll(db) {
   }
   for (const loan of loans) {
     if (!ACTIVE_LOAN_STATUSES.includes(loan.status)) continue;
+    if (scrollIdFilter && loan.scrollId !== scrollIdFilter) continue;
+    if (statusFilter && loan.status !== statusFilter) continue;
     if (!result[loan.scrollId]) continue;
+    let riskAssessment = loan.riskAssessment || null;
+    if (!riskAssessment) {
+      try {
+        riskAssessment = assessLoanRisk(db, loan);
+      } catch (e) {
+        riskAssessment = {
+          level: '低风险',
+          score: 0,
+          reasons: ['风险评估暂缺'],
+          evaluatedAt: new Date().toISOString(),
+          isStrictMode: false
+        };
+      }
+    }
+    if (riskLevelFilter && riskAssessment?.level !== riskLevelFilter) continue;
     result[loan.scrollId].reservations.push({
       id: loan.id,
       borrower: loan.borrower,
       purpose: loan.purpose,
       borrowDate: loan.borrowDate,
       dueDate: loan.dueDate,
-      status: loan.status
+      status: loan.status,
+      riskAssessment
     });
   }
   return Object.values(result);
@@ -984,7 +1004,12 @@ app.get('/api/db', async (req, res) => {
 
 app.get('/api/loans/calendar', async (req, res) => {
   const db = await readDb();
-  const data = getActiveLoansByScroll(db);
+  const filters = {
+    scrollIdFilter: req.query.scrollId || null,
+    statusFilter: req.query.status || null,
+    riskLevelFilter: req.query.riskLevel || null
+  };
+  const data = getActiveLoansByScroll(db, filters);
   res.json(data);
 });
 
