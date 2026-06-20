@@ -16,6 +16,14 @@ const state = {
     selectedRows: new Set(),
     importing: false
   },
+  consistencyCheck: {
+    issues: [],
+    summary: null,
+    checkedAt: null,
+    loading: false,
+    fixing: {},
+    filter: ''
+  },
   currentRole: 'admin',
   currentRoleName: '管理员',
   currentUser: '系统',
@@ -1000,6 +1008,7 @@ function render() {
     if (view.type === 'dashboard') return renderDashboardView(view);
     if (view.type === 'calendar') return renderCalendarView(view);
     if (view.type === 'batchImport') return renderBatchImportView(view);
+    if (view.type === 'consistencyCheck') return renderConsistencyCheckView(view);
     if (view.type === 'audit') return renderAuditView(view);
     return renderCrudView(view);
   }).join('');
@@ -1440,6 +1449,13 @@ document.addEventListener('input', async (event) => {
     return;
   }
 
+  if (event.target.id === 'cc-filter') {
+    state.consistencyCheck.filter = event.target.value;
+    render();
+    setTab('consistency-check');
+    return;
+  }
+
   const form = event.target.closest('[data-create="loans"]');
   if (form) {
     const scrollId = form.querySelector('[name="scrollId"]')?.value;
@@ -1711,6 +1727,139 @@ async function loadAuditLogs() {
   }
 }
 
+async function loadConsistencyCheck() {
+  state.consistencyCheck.loading = true;
+  try {
+    const result = await api('/api/consistency-check');
+    state.consistencyCheck.issues = result.issues;
+    state.consistencyCheck.summary = result.summary;
+    state.consistencyCheck.checkedAt = result.checkedAt;
+  } catch (e) {
+    state.consistencyCheck.issues = [];
+    state.consistencyCheck.summary = null;
+    toast(e.message);
+  }
+  state.consistencyCheck.loading = false;
+}
+
+function renderConsistencyCheckView(view) {
+  const cc = state.consistencyCheck;
+  const hasData = cc.summary !== null;
+
+  let summaryHtml = '';
+  if (hasData) {
+    const s = cc.summary;
+    const totalTone = s.total > 0 ? 'bad' : 'ok';
+    summaryHtml = `<div class="cc-summary">
+      <div class="cc-summary-item cc-total ${totalTone}"><span>问题总数</span><strong>${s.total}</strong></div>
+      <div class="cc-summary-item cc-severity-high"><span>高危</span><strong>${s.high}</strong></div>
+      <div class="cc-summary-item cc-severity-medium"><span>中等</span><strong>${s.medium}</strong></div>
+      <div class="cc-summary-item cc-severity-low"><span>低危</span><strong>${s.low}</strong></div>
+      <div class="cc-summary-item cc-fixable"><span>可修复</span><strong>${s.autoFixable}</strong></div>
+    </div>`;
+  }
+
+  const checkedAtHtml = cc.checkedAt
+    ? `<div class="cc-checked-at">上次巡检时间：${fmtDate(cc.checkedAt)}</div>`
+    : '';
+
+  const filterOptions = [
+    { value: '', label: '全部问题' },
+    { value: 'high', label: '高危' },
+    { value: 'medium', label: '中等' },
+    { value: 'low', label: '低危' }
+  ];
+
+  const typeLabels = {
+    'available-but-lent': '可借阅但有借出',
+    'repairing-but-borrowable': '修补中可借出',
+    'returned-but-restricted': '归还后仍限制',
+    'repaired-no-history': '修补完成缺记录',
+    'repairing-no-records': '修补中无记录',
+    'lent-but-not-restricted': '已借出未限制',
+    'level1-but-available': '一级保护可借阅'
+  };
+  const uniqueTypes = [...new Set(cc.issues.map((i) => i.type))];
+  for (const t of uniqueTypes) {
+    if (!filterOptions.find((o) => o.value === t)) {
+      filterOptions.push({ value: t, label: typeLabels[t] || t });
+    }
+  }
+
+  const filterSelectHtml = `<select id="cc-filter">
+    ${filterOptions.map((opt) => `<option value="${escapeHtml(opt.value)}" ${cc.filter === opt.value ? 'selected' : ''}>${escapeHtml(opt.label)}</option>`).join('')}
+  </select>`;
+
+  let filteredIssues = cc.issues;
+  if (cc.filter === 'high' || cc.filter === 'medium' || cc.filter === 'low') {
+    filteredIssues = filteredIssues.filter((i) => i.severity === cc.filter);
+  } else if (cc.filter) {
+    filteredIssues = filteredIssues.filter((i) => i.type === cc.filter);
+  }
+
+  const severityIcons = { high: '🔴', medium: '🟡', low: '🟢' };
+  const severityLabels = { high: '高危', medium: '中等', low: '低危' };
+
+  const issueListHtml = hasData
+    ? (filteredIssues.length
+      ? filteredIssues.map((issue) => {
+        const isFixing = cc.fixing[issue.id];
+        const icon = severityIcons[issue.severity] || '⚪';
+        const severityLabel = severityLabels[issue.severity] || issue.severity;
+        const severityClass = `cc-severity-${issue.severity}`;
+
+        const affectedLoansHtml = issue.affectedLoans.length
+          ? `<div class="cc-affected"><span class="cc-affected-label">影响借阅：</span>${issue.affectedLoans.length}条记录</div>`
+          : '';
+        const affectedRepairsHtml = issue.affectedRepairs.length
+          ? `<div class="cc-affected"><span class="cc-affected-label">影响修补：</span>${issue.affectedRepairs.length}条记录</div>`
+          : '';
+
+        const fixBtnHtml = issue.autoFixable
+          ? `<button class="cc-fix-btn" data-cc-fix-issue="${issue.id}" data-cc-fix-suggestion="${issue.suggestion}" ${isFixing ? 'disabled' : ''}>
+              ${isFixing ? '修复中...' : '🔧 执行修复'}
+            </button>`
+          : '<span class="cc-no-fix">需手动处理</span>';
+
+        return `<div class="cc-issue ${severityClass}">
+          <div class="cc-issue-head">
+            <span class="cc-severity-badge ${severityClass}">${icon} ${severityLabel}</span>
+            <span class="cc-issue-title">${escapeHtml(issue.title)}</span>
+          </div>
+          <div class="cc-issue-desc">${escapeHtml(issue.description)}</div>
+          <div class="cc-issue-meta">
+            <div class="cc-scroll-info">
+              <span class="cc-affected-label">经卷：</span>
+              <strong>${escapeHtml(issue.scrollTitle)}</strong>
+              ${pill(issue.currentBorrowStatus, toneFor(issue.currentBorrowStatus))}
+            </div>
+            ${affectedLoansHtml}
+            ${affectedRepairsHtml}
+          </div>
+          <div class="cc-issue-actions">
+            <div class="cc-suggestion">💡 建议：${escapeHtml(issue.suggestionLabel)}</div>
+            ${fixBtnHtml}
+          </div>
+        </div>`;
+      }).join('')
+      : '<div class="empty">✅ 未检测到状态一致性问题</div>')
+    : '<div class="empty">点击「开始巡检」扫描经卷状态一致性问题</div>';
+
+  return `<section class="view" id="${view.id}">
+    <div class="panel">
+      <h2>🔍 经卷状态一致性巡检</h2>
+      <p class="cc-hint">自动扫描经卷档案、修补记录、借阅记录之间的矛盾状态，发现问题并提供安全修复建议</p>
+      <div class="cc-toolbar">
+        <button id="cc-run-btn" ${cc.loading ? 'disabled' : ''}>${cc.loading ? '巡检中...' : '🔍 开始巡检'}</button>
+        ${filterSelectHtml}
+      </div>
+      ${checkedAtHtml}
+      ${summaryHtml}
+      <div class="cc-issue-list">${issueListHtml}</div>
+    </div>
+  </section>`;
+}
+
 function renderAuditView(view) {
   const logs = state.auditLogs.items;
   const total = state.auditLogs.total;
@@ -1817,6 +1966,95 @@ function renderAuditView(view) {
 document.addEventListener('click', (e) => {
   if (e.target.closest('#role-badge')) {
     renderRoleSelector();
+  }
+  if (e.target.closest('#cc-run-btn')) {
+    loadConsistencyCheck().then(() => {
+      render();
+      if (state.consistencyCheck.summary) {
+        const s = state.consistencyCheck.summary;
+        toast(`巡检完成：发现${s.total}个问题（高危${s.high}，中等${s.medium}，低危${s.low}）`);
+      }
+    });
+  }
+  const ccFixBtn = e.target.closest('[data-cc-fix-issue]');
+  if (ccFixBtn) {
+    const issueId = ccFixBtn.dataset.ccFixIssue;
+    const fixSuggestion = ccFixBtn.dataset.ccFixSuggestion;
+    if (!issueId || !fixSuggestion) return;
+
+    const issue = state.consistencyCheck.issues.find((i) => i.id === issueId);
+    if (!issue) return;
+
+    const modal = document.createElement('div');
+    modal.className = 'modal-backdrop';
+    modal.id = 'cc-fix-modal';
+    modal.innerHTML = `
+      <div class="modal">
+        <div class="modal-head">
+          <h3>🔧 确认执行修复</h3>
+          <button class="modal-close" data-modal-close>×</button>
+        </div>
+        <div class="modal-body">
+          <div class="modal-warn-icon">⚠️</div>
+          <div class="modal-warning-text">此操作将修改经卷借阅状态，修复动作经过服务端二次校验并写入审计日志</div>
+          <div class="modal-info-grid">
+            <div class="modal-info-row"><span class="label">问题类型</span><span>${escapeHtml(issue.title)}</span></div>
+            <div class="modal-info-row"><span class="label">经卷名称</span><span><strong>${escapeHtml(issue.scrollTitle)}</strong></span></div>
+            <div class="modal-info-row"><span class="label">当前状态</span><span>${pill(issue.currentBorrowStatus, toneFor(issue.currentBorrowStatus))}</span></div>
+            <div class="modal-info-row"><span class="label">修复动作</span><span style="color:var(--accent);font-weight:700">${escapeHtml(issue.suggestionLabel)}</span></div>
+          </div>
+          <div style="margin-top:14px">
+            <label style="color:var(--muted);font-size:13px;font-weight:700">修复说明（选填）：
+              <textarea class="modal-confirm-textarea" id="cc-fix-note" placeholder="可补充修复原因或备注..."></textarea>
+            </label>
+          </div>
+        </div>
+        <div class="modal-foot">
+          <button class="ghost" data-modal-close>取消</button>
+          <button id="cc-fix-confirm-btn">确认修复</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(modal);
+
+    const closeModal = () => {
+      modal.remove();
+      document.removeEventListener('keydown', onKey);
+    };
+    const onKey = (ev) => { if (ev.key === 'Escape') closeModal(); };
+    document.addEventListener('keydown', onKey);
+
+    modal.addEventListener('click', (ev) => {
+      if (ev.target.closest('[data-modal-close]') || ev.target === modal) {
+        closeModal();
+        return;
+      }
+      if (ev.target.id === 'cc-fix-confirm-btn') {
+        closeModal();
+        state.consistencyCheck.fixing[issueId] = true;
+        render();
+        setTab('consistency-check');
+
+        const fixNote = $('#cc-fix-note')?.value || '';
+        api('/api/consistency-check/fix', {
+          method: 'POST',
+          body: JSON.stringify({ issueId, fixSuggestion, note: fixNote })
+        }).then((result) => {
+          delete state.consistencyCheck.fixing[issueId];
+          toast(`修复成功：${result.scrollTitle} 状态从「${result.oldBorrowStatus}」修正为「${result.newBorrowStatus}」`);
+          loadConsistencyCheck().then(() => {
+            load();
+            render();
+            setTab('consistency-check');
+          });
+        }).catch((err) => {
+          delete state.consistencyCheck.fixing[issueId];
+          toast(`修复失败：${err.message}`);
+          render();
+          setTab('consistency-check');
+        });
+      }
+    });
   }
   if (e.target.closest('#audit-filter-btn')) {
     state.auditLogs.filters.operator = $('#audit-filter-operator')?.value || '';

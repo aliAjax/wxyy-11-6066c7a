@@ -300,6 +300,11 @@ module.exports = {
       targetCollection: 'scrolls'
     },
     {
+      id: 'consistency-check',
+      label: '状态一致性巡检',
+      type: 'consistencyCheck'
+    },
+    {
       id: 'audits',
       label: '操作审计',
       type: 'audit',

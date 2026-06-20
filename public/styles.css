@@ -2021,3 +2021,248 @@ main {
     width: 100%;
   }
 }
+
+.cc-hint {
+  color: var(--muted);
+  font-size: 13px;
+  margin: 0 0 16px;
+  line-height: 1.6;
+}
+
+.cc-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.cc-toolbar select {
+  width: 200px;
+  padding: 10px 12px;
+}
+
+.cc-checked-at {
+  font-size: 12px;
+  color: var(--muted);
+  margin-bottom: 14px;
+  font-family: ui-monospace, monospace;
+}
+
+.cc-summary {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.cc-summary-item {
+  background: var(--panel-2);
+  border-radius: 8px;
+  padding: 12px 14px;
+  text-align: center;
+}
+
+.cc-summary-item span {
+  display: block;
+  font-size: 12px;
+  color: var(--muted);
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+.cc-summary-item strong {
+  font-size: 24px;
+  display: block;
+}
+
+.cc-summary-item.cc-total.ok strong {
+  color: var(--ok);
+}
+
+.cc-summary-item.cc-total.bad strong {
+  color: var(--bad);
+}
+
+.cc-summary-item.cc-severity-high strong {
+  color: var(--bad);
+}
+
+.cc-summary-item.cc-severity-medium strong {
+  color: var(--warn);
+}
+
+.cc-summary-item.cc-severity-low strong {
+  color: var(--ok);
+}
+
+.cc-summary-item.cc-fixable strong {
+  color: var(--accent);
+}
+
+.cc-issue-list {
+  display: grid;
+  gap: 14px;
+}
+
+.cc-issue {
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 16px 18px;
+  transition: all .2s ease;
+}
+
+.cc-issue:hover {
+  box-shadow: 0 2px 12px rgba(42, 37, 28, .06);
+}
+
+.cc-issue.cc-severity-high {
+  border-left: 4px solid var(--bad);
+}
+
+.cc-issue.cc-severity-medium {
+  border-left: 4px solid var(--warn);
+}
+
+.cc-issue.cc-severity-low {
+  border-left: 4px solid var(--ok);
+}
+
+.cc-issue-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+}
+
+.cc-severity-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.cc-severity-badge.cc-severity-high {
+  background: rgba(161, 61, 61, .12);
+  color: var(--bad);
+}
+
+.cc-severity-badge.cc-severity-medium {
+  background: rgba(163, 92, 0, .12);
+  color: var(--warn);
+}
+
+.cc-severity-badge.cc-severity-low {
+  background: rgba(38, 115, 77, .12);
+  color: var(--ok);
+}
+
+.cc-issue-title {
+  font-weight: 700;
+  font-size: 15px;
+  color: var(--ink);
+}
+
+.cc-issue-desc {
+  font-size: 13px;
+  color: var(--muted);
+  line-height: 1.6;
+  margin-bottom: 12px;
+}
+
+.cc-issue-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-bottom: 14px;
+  font-size: 13px;
+  padding: 10px 12px;
+  background: var(--panel-2);
+  border-radius: 6px;
+}
+
+.cc-scroll-info {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.cc-affected {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.cc-affected-label {
+  color: var(--muted);
+  font-weight: 700;
+  font-size: 12px;
+}
+
+.cc-issue-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.cc-suggestion {
+  font-size: 13px;
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.cc-fix-btn {
+  background: var(--accent);
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all .15s ease;
+  white-space: nowrap;
+}
+
+.cc-fix-btn:hover {
+  background: #0d4e49;
+}
+
+.cc-fix-btn:disabled {
+  opacity: .5;
+  cursor: not-allowed;
+}
+
+.cc-no-fix {
+  font-size: 12px;
+  color: var(--muted);
+  font-style: italic;
+}
+
+@media (max-width: 640px) {
+  .cc-summary {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .cc-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .cc-toolbar select {
+    width: 100%;
+  }
+
+  .cc-issue-actions {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}

@@ -29,10 +29,15 @@
       "inscription": "有乾隆御览印",
       "cabinet": "恒湿柜A-03",
       "protectionLevel": "一级",
-      "borrowStatus": "可借阅",
+      "borrowStatus": "限制借阅",
       "createdAt": "2026-06-10T08:00:00.000Z",
-      "updatedAt": "2026-06-15T08:00:00.000Z",
+      "updatedAt": "2026-06-20T13:24:15.716Z",
       "history": [
+        {
+          "at": "2026-06-20T13:24:15.716Z",
+          "action": "状态变更",
+          "note": "巡检修复：经卷存在已借出记录，状态修正为限制借阅"
+        },
         {
           "at": "2026-06-15T08:00:00.000Z",
           "action": "保护评估",
@@ -1178,6 +1183,27 @@
     }
   ],
   "audits": [
+    {
+      "id": "audit-1781961855716-68b64",
+      "timestamp": "2026-06-20T13:24:15.716Z",
+      "operator": "系统",
+      "operatorRole": "admin",
+      "operatorRoleName": "管理员",
+      "collection": "scrolls",
+      "collectionLabel": "经卷档案",
+      "itemId": "scroll-seed-2",
+      "itemTitle": "金刚般若波罗蜜经",
+      "action": "statusChange",
+      "actionLabel": "状态变更",
+      "changes": {
+        "borrowStatus": {
+          "before": "可借阅",
+          "after": "限制借阅"
+        }
+      },
+      "note": "一致性巡检修复：经卷显示可借阅但存在已借出记录 - 巡检修复：经卷存在已借出记录，状态修正为限制借阅",
+      "ip": "::1"
+    },
     {
       "id": "audit-1781957772449-f9963",
       "timestamp": "2026-06-20T12:16:12.449Z",

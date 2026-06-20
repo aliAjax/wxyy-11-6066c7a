@@ -1725,6 +1725,299 @@ app.post('/api/scrolls/batch/import', async (req, res) => {
   });
 });
 
+function runConsistencyCheck(db) {
+  const scrolls = db.scrolls || [];
+  const repairs = db.repairs || [];
+  const loans = db.loans || [];
+  const issues = [];
+
+  for (const scroll of scrolls) {
+    const scrollRepairs = repairs.filter((r) => r.scrollId === scroll.id);
+    const scrollLoans = loans.filter((l) => l.scrollId === scroll.id);
+    const activeRepairs = scrollRepairs.filter((r) => r.status === '计划中' || r.status === '进行中');
+    const activeLoans = scrollLoans.filter((l) => ACTIVE_LOAN_STATUSES.includes(l.status));
+    const lentOutLoans = scrollLoans.filter((l) => l.status === '已借出');
+    const returnedOrRejected = scrollLoans.every((l) => l.status === '已归还' || l.status === '已拒绝');
+    const completedRepairs = scrollRepairs.filter((r) => r.status === '已完成');
+
+    if (scroll.borrowStatus === '可借阅' && lentOutLoans.length > 0) {
+      const loanInfo = lentOutLoans.map((l) => `${l.borrower}（${l.borrowDate}~${l.dueDate}）`).join('、');
+      issues.push({
+        id: `cc-${scroll.id}-1`,
+        type: 'available-but-lent',
+        severity: 'high',
+        title: '经卷显示可借阅但存在已借出记录',
+        description: `经卷「${scroll.title}」当前借阅状态为「可借阅」，但存在${lentOutLoans.length}条已借出记录：${loanInfo}`,
+        scrollId: scroll.id,
+        scrollTitle: scroll.title,
+        currentBorrowStatus: scroll.borrowStatus,
+        affectedLoans: lentOutLoans.map((l) => l.id),
+        affectedRepairs: [],
+        suggestion: 'fix-status-to-restricted',
+        suggestionLabel: '将经卷借阅状态修正为「限制借阅」',
+        autoFixable: true
+      });
+    }
+
+    if (activeRepairs.length > 0 && scroll.borrowStatus !== '修补中') {
+      const repairInfo = activeRepairs.map((r) => `${r.process}（${r.status}）`).join('、');
+      issues.push({
+        id: `cc-${scroll.id}-2`,
+        type: 'repairing-but-borrowable',
+        severity: 'high',
+        title: '修补未完成却允许借出',
+        description: `经卷「${scroll.title}」存在${activeRepairs.length}条未完成修补：${repairInfo}，但借阅状态为「${scroll.borrowStatus}」而非「修补中」`,
+        scrollId: scroll.id,
+        scrollTitle: scroll.title,
+        currentBorrowStatus: scroll.borrowStatus,
+        affectedLoans: [],
+        affectedRepairs: activeRepairs.map((r) => r.id),
+        suggestion: 'fix-status-to-repairing',
+        suggestionLabel: '将经卷借阅状态修正为「修补中」',
+        autoFixable: true
+      });
+    }
+
+    if (scrollLoans.length > 0 && returnedOrRejected && scroll.borrowStatus === '限制借阅') {
+      issues.push({
+        id: `cc-${scroll.id}-3`,
+        type: 'returned-but-restricted',
+        severity: 'medium',
+        title: '归还后经卷仍限制借阅',
+        description: `经卷「${scroll.title}」所有借阅记录已归还或拒绝，但借阅状态仍为「限制借阅」`,
+        scrollId: scroll.id,
+        scrollTitle: scroll.title,
+        currentBorrowStatus: scroll.borrowStatus,
+        affectedLoans: scrollLoans.map((l) => l.id),
+        affectedRepairs: [],
+        suggestion: 'fix-status-to-approval',
+        suggestionLabel: '将经卷借阅状态修正为「需审批」',
+        autoFixable: true
+      });
+    }
+
+    if (scroll.borrowStatus === '修补中' && activeRepairs.length === 0 && completedRepairs.length > 0) {
+      const hasHistoryEntry = (scroll.history || []).some(
+        (h) => h.action === '修补完成' || (h.note && h.note.includes('修补完成'))
+      );
+      if (!hasHistoryEntry) {
+        const completedInfo = completedRepairs.map((r) => `${r.process}（${r.date || '无日期'}）`).join('、');
+        issues.push({
+          id: `cc-${scroll.id}-4`,
+          type: 'repaired-no-history',
+          severity: 'medium',
+          title: '修补完成但缺少历史记录',
+          description: `经卷「${scroll.title}」修补记录已全部完成（${completedInfo}），状态仍为「修补中」，且经卷历史中无修补完成记录`,
+          scrollId: scroll.id,
+          scrollTitle: scroll.title,
+          currentBorrowStatus: scroll.borrowStatus,
+          affectedLoans: [],
+          affectedRepairs: completedRepairs.map((r) => r.id),
+          suggestion: 'fix-repair-complete-no-history',
+          suggestionLabel: '补充修补完成历史记录并将状态修正为「需审批」',
+          autoFixable: true
+        });
+      }
+    }
+
+    if (scroll.borrowStatus === '修补中' && scrollRepairs.length === 0) {
+      issues.push({
+        id: `cc-${scroll.id}-5`,
+        type: 'repairing-no-records',
+        severity: 'high',
+        title: '经卷修补中但无修补记录',
+        description: `经卷「${scroll.title}」借阅状态为「修补中」，但不存在任何修补记录`,
+        scrollId: scroll.id,
+        scrollTitle: scroll.title,
+        currentBorrowStatus: scroll.borrowStatus,
+        affectedLoans: [],
+        affectedRepairs: [],
+        suggestion: 'fix-status-to-approval',
+        suggestionLabel: '将经卷借阅状态修正为「需审批」',
+        autoFixable: true
+      });
+    }
+
+    if (lentOutLoans.length > 0 && scroll.borrowStatus !== '限制借阅') {
+      const loanInfo = lentOutLoans.map((l) => `${l.borrower}（${l.status}）`).join('、');
+      issues.push({
+        id: `cc-${scroll.id}-6`,
+        type: 'lent-but-not-restricted',
+        severity: 'high',
+        title: '经卷已借出但状态未限制',
+        description: `经卷「${scroll.title}」存在已借出记录（${loanInfo}），但借阅状态为「${scroll.borrowStatus}」而非「限制借阅」`,
+        scrollId: scroll.id,
+        scrollTitle: scroll.title,
+        currentBorrowStatus: scroll.borrowStatus,
+        affectedLoans: lentOutLoans.map((l) => l.id),
+        affectedRepairs: [],
+        suggestion: 'fix-status-to-restricted',
+        suggestionLabel: '将经卷借阅状态修正为「限制借阅」',
+        autoFixable: true
+      });
+    }
+
+    if (scroll.borrowStatus === '可借阅' && scroll.protectionLevel === '一级') {
+      issues.push({
+        id: `cc-${scroll.id}-7`,
+        type: 'level1-but-available',
+        severity: 'low',
+        title: '一级保护经卷标记为可借阅',
+        description: `经卷「${scroll.title}」为一级保护经卷，但借阅状态为「可借阅」，建议调整为需审批或限制借阅`,
+        scrollId: scroll.id,
+        scrollTitle: scroll.title,
+        currentBorrowStatus: scroll.borrowStatus,
+        affectedLoans: [],
+        affectedRepairs: [],
+        suggestion: 'fix-level1-to-approval',
+        suggestionLabel: '将经卷借阅状态修正为「需审批」',
+        autoFixable: true
+      });
+    }
+  }
+
+  return issues;
+}
+
+const CONSISTENCY_FIX_MAP = {
+  'fix-status-to-restricted': {
+    targetBorrowStatus: '限制借阅',
+    validate: (db, scroll) => {
+      const lentOut = (db.loans || []).filter((l) => l.scrollId === scroll.id && l.status === '已借出');
+      return lentOut.length > 0;
+    },
+    historyAction: '状态变更',
+    historyNote: '巡检修复：经卷存在已借出记录，状态修正为限制借阅'
+  },
+  'fix-status-to-repairing': {
+    targetBorrowStatus: '修补中',
+    validate: (db, scroll) => {
+      const active = (db.repairs || []).filter((r) => r.scrollId === scroll.id && (r.status === '计划中' || r.status === '进行中'));
+      return active.length > 0;
+    },
+    historyAction: '修补中',
+    historyNote: '巡检修复：经卷存在未完成修补，状态修正为修补中'
+  },
+  'fix-status-to-approval': {
+    targetBorrowStatus: '需审批',
+    validate: (db, scroll) => {
+      const active = (db.loans || []).filter((l) => l.scrollId === scroll.id && ACTIVE_LOAN_STATUSES.includes(l.status));
+      return active.length === 0;
+    },
+    historyAction: '状态变更',
+    historyNote: '巡检修复：无活跃借阅或修补已结束，状态修正为需审批'
+  },
+  'fix-repair-complete-no-history': {
+    targetBorrowStatus: '需审批',
+    validate: (db, scroll) => {
+      const active = (db.repairs || []).filter((r) => r.scrollId === scroll.id && (r.status === '计划中' || r.status === '进行中'));
+      return active.length === 0;
+    },
+    historyAction: '修补完成',
+    historyNote: '巡检修复：修补已完成但缺少历史记录，补充修补完成记录并修正为需审批'
+  },
+  'fix-level1-to-approval': {
+    targetBorrowStatus: '需审批',
+    validate: () => true,
+    historyAction: '保护评估',
+    historyNote: '巡检修复：一级保护经卷不应标记为可借阅，修正为需审批'
+  }
+};
+
+app.get('/api/consistency-check', requirePermission('scrolls', 'view'), async (req, res) => {
+  const db = await readDb();
+  const issues = runConsistencyCheck(db);
+  const summary = {
+    total: issues.length,
+    high: issues.filter((i) => i.severity === 'high').length,
+    medium: issues.filter((i) => i.severity === 'medium').length,
+    low: issues.filter((i) => i.severity === 'low').length,
+    autoFixable: issues.filter((i) => i.autoFixable).length
+  };
+  res.json({ issues, summary, checkedAt: new Date().toISOString() });
+});
+
+app.post('/api/consistency-check/fix', requirePermission('scrolls', 'update'), async (req, res) => {
+  const { issueId, fixSuggestion, note } = req.body || {};
+  if (!issueId || !fixSuggestion) {
+    return res.status(400).json({ error: '缺少必要参数：issueId, fixSuggestion' });
+  }
+
+  const fixConfig = CONSISTENCY_FIX_MAP[fixSuggestion];
+  if (!fixConfig) {
+    return res.status(400).json({ error: '无效的修复动作' });
+  }
+
+  const db = await readDb();
+  const currentIssues = runConsistencyCheck(db);
+  const issue = currentIssues.find((i) => i.id === issueId);
+  if (!issue) {
+    return res.status(409).json({ error: '该问题已不存在，数据可能已被其他方式修复' });
+  }
+
+  if (issue.suggestion !== fixSuggestion) {
+    return res.status(409).json({ error: '修复动作与问题不匹配' });
+  }
+
+  const scroll = (db.scrolls || []).find((s) => s.id === issue.scrollId);
+  if (!scroll) {
+    return res.status(404).json({ error: '经卷不存在' });
+  }
+
+  const oldBorrowStatus = scroll.borrowStatus;
+  if (scroll.borrowStatus === fixConfig.targetBorrowStatus) {
+    return res.status(409).json({ error: '经卷状态已是目标状态，无需修复' });
+  }
+
+  if (!fixConfig.validate(db, scroll)) {
+    return res.status(409).json({ error: '服务端二次校验失败：当前数据状态不再满足修复条件，请重新巡检' });
+  }
+
+  const userNote = (note || '').trim();
+  const finalHistoryNote = userNote
+    ? `${fixConfig.historyNote} | 用户说明：${userNote}`
+    : fixConfig.historyNote;
+  const finalAuditNote = userNote
+    ? `一致性巡检修复：${issue.title} - ${fixConfig.historyNote} | 用户说明：${userNote}`
+    : `一致性巡检修复：${issue.title} - ${fixConfig.historyNote}`;
+
+  scroll.borrowStatus = fixConfig.targetBorrowStatus;
+  scroll.updatedAt = new Date().toISOString();
+  scroll.history = scroll.history || [];
+  scroll.history.unshift(stamp(fixConfig.historyAction, finalHistoryNote));
+
+  await writeAuditLog(db, req, {
+    collection: 'scrolls',
+    itemId: scroll.id,
+    itemTitle: scroll.title,
+    action: 'statusChange',
+    changes: { borrowStatus: { before: oldBorrowStatus, after: fixConfig.targetBorrowStatus } },
+    note: finalAuditNote
+  });
+
+  await writeDb(db);
+
+  const remainingIssues = runConsistencyCheck(db);
+  const fixSummary = {
+    total: remainingIssues.length,
+    high: remainingIssues.filter((i) => i.severity === 'high').length,
+    medium: remainingIssues.filter((i) => i.severity === 'medium').length,
+    low: remainingIssues.filter((i) => i.severity === 'low').length,
+    autoFixable: remainingIssues.filter((i) => i.autoFixable).length
+  };
+
+  res.json({
+    success: true,
+    fixedIssue: issueId,
+    scrollId: scroll.id,
+    scrollTitle: scroll.title,
+    oldBorrowStatus,
+    newBorrowStatus: fixConfig.targetBorrowStatus,
+    remainingSummary: fixSummary,
+    fixedAt: new Date().toISOString()
+  });
+});
+
 app.listen(PORT, () => {
   console.log(`${config.title} running at http://localhost:${PORT}`);
 });
