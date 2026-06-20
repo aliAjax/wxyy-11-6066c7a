@@ -64,6 +64,128 @@
       ]
     }
   ],
+  "materials": [
+    {
+      "id": "material-seed-1",
+      "name": "楮皮纸",
+      "category": "纸张",
+      "batch": "P2026-001",
+      "quantity": 120,
+      "unit": "张",
+      "location": "材料柜A-03",
+      "expiryDate": "2028-12-31",
+      "status": "正常",
+      "note": "安徽泾县产，厚度0.12mm",
+      "createdAt": "2026-06-10T08:00:00.000Z",
+      "updatedAt": "2026-06-10T08:00:00.000Z",
+      "history": [
+        {
+          "at": "2026-06-10T08:00:00.000Z",
+          "action": "创建",
+          "note": "安徽泾县产，厚度0.12mm"
+        }
+      ]
+    },
+    {
+      "id": "material-seed-2",
+      "name": "小麦浆糊",
+      "category": "浆糊",
+      "batch": "J2026-05A",
+      "quantity": 2,
+      "unit": "瓶",
+      "location": "冷藏柜B-01",
+      "expiryDate": "2026-08-15",
+      "status": "即将到期",
+      "note": "手工熬制，浓度中等",
+      "createdAt": "2026-05-15T08:00:00.000Z",
+      "updatedAt": "2026-06-18T08:00:00.000Z",
+      "history": [
+        {
+          "at": "2026-05-15T08:00:00.000Z",
+          "action": "创建",
+          "note": "手工熬制，浓度中等"
+        },
+        {
+          "at": "2026-06-18T08:00:00.000Z",
+          "action": "更新",
+          "note": "余量更新为2瓶"
+        }
+      ]
+    },
+    {
+      "id": "material-seed-3",
+      "name": "蓝布函套",
+      "category": "装函材料",
+      "batch": "H2026-002",
+      "quantity": 5,
+      "unit": "套",
+      "location": "材料柜A-01",
+      "expiryDate": "",
+      "status": "低余量",
+      "note": "宋锦面，内贴仿绫",
+      "createdAt": "2026-04-20T08:00:00.000Z",
+      "updatedAt": "2026-06-19T08:00:00.000Z",
+      "history": [
+        {
+          "at": "2026-04-20T08:00:00.000Z",
+          "action": "创建",
+          "note": "宋锦面，内贴仿绫"
+        },
+        {
+          "at": "2026-06-19T08:00:00.000Z",
+          "action": "更新",
+          "note": "余量不足，标记低余量"
+        }
+      ]
+    },
+    {
+      "id": "material-seed-4",
+      "name": "软羊毫刷",
+      "category": "软刷",
+      "batch": "S2025-008",
+      "quantity": 3,
+      "unit": "把",
+      "location": "工具架C-02",
+      "expiryDate": "",
+      "status": "正常",
+      "note": "大号，排笔宽15cm",
+      "createdAt": "2026-01-10T08:00:00.000Z",
+      "updatedAt": "2026-01-10T08:00:00.000Z",
+      "history": [
+        {
+          "at": "2026-01-10T08:00:00.000Z",
+          "action": "创建",
+          "note": "大号，排笔宽15cm"
+        }
+      ]
+    },
+    {
+      "id": "material-seed-5",
+      "name": "古籍修复专用浆糊粉",
+      "category": "浆糊",
+      "batch": "J2025-11B",
+      "quantity": 0,
+      "unit": "袋",
+      "location": "材料柜B-05",
+      "expiryDate": "2025-12-01",
+      "status": "已过期",
+      "note": "已过期，等待报废处理",
+      "createdAt": "2025-11-01T08:00:00.000Z",
+      "updatedAt": "2026-06-01T08:00:00.000Z",
+      "history": [
+        {
+          "at": "2025-11-01T08:00:00.000Z",
+          "action": "创建",
+          "note": ""
+        },
+        {
+          "at": "2026-06-01T08:00:00.000Z",
+          "action": "更新",
+          "note": "标记已过期"
+        }
+      ]
+    }
+  ],
   "inventories": [
     {
       "id": "inventory-seed-1",

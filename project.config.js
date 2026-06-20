@@ -22,14 +22,18 @@ module.exports = {
     '正常': 'ok',
     '待复核': 'warn',
     '已处理': 'ok',
-    '异常': 'bad'
+    '异常': 'bad',
+    '低余量': 'warn',
+    '即将到期': 'warn',
+    '已过期': 'bad'
   },
   collections: {
     scrolls: { label: '经卷档案' },
     repairs: { label: '修补记录' },
     loans: { label: '借阅申请' },
     imagings: { label: '影像采集档案' },
-    inventories: { label: '柜位盘点' }
+    inventories: { label: '柜位盘点' },
+    materials: { label: '修补材料台账' }
   },
   stats: [
     { label: '经卷档案', collection: 'scrolls' },
@@ -38,7 +42,9 @@ module.exports = {
     { label: '借阅中', collection: 'loans', filter: { field: 'status', value: '已借出' } },
     { label: '影像采集', collection: 'imagings' },
     { label: '盘点记录', collection: 'inventories' },
-    { label: '待复核', collection: 'inventories', filter: { field: 'status', value: '待复核' } }
+    { label: '待复核', collection: 'inventories', filter: { field: 'status', value: '待复核' } },
+    { label: '材料品类', collection: 'materials' },
+    { label: '低余量/到期', collection: 'materials', filter: { field: 'status', value: '低余量' } }
   ],
   views: [
     {
@@ -53,6 +59,11 @@ module.exports = {
         {
           title: '待复核盘点',
           focus: { collection: 'inventories', field: 'status', values: ['待复核'], limit: 8 }
+        },
+        {
+          title: '材料预警（低余量/即将到期/已过期）',
+          focus: { collection: 'materials', field: 'status', values: ['低余量', '即将到期', '已过期'], limit: 8 },
+          emptyText: '暂无预警材料'
         }
       ]
     },
@@ -102,7 +113,8 @@ module.exports = {
       detailFields: [
         { label: '日期', name: 'date' },
         { label: '状态', name: 'status' },
-        { label: '工序', name: 'process' }
+        { label: '工序', name: 'process' },
+        { label: '参考材料', name: 'materialId', type: 'relation', collection: 'materials', labelFields: ['name', 'batch'] }
       ],
       fields: [
         { label: '经卷', name: 'scrollId', type: 'relation', collection: 'scrolls', labelFields: ['title', 'protectionLevel'], required: true, wide: true },
@@ -110,7 +122,8 @@ module.exports = {
         { label: '修补人员', name: 'conservator', required: true },
         { label: '日期', name: 'date', type: 'date', required: true },
         { label: '状态', name: 'status', type: 'select', options: ['计划中', '进行中', '已完成'] },
-        { label: '材料', name: 'materialUsed', type: 'textarea', wide: true },
+        { label: '参考材料（台账）', name: 'materialId', type: 'relation', collection: 'materials', labelFields: ['name', 'batch', 'quantity'] },
+        { label: '材料说明', name: 'materialUsed', type: 'textarea', wide: true },
         { label: '记录', name: 'note', type: 'textarea', wide: true }
       ]
     },
@@ -201,6 +214,39 @@ module.exports = {
         { label: '处理状态', name: 'status', type: 'select', options: ['正常', '待复核', '已处理'], required: true },
         { label: '异常说明', name: 'exceptionNote', type: 'textarea', wide: true }
       ]
+    },
+    {
+      id: 'materials',
+      label: '修补材料台账',
+      collection: 'materials',
+      formTitle: '新增修补材料',
+      listTitle: '材料台账',
+      submitLabel: '登记材料',
+      searchPlaceholder: '搜索材料名、批次、柜位',
+      searchFields: ['name', 'batch', 'location', 'category', 'note'],
+      statusField: 'status',
+      statusOptions: ['正常', '低余量', '即将到期', '已过期'],
+      titleFields: ['name', 'batch'],
+      summaryFields: ['note'],
+      detailFields: [
+        { label: '分类', name: 'category' },
+        { label: '余量', name: 'quantityWithUnit' },
+        { label: '保管位置', name: 'location' },
+        { label: '到期日期', name: 'expiryDate' },
+        { label: '状态', name: 'status' }
+      ],
+      defaults: { status: '正常', unit: '张' },
+      fields: [
+        { label: '材料名称', name: 'name', required: true },
+        { label: '分类', name: 'category', type: 'select', options: ['纸张', '浆糊', '装函材料', '软刷', '其他'], required: true },
+        { label: '批次号', name: 'batch', required: true },
+        { label: '余量', name: 'quantity', type: 'number', required: true },
+        { label: '单位', name: 'unit', type: 'select', options: ['张', '瓶', '套', '把', '袋', '米', '卷', '盒', '个'], required: true },
+        { label: '保管位置', name: 'location', required: true },
+        { label: '到期日期', name: 'expiryDate', type: 'date' },
+        { label: '状态', name: 'status', type: 'select', options: ['正常', '低余量', '即将到期', '已过期'] },
+        { label: '备注', name: 'note', type: 'textarea', wide: true }
+      ]
     }
   ],
   actions: [
@@ -249,6 +295,10 @@ module.exports = {
     { id: 'imaging-reshoot', label: '待重拍', collection: 'imagings', danger: true, patches: [{ field: 'clarity', value: '待重拍' }] },
     { id: 'inventory-normal', label: '正常', collection: 'inventories', patches: [{ field: 'status', value: '正常' }, { field: 'result', value: '正常' }] },
     { id: 'inventory-review', label: '待复核', collection: 'inventories', patches: [{ field: 'status', value: '待复核' }, { field: 'result', value: '异常' }] },
-    { id: 'inventory-processed', label: '已处理', collection: 'inventories', patches: [{ field: 'status', value: '已处理' }] }
+    { id: 'inventory-processed', label: '已处理', collection: 'inventories', patches: [{ field: 'status', value: '已处理' }] },
+    { id: 'material-normal', label: '正常', collection: 'materials', patches: [{ field: 'status', value: '正常' }] },
+    { id: 'material-low', label: '低余量', collection: 'materials', patches: [{ field: 'status', value: '低余量' }] },
+    { id: 'material-soonexpiry', label: '即将到期', collection: 'materials', patches: [{ field: 'status', value: '即将到期' }] },
+    { id: 'material-expired', label: '已过期', collection: 'materials', danger: true, patches: [{ field: 'status', value: '已过期' }] }
   ]
 };

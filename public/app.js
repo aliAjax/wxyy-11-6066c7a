@@ -46,6 +46,11 @@ function valueByPath(source, pathName) {
 }
 
 function displayField(item, field) {
+  if (field.name === 'quantityWithUnit') {
+    const qty = item.quantity ?? '';
+    const unit = item.unit ?? '';
+    return qty !== '' ? `${qty} ${unit}`.trim() : '-';
+  }
   const value = item[field.name] ?? '';
   if (field.type === 'select' && field.options) return value || field.options[0];
   return value;
@@ -58,12 +63,22 @@ function collectionLabel(collection) {
 function relationLabel(relation, id) {
   const item = state.db[relation.collection]?.find((entry) => entry.id === id);
   if (!item) return '未关联';
-  return relation.labelFields.map((field) => item[field]).filter(Boolean).join(' / ');
+  return relation.labelFields.map((field) => {
+    if (field === 'quantity' && item.unit) {
+      return `${item.quantity ?? 0} ${item.unit}`;
+    }
+    return item[field];
+  }).filter(Boolean).join(' / ');
 }
 
 function optionList(items, labelFields) {
   return items.map((item) => {
-    const label = labelFields.map((field) => item[field]).filter(Boolean).join(' / ');
+    const label = labelFields.map((field) => {
+      if (field === 'quantity' && item.unit) {
+        return `${item.quantity ?? 0} ${item.unit}`;
+      }
+      return item[field];
+    }).filter(Boolean).join(' / ');
     return `<option value="${item.id}">${escapeHtml(label)}</option>`;
   }).join('');
 }
@@ -134,8 +149,8 @@ function renderCard(item, collection, view) {
   const statusValue = item[view.statusField];
   const relation = view.relation ? `<div class="meta">${escapeHtml(relationLabel(view.relation, item[view.relation.localKey]))}</div>` : '';
   const details = (view.detailFields || []).map((field) => {
-    const raw = item[field.name];
-    const value = field.type === 'relation' ? relationLabel(field, raw) : raw;
+    const raw = displayField(item, field);
+    const value = field.type === 'relation' ? relationLabel(field, item[field.name]) : raw;
     return `<div>${escapeHtml(field.label)}<br><strong>${escapeHtml(value || '-')}</strong></div>`;
   }).join('');
   const summary = (view.summaryFields || []).map((field) => item[field]).filter(Boolean).join(' · ');
