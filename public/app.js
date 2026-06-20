@@ -321,6 +321,57 @@ function historyHtml(item) {
   `).join('')}</div>`;
 }
 
+function renderBatchTasksDetail(tasks) {
+  const statuses = ['计划中', '进行中', '已完成'];
+  return `<div class="batch-tasks-detail">
+    ${tasks.map((t) => {
+      const statusTone = toneFor(t.status);
+      const quickActions = [];
+      if (t.status !== '计划中') quickActions.push(`<button class="task-quick" data-task-quick="计划中" data-task-id="${t.id}">📋 待办</button>`);
+      if (t.status !== '进行中') quickActions.push(`<button class="task-quick" data-task-quick="进行中" data-task-id="${t.id}">🔧 进行</button>`);
+      if (t.status !== '已完成') quickActions.push(`<button class="task-quick task-quick-done" data-task-quick="已完成" data-task-id="${t.id}">✅ 完成</button>`);
+      return `<div class="task-card" data-task-card="${t.id}">
+        <div class="task-card-head">
+          <div class="task-card-title">
+            <span class="task-process-name">${escapeHtml(t.process || '-')}</span>
+            <span class="task-status-display">${pill(t.status || '-', statusTone)}</span>
+            <select class="task-status-input" style="display:none" data-field="status">
+              ${statuses.map((s) => `<option value="${s}" ${t.status === s ? 'selected' : ''}>${s}</option>`).join('')}
+            </select>
+          </div>
+          <div class="task-card-actions">
+            <button class="ghost" data-task-edit="${t.id}">✏️ 编辑</button>
+          </div>
+        </div>
+        <div class="task-card-body">
+          <div class="task-field">
+            <span class="task-field-label">👤 负责人</span>
+            <span class="task-field-value field-display" data-field="conservator">${escapeHtml(t.conservator || '-')}</span>
+            <input class="task-field-value field-input" type="text" data-field="conservator" value="${escapeHtml(t.conservator || '')}" style="display:none">
+          </div>
+          <div class="task-field">
+            <span class="task-field-label">📅 日期</span>
+            <span class="task-field-value field-display" data-field="date">${escapeHtml(t.date || '-')}</span>
+            <input class="task-field-value field-input" type="date" data-field="date" value="${escapeHtml(t.date || '')}" style="display:none">
+          </div>
+          <div class="task-field">
+            <span class="task-field-label">🧪 材料说明</span>
+            <span class="task-field-value field-display" data-field="materialUsed">${escapeHtml(t.materialUsed || '—')}</span>
+            <textarea class="task-field-value field-input" data-field="materialUsed" rows="2" style="display:none">${escapeHtml(t.materialUsed || '')}</textarea>
+          </div>
+          <div class="task-field">
+            <span class="task-field-label">📝 完成记录</span>
+            <span class="task-field-value field-display" data-field="note">${escapeHtml(t.note || '—')}</span>
+            <textarea class="task-field-value field-input" data-field="note" rows="2" style="display:none">${escapeHtml(t.note || '')}</textarea>
+          </div>
+        </div>
+        <div class="task-quick-actions">${quickActions.join('')}</div>
+        ${historyHtml(t)}
+      </div>`;
+    }).join('')}
+  </div>`;
+}
+
 const TIMELINE_TYPE_ICONS = {
   '建档': '📜',
   '修补': '🔧',
@@ -329,7 +380,8 @@ const TIMELINE_TYPE_ICONS = {
   '状态变更': '🔄',
   '影像采集': '📷',
   '盘点': '📋',
-  '人工观察': '👁️'
+  '人工观察': '👁️',
+  '修补批次': '📦'
 };
 
 const TIMELINE_TYPE_TONES = {
@@ -340,7 +392,8 @@ const TIMELINE_TYPE_TONES = {
   '状态变更': '',
   '影像采集': '',
   '盘点': '',
-  '人工观察': 'obs'
+  '人工观察': 'obs',
+  '修补批次': 'warn'
 };
 
 function timelineTypeBadge(type) {
@@ -517,15 +570,31 @@ function renderCard(item, collection, view) {
     ? `<button class="ghost" data-timeline="${item.id}">📜 时间轴</button>`
     : '';
 
+  let batchProgressHtml = '';
+  if (collection === 'repairBatches') {
+    const summary = item.progressSummary || '0/0 已完成';
+    const match = summary.match(/(\d+)\/(\d+)/);
+    const done = match ? parseInt(match[1]) : 0;
+    const total = match ? parseInt(match[2]) : 0;
+    const pct = total > 0 ? Math.round((done / total) * 100) : 0;
+    batchProgressHtml = `<div class="batch-progress">
+      <div class="batch-progress-bar"><div class="batch-progress-fill" style="width:${pct}%"></div></div>
+      <span class="batch-progress-text">${escapeHtml(summary)}</span>
+    </div>
+    <button class="ghost" data-batch-tasks="${item.id}">📋 查看任务</button>`;
+  }
+
   return `<article class="card">
     <div class="card-head"><h3>${escapeHtml(title)}</h3>${statusValue ? pill(statusValue, toneFor(statusValue)) : ''}</div>
     ${relation}
     ${summary ? `<p>${escapeHtml(summary)}</p>` : ''}
     ${details ? `<div class="detail">${details}</div>` : ''}
+    ${batchProgressHtml}
     ${riskHtml}
     ${actionsHtml}
     ${timelineBtn ? `<div class="actions">${timelineBtn}</div>` : ''}
     ${historyHtml(item)}
+    <div class="batch-tasks" id="batch-tasks-${item.id}" style="display:none"></div>
   </article>`;
 }
 
@@ -790,8 +859,149 @@ document.addEventListener('click', async (event) => {
   const todayBtn = event.target.closest('[data-calendar-today]');
   const timelineBtn = event.target.closest('[data-timeline]');
   const timelineClose = event.target.closest('[data-timeline-close]');
+  const batchTasksBtn = event.target.closest('[data-batch-tasks]');
 
   if (tab) setTab(tab.dataset.tab);
+
+  if (batchTasksBtn) {
+    const batchId = batchTasksBtn.dataset.batchTasks;
+    const tasksEl = $(`#batch-tasks-${batchId}`);
+    if (!tasksEl) return;
+    if (tasksEl.style.display !== 'none' && tasksEl.innerHTML) {
+      tasksEl.style.display = 'none';
+      return;
+    }
+    try {
+      const tasks = await api(`/api/repair-batches/${encodeURIComponent(batchId)}/tasks`);
+      if (tasks.length) {
+        tasksEl.innerHTML = renderBatchTasksDetail(tasks);
+      } else {
+        tasksEl.innerHTML = '<div class="empty">暂无任务</div>';
+      }
+      tasksEl.style.display = 'block';
+    } catch (e) {
+      toast(e.message);
+    }
+    return;
+  }
+
+  const taskEditBtn = event.target.closest('[data-task-edit]');
+  if (taskEditBtn) {
+    const taskId = taskEditBtn.dataset.taskEdit;
+    const card = document.querySelector(`[data-task-card="${taskId}"]`);
+    if (!card) return;
+    const fields = ['conservator', 'materialUsed', 'note', 'date'];
+    fields.forEach((f) => {
+      const display = card.querySelector(`[data-field="${f}"].field-display`);
+      const input = card.querySelector(`[data-field="${f}"].field-input`);
+      if (display) display.style.display = 'none';
+      if (input) input.style.display = '';
+    });
+    const statusDisplay = card.querySelector('.task-status-display');
+    const statusSelect = card.querySelector('.task-status-input');
+    if (statusDisplay) statusDisplay.style.display = 'none';
+    if (statusSelect) statusSelect.style.display = '';
+    const actions = card.querySelector('.task-card-actions');
+    if (actions) actions.innerHTML = `
+      <button class="ghost" data-task-save="${taskId}">💾 保存</button>
+      <button class="ghost secondary" data-task-cancel="${taskId}">取消</button>
+    `;
+    return;
+  }
+
+  const taskCancelBtn = event.target.closest('[data-task-cancel]');
+  if (taskCancelBtn) {
+    const taskId = taskCancelBtn.dataset.taskCancel;
+    const task = (state.db.repairs || []).find((r) => r.id === taskId);
+    const card = document.querySelector(`[data-task-card="${taskId}"]`);
+    if (!task || !card) return;
+    const conservatorDisplay = card.querySelector('[data-field="conservator"].field-display');
+    const conservatorInput = card.querySelector('[data-field="conservator"].field-input');
+    if (conservatorDisplay) { conservatorDisplay.textContent = task.conservator || '-'; conservatorDisplay.style.display = ''; }
+    if (conservatorInput) { conservatorInput.value = task.conservator || ''; conservatorInput.style.display = 'none'; }
+
+    const materialDisplay = card.querySelector('[data-field="materialUsed"].field-display');
+    const materialInput = card.querySelector('[data-field="materialUsed"].field-input');
+    if (materialDisplay) { materialDisplay.textContent = task.materialUsed || '—'; materialDisplay.style.display = ''; }
+    if (materialInput) { materialInput.value = task.materialUsed || ''; materialInput.style.display = 'none'; }
+
+    const noteDisplay = card.querySelector('[data-field="note"].field-display');
+    const noteInput = card.querySelector('[data-field="note"].field-input');
+    if (noteDisplay) { noteDisplay.textContent = task.note || '—'; noteDisplay.style.display = ''; }
+    if (noteInput) { noteInput.value = task.note || ''; noteInput.style.display = 'none'; }
+
+    const dateDisplay = card.querySelector('[data-field="date"].field-display');
+    const dateInput = card.querySelector('[data-field="date"].field-input');
+    if (dateDisplay) { dateDisplay.textContent = task.date || '-'; dateDisplay.style.display = ''; }
+    if (dateInput) { dateInput.value = task.date || ''; dateInput.style.display = 'none'; }
+
+    const statusDisplay = card.querySelector('.task-status-display');
+    const statusSelect = card.querySelector('.task-status-input');
+    if (statusDisplay) statusDisplay.style.display = '';
+    if (statusSelect) { statusSelect.value = task.status || '计划中'; statusSelect.style.display = 'none'; }
+
+    const actions = card.querySelector('.task-card-actions');
+    if (actions) actions.innerHTML = `<button class="ghost" data-task-edit="${taskId}">✏️ 编辑</button>`;
+    return;
+  }
+
+  const taskSaveBtn = event.target.closest('[data-task-save]');
+  if (taskSaveBtn) {
+    const taskId = taskSaveBtn.dataset.taskSave;
+    const card = document.querySelector(`[data-task-card="${taskId}"]`);
+    if (!card) return;
+    const conservator = card.querySelector('[data-field="conservator"].field-input')?.value.trim();
+    const materialUsed = card.querySelector('[data-field="materialUsed"].field-input')?.value.trim();
+    const note = card.querySelector('[data-field="note"].field-input')?.value.trim();
+    const date = card.querySelector('[data-field="date"].field-input')?.value.trim();
+    const status = card.querySelector('.task-status-input')?.value;
+    try {
+      await api(`/api/repairs/${encodeURIComponent(taskId)}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ conservator, materialUsed, note, date, status, historyAction: '更新' })
+      });
+      await load();
+      toast('工序已更新');
+      const batchId = (state.db.repairs || []).find((r) => r.id === taskId)?.batchId;
+      if (batchId) {
+        const tasksEl = document.getElementById(`batch-tasks-${batchId}`);
+        const tasks = await api(`/api/repair-batches/${encodeURIComponent(batchId)}/tasks`);
+        if (tasksEl && tasks.length) {
+          tasksEl.innerHTML = renderBatchTasksDetail(tasks);
+          tasksEl.style.display = 'block';
+        }
+      }
+    } catch (e) {
+      toast(e.message);
+    }
+    return;
+  }
+
+  const taskQuickAction = event.target.closest('[data-task-quick]');
+  if (taskQuickAction) {
+    const taskId = taskQuickAction.dataset.taskId;
+    const newStatus = taskQuickAction.dataset.taskQuick;
+    try {
+      await api(`/api/repairs/${encodeURIComponent(taskId)}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ status: newStatus, historyAction: `状态变更为${newStatus}` })
+      });
+      await load();
+      toast(`已标记为${newStatus}`);
+      const batchId = (state.db.repairs || []).find((r) => r.id === taskId)?.batchId;
+      if (batchId) {
+        const tasksEl = document.getElementById(`batch-tasks-${batchId}`);
+        const tasks = await api(`/api/repair-batches/${encodeURIComponent(batchId)}/tasks`);
+        if (tasksEl && tasks.length) {
+          tasksEl.innerHTML = renderBatchTasksDetail(tasks);
+          tasksEl.style.display = 'block';
+        }
+      }
+    } catch (e) {
+      toast(e.message);
+    }
+    return;
+  }
 
   if (timelineBtn) {
     await openTimeline(timelineBtn.dataset.timeline);
@@ -953,6 +1163,31 @@ document.addEventListener('input', async (event) => {
       }
     }
   }
+
+  const batchForm = event.target.closest('[data-create="repairBatches"]');
+  if (batchForm) {
+    const templateId = batchForm.querySelector('[name="templateId"]')?.value;
+    const previewEl = batchForm.querySelector('.template-preview');
+    if (templateId) {
+      const template = (state.db.repairTemplates || []).find((t) => t.id === templateId);
+      if (template) {
+        const processList = (template.processes || '').split('\n').map((p) => p.trim()).filter(Boolean);
+        const previewHtml = `<div class="template-preview">
+          <div class="template-preview-title">📋 模板工序预览（共${processList.length}道）</div>
+          <div class="template-processes">${processList.map((p) => `<span class="template-process-tag">${escapeHtml(p)}</span>`).join('')}</div>
+          ${template.description ? `<div class="template-desc">${escapeHtml(template.description)}</div>` : ''}
+        </div>`;
+        if (previewEl) {
+          previewEl.outerHTML = previewHtml;
+        } else {
+          const actionsDiv = batchForm.querySelector('.actions');
+          actionsDiv.insertAdjacentHTML('beforebegin', previewHtml);
+        }
+      }
+    } else {
+      if (previewEl) previewEl.remove();
+    }
+  }
 });
 
 document.addEventListener('submit', async (event) => {
@@ -984,12 +1219,17 @@ document.addEventListener('submit', async (event) => {
   event.preventDefault();
   const view = state.config.views.find((entry) => entry.id === form.dataset.view);
   try {
-    await api(`/api/${form.dataset.create}`, { method: 'POST', body: JSON.stringify(values(form, view)) });
+    const result = await api(`/api/${form.dataset.create}`, { method: 'POST', body: JSON.stringify(values(form, view)) });
     form.reset();
     state.conflictCheck = { scrollId: '', borrowDate: '', dueDate: '', conflicts: [] };
     state.riskPreview = null;
     await load();
-    toast('已保存');
+    if (form.dataset.create === 'repairBatches' && result && result.batch) {
+      const count = result.repairs ? result.repairs.length : 0;
+      toast(`已生成修补方案，共${count}道工序`);
+    } else {
+      toast('已保存');
+    }
   } catch (error) {
     toast(error.message);
     if (form.dataset.create === 'loans') {

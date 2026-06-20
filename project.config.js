@@ -29,7 +29,9 @@ module.exports = {
     '低风险': 'ok',
     '中风险': 'warn',
     '高风险': 'bad',
-    '极高风险': 'extreme'
+    '极高风险': 'extreme',
+    '启用': 'ok',
+    '停用': 'bad'
   },
   collections: {
     scrolls: { label: '经卷档案' },
@@ -38,7 +40,9 @@ module.exports = {
     imagings: { label: '影像采集档案' },
     inventories: { label: '柜位盘点' },
     materials: { label: '修补材料台账' },
-    observations: { label: '人工观察记录' }
+    observations: { label: '人工观察记录' },
+    repairTemplates: { label: '修补方案模板' },
+    repairBatches: { label: '修补任务批次' }
   },
   stats: [
     { label: '经卷档案', collection: 'scrolls' },
@@ -49,7 +53,9 @@ module.exports = {
     { label: '盘点记录', collection: 'inventories' },
     { label: '待复核', collection: 'inventories', filter: { field: 'status', value: '待复核' } },
     { label: '材料品类', collection: 'materials' },
-    { label: '低余量/到期', collection: 'materials', filter: { field: 'status', value: '低余量' } }
+    { label: '低余量/到期', collection: 'materials', filter: { field: 'status', value: '低余量' } },
+    { label: '方案模板', collection: 'repairTemplates' },
+    { label: '进行中批次', collection: 'repairBatches', filter: { field: 'status', value: '进行中' } }
   ],
   views: [
     {
@@ -102,6 +108,59 @@ module.exports = {
       ]
     },
     {
+      id: 'repairTemplates',
+      label: '修补方案模板',
+      collection: 'repairTemplates',
+      formTitle: '新增修补方案模板',
+      listTitle: '方案模板',
+      submitLabel: '保存模板',
+      searchPlaceholder: '搜索模板名称、工序',
+      searchFields: ['name', 'processes', 'description'],
+      statusField: 'status',
+      statusOptions: ['启用', '停用'],
+      titleFields: ['name'],
+      summaryFields: ['processes', 'description'],
+      detailFields: [
+        { label: '工序组合', name: 'processes' },
+        { label: '状态', name: 'status' }
+      ],
+      defaults: { status: '启用' },
+      fields: [
+        { label: '模板名称', name: 'name', required: true },
+        { label: '工序组合（每行一个工序）', name: 'processes', type: 'textarea', required: true, wide: true },
+        { label: '说明', name: 'description', type: 'textarea', wide: true },
+        { label: '状态', name: 'status', type: 'select', options: ['启用', '停用'] }
+      ]
+    },
+    {
+      id: 'repairBatches',
+      label: '修补任务批次',
+      collection: 'repairBatches',
+      formTitle: '从模板生成修补方案',
+      listTitle: '修补批次',
+      submitLabel: '生成修补方案',
+      searchPlaceholder: '搜索经卷、模板、负责人',
+      searchFields: ['templateName', 'conservator', 'note'],
+      statusField: 'status',
+      statusOptions: ['进行中', '已完成'],
+      titleFields: ['templateName', 'conservator'],
+      relation: { collection: 'scrolls', localKey: 'scrollId', labelFields: ['title', 'protectionLevel'] },
+      summaryFields: ['progressSummary', 'note'],
+      detailFields: [
+        { label: '开始日期', name: 'startDate' },
+        { label: '状态', name: 'status' },
+        { label: '进度', name: 'progressSummary' }
+      ],
+      defaults: { status: '进行中' },
+      fields: [
+        { label: '经卷', name: 'scrollId', type: 'relation', collection: 'scrolls', labelFields: ['title', 'borrowStatus'], required: true, wide: true },
+        { label: '修补方案模板', name: 'templateId', type: 'relation', collection: 'repairTemplates', labelFields: ['name', 'status'], required: true, wide: true },
+        { label: '负责人', name: 'conservator', required: true },
+        { label: '开始日期', name: 'startDate', type: 'date', required: true },
+        { label: '备注', name: 'note', type: 'textarea', wide: true }
+      ]
+    },
+    {
       id: 'repairs',
       label: '修补记录',
       collection: 'repairs',
@@ -119,6 +178,7 @@ module.exports = {
         { label: '日期', name: 'date' },
         { label: '状态', name: 'status' },
         { label: '工序', name: 'process' },
+        { label: '所属批次', name: 'batchId', type: 'relation', collection: 'repairBatches', labelFields: ['templateName', 'status'] },
         { label: '参考材料', name: 'materialId', type: 'relation', collection: 'materials', labelFields: ['name', 'batch'] }
       ],
       fields: [
@@ -277,10 +337,8 @@ module.exports = {
       id: 'repair-done',
       label: '完成修补',
       collection: 'repairs',
-      relation: { collection: 'scrolls', localKey: 'scrollId' },
       patches: [
-        { field: 'status', value: '已完成' },
-        { target: 'related', field: 'borrowStatus', value: '需审批' }
+        { field: 'status', value: '已完成' }
       ]
     },
     { id: 'loan-approve', label: '批准', collection: 'loans', patches: [{ field: 'status', value: '已批准' }] },
@@ -317,6 +375,8 @@ module.exports = {
     { id: 'material-normal', label: '正常', collection: 'materials', patches: [{ field: 'status', value: '正常' }] },
     { id: 'material-low', label: '低余量', collection: 'materials', patches: [{ field: 'status', value: '低余量' }] },
     { id: 'material-soonexpiry', label: '即将到期', collection: 'materials', patches: [{ field: 'status', value: '即将到期' }] },
-    { id: 'material-expired', label: '已过期', collection: 'materials', danger: true, patches: [{ field: 'status', value: '已过期' }] }
+    { id: 'material-expired', label: '已过期', collection: 'materials', danger: true, patches: [{ field: 'status', value: '已过期' }] },
+    { id: 'template-enable', label: '启用', collection: 'repairTemplates', patches: [{ field: 'status', value: '启用' }] },
+    { id: 'template-disable', label: '停用', collection: 'repairTemplates', danger: true, patches: [{ field: 'status', value: '停用' }] }
   ]
 };

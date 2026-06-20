@@ -393,6 +393,32 @@ app.get('/api/scrolls/:id/timeline', async (req, res) => {
       meta: { observer: obs.observer }
     });
   }
+  for (const batch of db.repairBatches || []) {
+    if (batch.scrollId !== scrollId) continue;
+    events.push({
+      id: `ev-batch-${batch.id}`,
+      timestamp: batch.createdAt,
+      type: '修补批次',
+      source: 'repairBatches',
+      sourceId: batch.id,
+      title: `修补批次：${batch.templateName || '-'}（${batch.status || '-'}）`,
+      detail: `负责人：${batch.conservator || '-'}，进度：${batch.progressSummary || '-'}${batch.note ? '，' + batch.note : ''}`,
+      meta: { templateName: batch.templateName, status: batch.status }
+    });
+    for (const entry of batch.history || []) {
+      if (entry.action === '创建') continue;
+      events.push({
+        id: `ev-batch-hist-${batch.id}-${entry.at}`,
+        timestamp: entry.at,
+        type: '修补批次',
+        source: 'repairBatches',
+        sourceId: batch.id,
+        title: `批次${entry.action}`,
+        detail: entry.note || '',
+        meta: { templateName: batch.templateName }
+      });
+    }
+  }
   events.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
   res.json({ scrollId, scrollTitle: scroll.title, events });
 });
@@ -456,6 +482,13 @@ app.get('/api/loans/assess/:id', async (req, res) => {
   res.json(assessment);
 });
 
+app.get('/api/repair-batches/:id/tasks', async (req, res) => {
+  const db = await readDb();
+  const batchId = req.params.id;
+  const tasks = (db.repairs || []).filter((r) => r.batchId === batchId);
+  res.json(tasks);
+});
+
 app.post('/api/loans/assess-preview', async (req, res) => {
   const db = await readDb();
   const assessment = assessLoanRisk(db, req.body || {});
@@ -479,6 +512,67 @@ app.post('/api/:collection', async (req, res) => {
         });
       }
     }
+  }
+
+  if (collection === 'repairBatches') {
+    const { templateId, scrollId, conservator, startDate } = req.body;
+    if (!templateId || !scrollId || !conservator || !startDate) {
+      return res.status(400).json({ error: '缺少必要参数：templateId, scrollId, conservator, startDate' });
+    }
+    const template = (db.repairTemplates || []).find((t) => t.id === templateId);
+    if (!template) return res.status(404).json({ error: '修补方案模板不存在' });
+    if (template.status === '停用') return res.status(409).json({ error: '该模板已停用，无法生成修补方案' });
+    const processList = (template.processes || '').split('\n').map((p) => p.trim()).filter(Boolean);
+    if (!processList.length) return res.status(409).json({ error: '模板中无有效工序' });
+
+    const now = new Date().toISOString();
+    const batchId = `repairBatches-${Date.now()}-${Math.random().toString(16).slice(2, 7)}`;
+    const batchItem = {
+      id: batchId,
+      scrollId,
+      templateId,
+      templateName: template.name,
+      conservator,
+      startDate,
+      status: '进行中',
+      progressSummary: `0/${processList.length} 已完成`,
+      note: req.body.note || '',
+      createdAt: now,
+      updatedAt: now,
+      history: [stamp('创建', `从模板"${template.name}"生成${processList.length}道工序`)]
+    };
+
+    const repairItems = processList.map((processName) => ({
+      id: `repairs-${Date.now()}-${Math.random().toString(16).slice(2, 7)}`,
+      scrollId,
+      batchId,
+      process: processName,
+      conservator,
+      date: startDate,
+      status: '计划中',
+      materialUsed: '',
+      note: `由模板"${template.name}"生成`,
+      createdAt: now,
+      updatedAt: now,
+      history: [stamp('创建', `批次生成：${processName}`)]
+    }));
+
+    if (!Array.isArray(db.repairBatches)) db.repairBatches = [];
+    db.repairBatches.push(batchItem);
+    for (const r of repairItems) {
+      db.repairs.push(r);
+    }
+
+    const scroll = (db.scrolls || []).find((s) => s.id === scrollId);
+    if (scroll && scroll.borrowStatus !== '修补中') {
+      scroll.borrowStatus = '修补中';
+      scroll.updatedAt = now;
+      scroll.history = scroll.history || [];
+      scroll.history.unshift(stamp('修补中', `启动修补批次"${template.name}"`));
+    }
+
+    await writeDb(db);
+    return res.status(201).json({ batch: batchItem, repairs: repairItems });
   }
 
   const now = new Date().toISOString();
@@ -537,6 +631,50 @@ app.patch('/api/:collection/:id', async (req, res) => {
     item.riskAssessment = assessment;
   }
 
+  if (collection === 'repairs' && req.body.status) {
+    const justCompleted = req.body.status === '已完成' && item.status !== '已完成';
+    if (item.batchId) {
+      const batch = db.repairBatches?.find((b) => b.id === item.batchId);
+      if (batch) {
+        const batchRepairs = db.repairs.filter((r) => r.batchId === batch.id);
+        const countMap = {};
+        for (const r of batchRepairs) {
+          const s = r.id === item.id ? req.body.status : r.status;
+          countMap[s] = (countMap[s] || 0) + 1;
+        }
+        const completedCount = countMap['已完成'] || 0;
+        const totalCount = batchRepairs.length;
+        const wasAllDone = batch.status === '已完成';
+        batch.progressSummary = `${completedCount}/${totalCount} 已完成`;
+        batch.updatedAt = new Date().toISOString();
+        batch.history = batch.history || [];
+        if (completedCount === totalCount) {
+          if (!wasAllDone) {
+            batch.status = '已完成';
+            batch.history.unshift(stamp('批次完成', '所有修补工序已完成'));
+            const scroll = db.scrolls?.find((s) => s.id === batch.scrollId);
+            if (scroll) {
+              scroll.borrowStatus = '需审批';
+              scroll.updatedAt = new Date().toISOString();
+              scroll.history = scroll.history || [];
+              scroll.history.unshift(stamp('修补完成', `修补批次"${batch.templateName}"全部工序完成，转入需审批`));
+            }
+          }
+        } else if (justCompleted) {
+          batch.history.unshift(stamp('进度更新', `${item.process}已完成（${completedCount}/${totalCount}）`));
+        }
+      }
+    } else if (justCompleted) {
+      const scroll = db.scrolls?.find((s) => s.id === item.scrollId);
+      if (scroll) {
+        scroll.borrowStatus = '需审批';
+        scroll.updatedAt = new Date().toISOString();
+        scroll.history = scroll.history || [];
+        scroll.history.unshift(stamp('修补完成', `${item.process}修补完成，转入需审批`));
+      }
+    }
+  }
+
   item.history = item.history || [];
   if (historyAction || req.body.note || req.body.memo || req.body.status) {
     item.history.unshift(stamp(historyAction || req.body.status || '更新', req.body.note || req.body.memo || ''));
@@ -564,6 +702,42 @@ app.post('/api/action/:actionId/:id', async (req, res) => {
   if (!item) return res.status(404).json({ error: 'not found' });
   const result = runAction(db, action, item);
   if (result.error) return res.status(409).json({ error: result.error });
+
+  if (action.id === 'repair-done') {
+    if (item.batchId) {
+      const batch = db.repairBatches?.find((b) => b.id === item.batchId);
+      if (batch) {
+        const batchRepairs = db.repairs.filter((r) => r.batchId === batch.id);
+        const completedCount = batchRepairs.filter((r) => r.status === '已完成').length;
+        const totalCount = batchRepairs.length;
+        batch.progressSummary = `${completedCount}/${totalCount} 已完成`;
+        batch.updatedAt = new Date().toISOString();
+        batch.history = batch.history || [];
+        if (completedCount === totalCount && batch.status !== '已完成') {
+          batch.status = '已完成';
+          batch.history.unshift(stamp('批次完成', '所有修补工序已完成'));
+          const scroll = db.scrolls?.find((s) => s.id === batch.scrollId);
+          if (scroll) {
+            scroll.borrowStatus = '需审批';
+            scroll.updatedAt = new Date().toISOString();
+            scroll.history = scroll.history || [];
+            scroll.history.unshift(stamp('修补完成', `修补批次"${batch.templateName}"全部工序完成，转入需审批`));
+          }
+        } else {
+          batch.history.unshift(stamp('进度更新', `${item.process}已完成（${completedCount}/${totalCount}）`));
+        }
+      }
+    } else {
+      const scroll = db.scrolls?.find((s) => s.id === item.scrollId);
+      if (scroll) {
+        scroll.borrowStatus = '需审批';
+        scroll.updatedAt = new Date().toISOString();
+        scroll.history = scroll.history || [];
+        scroll.history.unshift(stamp('修补完成', `${item.process}修补完成，转入需审批`));
+      }
+    }
+  }
+
   await writeDb(db);
   res.json(result.item);
 });
