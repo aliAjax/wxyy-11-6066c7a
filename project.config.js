@@ -18,28 +18,43 @@ module.exports = {
     '模糊': 'bad',
     '待重拍': 'bad',
     '清晰': 'ok',
-    '已归档': 'ok'
+    '已归档': 'ok',
+    '正常': 'ok',
+    '待复核': 'warn',
+    '已处理': 'ok',
+    '异常': 'bad'
   },
   collections: {
     scrolls: { label: '经卷档案' },
     repairs: { label: '修补记录' },
     loans: { label: '借阅申请' },
-    imagings: { label: '影像采集档案' }
+    imagings: { label: '影像采集档案' },
+    inventories: { label: '柜位盘点' }
   },
   stats: [
     { label: '经卷档案', collection: 'scrolls' },
     { label: '一级保护', collection: 'scrolls', filter: { field: 'protectionLevel', value: '一级' } },
     { label: '修补记录', collection: 'repairs' },
     { label: '借阅中', collection: 'loans', filter: { field: 'status', value: '已借出' } },
-    { label: '影像采集', collection: 'imagings' }
+    { label: '影像采集', collection: 'imagings' },
+    { label: '盘点记录', collection: 'inventories' },
+    { label: '待复核', collection: 'inventories', filter: { field: 'status', value: '待复核' } }
   ],
   views: [
     {
       id: 'dashboard',
       label: '生命周期',
       type: 'dashboard',
-      focusTitle: '重点保护经卷',
-      focus: { collection: 'scrolls', field: 'borrowStatus', values: ['限制借阅', '修补中', '需审批'], limit: 8 }
+      foci: [
+        {
+          title: '重点保护经卷',
+          focus: { collection: 'scrolls', field: 'borrowStatus', values: ['限制借阅', '修补中', '需审批'], limit: 8 }
+        },
+        {
+          title: '待复核盘点',
+          focus: { collection: 'inventories', field: 'status', values: ['待复核'], limit: 8 }
+        }
+      ]
     },
     {
       id: 'scrolls',
@@ -156,6 +171,36 @@ module.exports = {
         { label: '清晰度状态', name: 'clarity', type: 'select', options: ['清晰', '模糊', '待重拍'] },
         { label: '备注', name: 'note', type: 'textarea', wide: true }
       ]
+    },
+    {
+      id: 'inventories',
+      label: '柜位盘点',
+      collection: 'inventories',
+      formTitle: '新建柜位盘点',
+      listTitle: '盘点记录',
+      submitLabel: '保存盘点',
+      searchPlaceholder: '搜索柜位、盘点人',
+      searchFields: ['cabinet', 'inventoryPerson', 'exceptionNote'],
+      statusField: 'status',
+      statusOptions: ['正常', '待复核', '已处理'],
+      titleFields: ['cabinet', 'inventoryPerson'],
+      relation: { collection: 'scrolls', localKey: 'scrollId', labelFields: ['title', 'protectionLevel'] },
+      summaryFields: ['exceptionNote'],
+      detailFields: [
+        { label: '盘点日期', name: 'inventoryDate' },
+        { label: '盘点结果', name: 'result' },
+        { label: '处理状态', name: 'status' }
+      ],
+      defaults: { result: '正常', status: '正常' },
+      fields: [
+        { label: '经卷', name: 'scrollId', type: 'relation', collection: 'scrolls', labelFields: ['title', 'cabinet'], required: true, wide: true },
+        { label: '盘点人', name: 'inventoryPerson', required: true },
+        { label: '盘点日期', name: 'inventoryDate', type: 'date', required: true },
+        { label: '存放柜位', name: 'cabinet', required: true },
+        { label: '盘点结果', name: 'result', type: 'select', options: ['正常', '异常'], required: true },
+        { label: '处理状态', name: 'status', type: 'select', options: ['正常', '待复核', '已处理'], required: true },
+        { label: '异常说明', name: 'exceptionNote', type: 'textarea', wide: true }
+      ]
     }
   ],
   actions: [
@@ -201,6 +246,9 @@ module.exports = {
     { id: 'loan-reject', label: '拒绝', collection: 'loans', danger: true, patches: [{ field: 'status', value: '已拒绝' }] },
     { id: 'imaging-clear', label: '清晰', collection: 'imagings', patches: [{ field: 'clarity', value: '清晰' }] },
     { id: 'imaging-blur', label: '模糊', collection: 'imagings', patches: [{ field: 'clarity', value: '模糊' }] },
-    { id: 'imaging-reshoot', label: '待重拍', collection: 'imagings', danger: true, patches: [{ field: 'clarity', value: '待重拍' }] }
+    { id: 'imaging-reshoot', label: '待重拍', collection: 'imagings', danger: true, patches: [{ field: 'clarity', value: '待重拍' }] },
+    { id: 'inventory-normal', label: '正常', collection: 'inventories', patches: [{ field: 'status', value: '正常' }, { field: 'result', value: '正常' }] },
+    { id: 'inventory-review', label: '待复核', collection: 'inventories', patches: [{ field: 'status', value: '待复核' }, { field: 'result', value: '异常' }] },
+    { id: 'inventory-processed', label: '已处理', collection: 'inventories', patches: [{ field: 'status', value: '已处理' }] }
   ]
 };

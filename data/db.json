@@ -13,7 +13,11 @@
       "createdAt": "2026-06-12T08:00:00.000Z",
       "updatedAt": "2026-06-18T08:00:00.000Z",
       "history": [
-        { "at": "2026-06-18T08:00:00.000Z", "action": "保护评估", "note": "限制借阅" }
+        {
+          "at": "2026-06-18T08:00:00.000Z",
+          "action": "保护评估",
+          "note": "限制借阅"
+        }
       ]
     }
   ],
@@ -30,7 +34,11 @@
       "createdAt": "2026-06-18T09:00:00.000Z",
       "updatedAt": "2026-06-18T09:00:00.000Z",
       "history": [
-        { "at": "2026-06-18T09:00:00.000Z", "action": "创建", "note": "除尘记录" }
+        {
+          "at": "2026-06-18T09:00:00.000Z",
+          "action": "创建",
+          "note": "除尘记录"
+        }
       ]
     }
   ],
@@ -48,7 +56,70 @@
       "createdAt": "2026-06-20T08:00:00.000Z",
       "updatedAt": "2026-06-20T08:00:00.000Z",
       "history": [
-        { "at": "2026-06-20T08:00:00.000Z", "action": "创建", "note": "卷首高清拍摄，完整覆盖" }
+        {
+          "at": "2026-06-20T08:00:00.000Z",
+          "action": "创建",
+          "note": "卷首高清拍摄，完整覆盖"
+        }
+      ]
+    }
+  ],
+  "inventories": [
+    {
+      "id": "inventory-seed-1",
+      "scrollId": "scroll-seed-1",
+      "inventoryPerson": "王静安",
+      "inventoryDate": "2026-06-19",
+      "cabinet": "恒湿柜C-01",
+      "result": "正常",
+      "exceptionNote": "",
+      "status": "正常",
+      "createdAt": "2026-06-19T09:00:00.000Z",
+      "updatedAt": "2026-06-19T09:00:00.000Z",
+      "history": [
+        {
+          "at": "2026-06-19T09:00:00.000Z",
+          "action": "创建",
+          "note": "柜位盘点，结果正常"
+        }
+      ]
+    },
+    {
+      "id": "inventory-seed-2",
+      "scrollId": "scroll-seed-1",
+      "inventoryPerson": "张怀瑾",
+      "inventoryDate": "2026-06-20",
+      "cabinet": "恒湿柜C-01",
+      "result": "异常",
+      "exceptionNote": "卷首封皮边角微潮湿，疑有冷凝水渗透",
+      "status": "待复核",
+      "createdAt": "2026-06-20T08:30:00.000Z",
+      "updatedAt": "2026-06-20T08:30:00.000Z",
+      "history": [
+        {
+          "at": "2026-06-20T08:30:00.000Z",
+          "action": "创建",
+          "note": "卷首封皮边角微潮湿，疑有冷凝水渗透"
+        }
+      ]
+    },
+    {
+      "id": "inventories-1781937670996-a51f7",
+      "result": "异常",
+      "status": "待复核",
+      "scrollId": "scroll-seed-1",
+      "inventoryPerson": "李青山",
+      "inventoryDate": "2026-06-20",
+      "cabinet": "恒湿柜C-02",
+      "exceptionNote": "函套轻微脱胶，签条边角卷曲",
+      "createdAt": "2026-06-20T06:41:10.996Z",
+      "updatedAt": "2026-06-20T06:41:10.996Z",
+      "history": [
+        {
+          "at": "2026-06-20T06:41:10.996Z",
+          "action": "创建",
+          "note": ""
+        }
       ]
     }
   ]

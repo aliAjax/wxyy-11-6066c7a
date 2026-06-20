@@ -167,15 +167,23 @@ function renderList(view) {
   return items.length ? items.map((item) => renderCard(item, collection, view)).join('') : `<div class="empty">暂无${escapeHtml(collectionLabel(collection))}</div>`;
 }
 
-function renderDashboardView(view) {
-  const source = view.focus;
+function renderDashboardPanel(focusConfig) {
+  const source = focusConfig.focus;
   let items = [...(state.db[source.collection] || [])];
   if (source.field) items = items.filter((item) => source.values.includes(item[source.field]));
   items = items.slice(0, source.limit || 8);
   const cardView = state.config.views.find((entry) => entry.collection === source.collection) || source;
+  const panelTitle = focusConfig.title || '重点事项';
+  const emptyText = focusConfig.emptyText || '暂无记录';
+  return `<div class="panel"><h2>${escapeHtml(panelTitle)}</h2><div class="list">${items.length ? items.map((item) => renderCard(item, source.collection, cardView)).join('') : `<div class="empty">${escapeHtml(emptyText)}</div>`}</div></div>`;
+}
+
+function renderDashboardView(view) {
+  const foci = view.foci || [{ title: view.focusTitle, focus: view.focus, emptyText: '暂无重点事项' }];
+  const panels = foci.map(renderDashboardPanel).join('');
   return `<section class="view active" id="${view.id}">
     ${renderStats()}
-    <div class="panel"><h2>${escapeHtml(view.focusTitle)}</h2><div class="list">${items.length ? items.map((item) => renderCard(item, source.collection, cardView)).join('') : '<div class="empty">暂无重点事项</div>'}</div></div>
+    ${panels}
   </section>`;
 }
 

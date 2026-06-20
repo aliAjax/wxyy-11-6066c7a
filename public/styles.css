@@ -147,6 +147,10 @@ main {
   display: block;
 }
 
+.view > .panel + .panel {
+  margin-top: 18px;
+}
+
 .stats {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
