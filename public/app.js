@@ -1883,6 +1883,7 @@ function renderAuditView(view) {
     update: '修改',
     delete: '删除',
     statusChange: '状态变更',
+    historyAppend: '补充历史',
     approve: '批准',
     reject: '拒绝',
     lend: '借出',
@@ -1894,6 +1895,7 @@ function renderAuditView(view) {
     update: 'warn',
     delete: 'bad',
     statusChange: 'warn',
+    historyAppend: 'ok',
     approve: 'ok',
     reject: 'bad',
     lend: 'warn',
@@ -2030,12 +2032,12 @@ document.addEventListener('click', (e) => {
         return;
       }
       if (ev.target.id === 'cc-fix-confirm-btn') {
+        const fixNote = $('#cc-fix-note', modal)?.value || '';
         closeModal();
         state.consistencyCheck.fixing[issueId] = true;
         render();
         setTab('consistency-check');
 
-        const fixNote = $('#cc-fix-note')?.value || '';
         api('/api/consistency-check/fix', {
           method: 'POST',
           body: JSON.stringify({ issueId, fixSuggestion, note: fixNote })

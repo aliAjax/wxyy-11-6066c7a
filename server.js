@@ -173,6 +173,7 @@ function actionLabel(action) {
     update: '修改',
     delete: '删除',
     statusChange: '状态变更',
+    historyAppend: '补充历史',
     approve: '批准',
     reject: '拒绝',
     lend: '借出',
