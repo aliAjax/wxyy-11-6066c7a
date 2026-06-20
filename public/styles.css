@@ -772,6 +772,66 @@ main {
   margin-bottom: 6px;
 }
 
+.protection-advice {
+  margin-top: 12px;
+  padding: 12px;
+  border-radius: 8px;
+  background: rgba(30, 82, 130, .07);
+  border: 1px solid rgba(30, 82, 130, .25);
+}
+
+.protection-advice-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.protection-advice-title {
+  font-weight: 800;
+  color: #1e5282;
+}
+
+.protection-advice-tags {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+}
+
+.protection-advice-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.protection-advice-list li {
+  font-size: 13px;
+  color: var(--ink);
+  padding-left: 18px;
+  position: relative;
+  line-height: 1.6;
+}
+
+.protection-advice-list li::before {
+  content: '▸';
+  position: absolute;
+  left: 2px;
+  color: #1e5282;
+  font-weight: 700;
+}
+
+.advice-generated {
+  margin-top: 8px;
+  font-size: 11px;
+  color: var(--muted);
+  font-style: italic;
+  text-align: right;
+}
+
 .modal-backdrop {
   position: fixed;
   inset: 0;

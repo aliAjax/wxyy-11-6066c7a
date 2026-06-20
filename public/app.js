@@ -222,6 +222,27 @@ function renderConflictWarning(conflicts) {
   </div>`;
 }
 
+function renderProtectionAdvice(advice) {
+  if (!advice) return '';
+  const suggestions = advice.suggestions || (advice.content ? advice.content.split('\n') : []);
+  if (!suggestions.length) return '';
+  const items = suggestions.map((s) => `<li>${escapeHtml(s)}</li>`).join('');
+  const generatedAt = advice.generatedAt ? `<div class="advice-generated">生成时间：${fmtDate(advice.generatedAt)}</div>` : '';
+  const tags = (advice.damageLabels || []).map((label) => pill(label, toneFor(
+    label === '严重残损' ? '已拒绝' :
+    label === '明显残损' ? '修补中' :
+    label === '轻度残损' ? '需审批' : '可借阅'
+  ))).join('');
+  return `<div class="protection-advice">
+    <div class="protection-advice-head">
+      <span class="protection-advice-title">🛡️ 保护建议</span>
+      ${tags ? `<span class="protection-advice-tags">${tags}</span>` : ''}
+    </div>
+    <ul class="protection-advice-list">${items}</ul>
+    ${generatedAt}
+  </div>`;
+}
+
 function renderUnavailableRanges(scrollId) {
   const ranges = getUnavailableDateRanges(scrollId);
   if (!ranges.length) return '';
@@ -414,6 +435,7 @@ const TIMELINE_TYPE_ICONS = {
   '借阅': '📖',
   '归还': '↩️',
   '状态变更': '🔄',
+  '保护建议': '🛡️',
   '影像采集': '📷',
   '盘点': '📋',
   '人工观察': '👁️',
@@ -426,6 +448,7 @@ const TIMELINE_TYPE_TONES = {
   '借阅': 'warn',
   '归还': 'ok',
   '状态变更': '',
+  '保护建议': 'obs',
   '影像采集': '',
   '盘点': '',
   '人工观察': 'obs',
@@ -476,8 +499,10 @@ function renderTimelineOverlay() {
 
   const scroll = state.db.scrolls?.find((s) => s.id === data.scrollId);
   const scrollTitle = data.scrollTitle || scroll?.title || data.scrollId;
-  const scrollStatus = scroll?.borrowStatus || '';
-  const scrollProtection = scroll?.protectionLevel || '';
+  const scrollStatus = data.scrollBorrowStatus || scroll?.borrowStatus || '';
+  const scrollProtection = data.scrollProtectionLevel || scroll?.protectionLevel || '';
+  const protectionAdvice = data.protectionAdvice || scroll?.protectionAdvice;
+  const adviceHtml = renderProtectionAdvice(protectionAdvice);
 
   const eventListHtml = filtered.length
     ? filtered.map((ev) => `
@@ -512,6 +537,7 @@ function renderTimelineOverlay() {
         </div>
         <button class="modal-close" data-timeline-close>×</button>
       </div>
+      ${adviceHtml}
       <div class="timeline-toolbar">
         <label>按类型筛选：<select id="timeline-filter">${filterOptions}</select></label>
         <span class="timeline-count">共 ${filtered.length} 条事件${state.timelineFilter ? '（已筛选）' : ''}</span>
@@ -602,6 +628,8 @@ function renderCard(item, collection, view) {
 
   const riskHtml = collection === 'loans' ? renderRiskPanel(item.riskAssessment) : '';
 
+  const adviceHtml = collection === 'scrolls' ? renderProtectionAdvice(item.protectionAdvice) : '';
+
   const timelineBtn = collection === 'scrolls'
     ? `<button class="ghost" data-timeline="${item.id}">📜 时间轴</button>`
     : '';
@@ -625,6 +653,7 @@ function renderCard(item, collection, view) {
     ${relation}
     ${summary ? `<p>${escapeHtml(summary)}</p>` : ''}
     ${details ? `<div class="detail">${details}</div>` : ''}
+    ${adviceHtml}
     ${batchProgressHtml}
     ${riskHtml}
     ${actionsHtml}

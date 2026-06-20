@@ -241,6 +241,180 @@ const DAMAGE_KEYWORDS = [
   { keywords: ['轻微', '少量', '边缘'], score: -5, label: '轻微情况' }
 ];
 
+const PROTECTION_ADVICE_RULES = {
+  damage: {
+    '虫蛀': [
+      '经卷存在虫蛀痕迹，需立即放入低温冷冻柜进行杀虫处理（-18℃冷冻72小时）',
+      '处理后置于密封盒中，内放樟脑丸或芸香草以防再次虫害',
+      '检查相邻经卷是否受波及，必要时整柜熏蒸'
+    ],
+    '霉斑': [
+      '发现霉斑需立即隔离存放，避免霉菌扩散',
+      '用软毛刷轻轻扫去表面霉斑，配合75%乙醇棉片轻擦消毒',
+      '存放环境需严格控湿（相对湿度45%-55%），定期更换干燥剂'
+    ],
+    '脆化': [
+      '纸张脆化严重，严禁任何翻阅和展示操作',
+      '须进行托裱加固处理，优先使用古法托裱工艺',
+      '处理后装入定制无酸纸套，平放于恒湿柜中永久保存'
+    ],
+    '脆裂': [
+      '纸张脆裂需进行托裱加固，注意拼接处纹理对齐',
+      '脆裂部位避免受力，操作时使用软纸衬垫',
+      '建议制作仿真复制本供查阅使用，原件封存'
+    ],
+    '碳化': [
+      '碳化经卷属极危状态，禁止一切物理接触',
+      '须请专业文物保护机构评估，制定专项修复方案',
+      '存放于充氮密封盒中，避免光照和温度波动'
+    ],
+    '残损': [
+      '残损部位需进行补纸修复，选配与原纸材质相近的补纸',
+      '修复前后均需进行高清影像采集留档',
+      '修复后静养至少7日再进行其他操作'
+    ],
+    '断裂': [
+      '断裂处需使用小麦浆糊进行粘接，注意纤维方向对齐',
+      '粘接后夹入吸水纸压平，室温下自然干燥',
+      '断裂严重者需进行整卷托裱处理'
+    ],
+    '撕裂': [
+      '撕裂边缘先展平处理，再用同质地补纸进行隐补',
+      '修复过程中避免二次撕裂，操作须由熟练修补人员完成',
+      '补纸颜色需与原件协调，修复痕迹应尽量隐蔽'
+    ],
+    '脱落': [
+      '脱落碎片需单独收集封存，注明对应位置',
+      '进行拼接复原后用浆糊逐片粘接加固',
+      '重要脱落部位建议制作前后对比影像记录'
+    ],
+    '水渍': [
+      '水渍经卷需先进行干燥处理，夹多层吸水纸压平',
+      '每日更换吸水纸，直至完全干燥（约3-5天）',
+      '干燥后检查是否有晕染或粘连，必要时进行揭裱处理'
+    ],
+    '磨损': [
+      '磨损部位可进行隐补加固，保护纸张纤维',
+      '建议减少翻阅频次，查阅优先使用影印本',
+      '函套内增加软纸衬垫，减少开合摩擦'
+    ],
+    '褶皱': [
+      '褶皱处需用喷壶轻喷水雾后，隔纸用低温熨斗展平',
+      '严重褶皱需进行托裱处理，注意张力均匀',
+      '平时存放应保持平放，避免堆叠挤压'
+    ],
+    '脱胶': [
+      '脱胶部位重新涂刷小麦浆糊粘接，压平干燥',
+      '检查整卷其他部位是否存在脱胶隐患',
+      '装函前确认粘接处完全干燥，防止粘连'
+    ],
+    '卷曲': [
+      '卷曲经卷需展平处理，可隔纸用重物轻压',
+      '极度卷曲者需进行回潮后逐步展平，不可强行拉直',
+      '存放时保持平放，恒湿环境可减少卷曲复发'
+    ],
+    '受潮': [
+      '立即转移至干燥通风环境，避免阳光直射',
+      '用吸水纸吸去表面湿气，夹纸压平自然阴干',
+      '检查是否有霉斑产生迹象，必要时进行预防性消毒'
+    ],
+    '潮湿': [
+      '立即转移至干燥通风环境，避免阳光直射',
+      '用吸水纸吸去表面湿气，夹纸压平自然阴干',
+      '检查是否有霉斑产生迹象，必要时进行预防性消毒'
+    ]
+  },
+  protectionLevel: {
+    '一级': [
+      '【一级保护】原件仅限馆内特藏室查阅，须两人以上在场',
+      '【一级保护】禁止外借展出，如需展示须使用高仿复制件',
+      '【一级保护】每季度进行一次外观检查，每年做一次专业除尘',
+      '【一级保护】存放于恒温恒湿柜（温度18-22℃，湿度45-55%）'
+    ],
+    '二级': [
+      '【二级保护】馆内查阅需经部门负责人审批',
+      '【二级保护】外借展览须馆长批准，运输使用专用防震箱',
+      '【二级保护】每半年进行一次全面状态检查',
+      '【二级保护】存放于恒湿柜中，避免阳光直射'
+    ],
+    '三级': [
+      '【三级保护】馆内查阅正常登记即可',
+      '【三级保护】短期外借可由部门负责人审批',
+      '【三级保护】每年进行一次状态盘点检查',
+      '【三级保护】存放于普通文物柜即可，注意防潮防尘'
+    ]
+  },
+  borrowStatus: {
+    '限制借阅': [
+      '当前限制借阅：如需使用须提交专项申请，由馆长办公会审议',
+      '限制期间加强日常巡检频次，每周检查一次存放状态'
+    ],
+    '修补中': [
+      '修补进行中：操作区域须保持温湿度稳定，避免无关人员接触',
+      '每日记录修补进度和经卷状态变化，重要工序前后拍照留档'
+    ],
+    '需审批': [
+      '借阅需审批：使用前须评估用途风险，查阅时在旁监护',
+      '归还时须当面检查经卷状态，确认完好后签收归档'
+    ],
+    '可借阅': [
+      '借阅状态正常：仍需遵守轻取轻放原则，查阅时佩戴干净手套',
+      '归还时检查有无新增损伤，异常情况及时登记报告'
+    ]
+  }
+};
+
+function generateProtectionAdvice(scroll) {
+  const damage = (scroll.damage || '').trim();
+  const protectionLevel = scroll.protectionLevel || '三级';
+  const borrowStatus = scroll.borrowStatus || '可借阅';
+  const advice = [];
+  const matchedDamageLabels = [];
+
+  for (const keyword in PROTECTION_ADVICE_RULES.damage) {
+    if (damage.includes(keyword)) {
+      const rules = PROTECTION_ADVICE_RULES.damage[keyword];
+      for (const rule of rules) {
+        if (!advice.includes(rule)) {
+          advice.push(rule);
+        }
+      }
+      const labelMatch = DAMAGE_KEYWORDS.find((k) => k.keywords.includes(keyword));
+      if (labelMatch && !matchedDamageLabels.includes(labelMatch.label)) {
+        matchedDamageLabels.push(labelMatch.label);
+      }
+    }
+  }
+
+  const levelRules = PROTECTION_ADVICE_RULES.protectionLevel[protectionLevel] || [];
+  for (const rule of levelRules) {
+    if (!advice.includes(rule)) {
+      advice.push(rule);
+    }
+  }
+
+  const statusRules = PROTECTION_ADVICE_RULES.borrowStatus[borrowStatus] || [];
+  for (const rule of statusRules) {
+    if (!advice.includes(rule)) {
+      advice.push(rule);
+    }
+  }
+
+  if (advice.length === 0) {
+    advice.push('经卷保存状态良好，按常规流程入藏管理即可');
+    advice.push('建议每半年进行一次例行检查，注意防虫防潮');
+  }
+
+  return {
+    content: advice.join('\n'),
+    suggestions: advice,
+    damageLabels: matchedDamageLabels,
+    protectionLevel,
+    borrowStatus,
+    generatedAt: new Date().toISOString()
+  };
+}
+
 function parseDate(dateStr) {
   return new Date(dateStr + 'T00:00:00');
 }
@@ -476,11 +650,12 @@ app.get('/api/scrolls/:id/timeline', async (req, res) => {
   });
   for (const entry of scroll.history || []) {
     if (entry.action === '创建') continue;
+    const isAdviceUpdate = entry.action === '保护建议更新';
     const isStatusChange = ['保护评估', '状态变更', '可借阅', '需审批', '修补中', '限制借阅'].includes(entry.action);
     events.push({
       id: `ev-scroll-hist-${scroll.id}-${entry.at}`,
       timestamp: entry.at,
-      type: isStatusChange ? '状态变更' : '状态变更',
+      type: isAdviceUpdate ? '保护建议' : (isStatusChange ? '状态变更' : '状态变更'),
       source: 'scrolls',
       sourceId: scroll.id,
       title: `${entry.action}`,
@@ -623,7 +798,14 @@ app.get('/api/scrolls/:id/timeline', async (req, res) => {
     }
   }
   events.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-  res.json({ scrollId, scrollTitle: scroll.title, events });
+  res.json({
+    scrollId,
+    scrollTitle: scroll.title,
+    scrollBorrowStatus: scroll.borrowStatus,
+    scrollProtectionLevel: scroll.protectionLevel,
+    protectionAdvice: scroll.protectionAdvice || null,
+    events
+  });
 });
 
 app.post('/api/scrolls/:id/observation', async (req, res) => {
@@ -866,6 +1048,7 @@ app.post('/api/:collection', requirePermission(':collection', 'create'), async (
       scroll.updatedAt = now;
       scroll.history = scroll.history || [];
       scroll.history.unshift(stamp('修补中', `启动修补批次"${template.name}"`));
+      scroll.protectionAdvice = generateProtectionAdvice(scroll);
     }
 
     const scrollTitle = scroll?.title || '';
@@ -902,6 +1085,12 @@ app.post('/api/:collection', requirePermission(':collection', 'create'), async (
     const riskNote = formatRiskNote(assessment, '创建');
     const originalNote = req.body.note || req.body.memo || req.body.reason || '';
     item.history = [stamp('创建', originalNote ? `${originalNote} | ${riskNote}` : riskNote)];
+  } else if (collection === 'scrolls') {
+    const advice = generateProtectionAdvice(item);
+    item.protectionAdvice = advice;
+    const originalNote = req.body.note || req.body.memo || '';
+    const adviceSummary = advice.damageLabels.length > 0 ? `保护建议已生成（${advice.damageLabels.join('、')}）` : '保护建议已生成';
+    item.history = [stamp('创建', originalNote ? `${originalNote} | ${adviceSummary}` : adviceSummary)];
   } else {
     item.history = [stamp('创建', req.body.note || req.body.memo || '')];
   }
@@ -1001,6 +1190,27 @@ app.patch('/api/:collection/:id', async (req, res) => {
   const prevStatus = item.status;
   Object.assign(item, req.body, { updatedAt: new Date().toISOString() });
 
+  if (collection === 'scrolls') {
+    const damageChanged = req.body.damage !== undefined && req.body.damage !== oldItem.damage;
+    const levelChanged = req.body.protectionLevel !== undefined && req.body.protectionLevel !== oldItem.protectionLevel;
+    const borrowChanged = req.body.borrowStatus !== undefined && req.body.borrowStatus !== oldItem.borrowStatus;
+    if (damageChanged || levelChanged || borrowChanged || !item.protectionAdvice) {
+      const advice = generateProtectionAdvice(item);
+      item.protectionAdvice = advice;
+      const changedFields = [];
+      if (damageChanged) changedFields.push('残损描述');
+      if (levelChanged) changedFields.push('保护等级');
+      if (borrowChanged) changedFields.push('借阅状态');
+      const adviceSummary = changedFields.length > 0
+        ? `${changedFields.join('、')}变更，保护建议已更新`
+        : '保护建议已生成';
+      item.history = item.history || [];
+      if (!historyAction && !req.body.note && !req.body.memo) {
+        item.history.unshift(stamp('保护建议更新', adviceSummary));
+      }
+    }
+  }
+
   if (collection === 'loans' && (req.body.scrollId || req.body.borrowDate || req.body.dueDate || req.body.purpose)) {
     const mergedLoan = { ...item, ...req.body };
     const assessment = assessLoanRisk(db, mergedLoan);
@@ -1035,6 +1245,7 @@ app.patch('/api/:collection/:id', async (req, res) => {
               scroll.updatedAt = new Date().toISOString();
               scroll.history = scroll.history || [];
               scroll.history.unshift(stamp('修补完成', `修补批次"${batch.templateName}"全部工序完成，转入需审批`));
+              scroll.protectionAdvice = generateProtectionAdvice(scroll);
             }
           }
         } else {
@@ -1047,6 +1258,7 @@ app.patch('/api/:collection/:id', async (req, res) => {
               scroll.updatedAt = new Date().toISOString();
               scroll.history = scroll.history || [];
               scroll.history.unshift(stamp('修补中', `修补批次"${batch.templateName}"有工序回退，经卷重回修补中`));
+              scroll.protectionAdvice = generateProtectionAdvice(scroll);
             }
           } else if (justCompleted) {
             batch.history.unshift(stamp('进度更新', `${item.process}已完成（${completedCount}/${totalCount}）`));
@@ -1062,6 +1274,7 @@ app.patch('/api/:collection/:id', async (req, res) => {
         scroll.updatedAt = new Date().toISOString();
         scroll.history = scroll.history || [];
         scroll.history.unshift(stamp('修补完成', `${item.process}修补完成，转入需审批`));
+        scroll.protectionAdvice = generateProtectionAdvice(scroll);
       }
     } else if (justReverted) {
       const scroll = db.scrolls?.find((s) => s.id === item.scrollId);
@@ -1070,6 +1283,7 @@ app.patch('/api/:collection/:id', async (req, res) => {
         scroll.updatedAt = new Date().toISOString();
         scroll.history = scroll.history || [];
         scroll.history.unshift(stamp('修补中', `${item.process}修补回退，经卷重回修补中`));
+        scroll.protectionAdvice = generateProtectionAdvice(scroll);
       }
     }
   }
@@ -1378,6 +1592,13 @@ function runAction(db, action, item) {
       target.history.unshift(stamp(action.label, `${baseNote} | ${riskNote}`));
     } else {
       target.history.unshift(stamp(action.label, action.note || '状态流转'));
+    }
+
+    if (patch.target === 'related' && patch.field === 'borrowStatus' && related) {
+      related.protectionAdvice = generateProtectionAdvice(related);
+    }
+    if (action.collection === 'scrolls' && patch.field === 'borrowStatus' && target) {
+      target.protectionAdvice = generateProtectionAdvice(target);
     }
   }
   for (const delta of action.deltas || []) {
@@ -1696,14 +1917,17 @@ app.post('/api/scrolls/batch/import', async (req, res) => {
       protectionLevel: data.protectionLevel ? data.protectionLevel.trim() : '三级',
       borrowStatus: data.borrowStatus ? data.borrowStatus.trim() : '需审批',
       createdAt: now,
-      updatedAt: now,
-      history: [
-        stamp(
-          '创建',
-          `批量导入（第${row.rowNumber}行），保护等级：${data.protectionLevel ? data.protectionLevel.trim() : '三级'}，借阅状态：${data.borrowStatus ? data.borrowStatus.trim() : '需审批'}`
-        )
-      ]
+      updatedAt: now
     };
+    const advice = generateProtectionAdvice(item);
+    item.protectionAdvice = advice;
+    const adviceSummary = advice.damageLabels.length > 0 ? `保护建议已生成（${advice.damageLabels.join('、')}）` : '保护建议已生成';
+    item.history = [
+      stamp(
+        '创建',
+        `批量导入（第${row.rowNumber}行），保护等级：${data.protectionLevel ? data.protectionLevel.trim() : '三级'}，借阅状态：${data.borrowStatus ? data.borrowStatus.trim() : '需审批'} | ${adviceSummary}`
+      )
+    ];
     db.scrolls.push(item);
     createdScrolls.push(item);
   }
@@ -2020,6 +2244,8 @@ app.post('/api/consistency-check/fix', requirePermission('scrolls', 'update'), a
 
   if (statusWillChange) {
     scroll.borrowStatus = fixConfig.targetBorrowStatus;
+    const advice = generateProtectionAdvice(scroll);
+    scroll.protectionAdvice = advice;
   }
   scroll.updatedAt = new Date().toISOString();
   scroll.history = scroll.history || [];

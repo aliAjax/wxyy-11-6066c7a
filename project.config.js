@@ -96,6 +96,10 @@ module.exports = {
         { label: '年代', name: 'era' },
         { label: '保护等级', name: 'protectionLevel' }
       ],
+      adviceField: {
+        label: '保护建议',
+        name: 'protectionAdvice'
+      },
       fields: [
         { label: '卷名', name: 'title', required: true },
         { label: '材质', name: 'material', required: true },
