@@ -6,7 +6,7 @@ const {
   assessBorrowability,
   ACTIVE_LOAN_STATUSES,
   PURPOSE_RISK
-} = require('../server');
+} = require('../loan-assess');
 
 let passed = 0;
 let failed = 0;
