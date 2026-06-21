@@ -3555,3 +3555,397 @@ main {
     grid-template-columns: 1fr;
   }
 }
+
+.borrowability-card {
+  background: white;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 14px 16px;
+  margin: 10px 0;
+}
+
+.borrowability-card.compact {
+  padding: 10px 12px;
+  margin: 6px 0;
+}
+
+.borrowability-card.ok {
+  background: linear-gradient(135deg, rgba(38, 115, 77, .06), rgba(38, 115, 77, .02));
+  border-color: rgba(38, 115, 77, .3);
+}
+
+.borrowability-card.warn {
+  background: linear-gradient(135deg, rgba(163, 92, 0, .08), rgba(163, 92, 0, .03));
+  border-color: rgba(163, 92, 0, .3);
+}
+
+.borrowability-card.bad {
+  background: linear-gradient(135deg, rgba(161, 61, 61, .08), rgba(161, 61, 61, .03));
+  border-color: rgba(161, 61, 61, .3);
+}
+
+.borrowability-card.extreme {
+  background: linear-gradient(135deg, rgba(127, 29, 29, .1), rgba(161, 61, 61, .05));
+  border-color: rgba(127, 29, 29, .4);
+}
+
+.borrowability-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 10px;
+  flex-wrap: wrap;
+}
+
+.borrowability-level {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.borrowability-icon {
+  font-size: 20px;
+}
+
+.borrowability-title {
+  font-weight: 800;
+  font-size: 15px;
+  color: var(--ink);
+}
+
+.borrowability-card.ok .borrowability-title { color: var(--ok); }
+.borrowability-card.warn .borrowability-title { color: var(--warn); }
+.borrowability-card.bad .borrowability-title { color: var(--bad); }
+.borrowability-card.extreme .borrowability-title { color: #7f1d1d; }
+
+.borrowability-score {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.borrowability-score strong {
+  font-size: 18px;
+  color: var(--ink);
+}
+
+.borrowability-card.ok .borrowability-score strong { color: var(--ok); }
+.borrowability-card.warn .borrowability-score strong { color: var(--warn); }
+.borrowability-card.bad .borrowability-score strong { color: var(--bad); }
+.borrowability-card.extreme .borrowability-score strong { color: #7f1d1d; }
+
+.conservative-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  background: rgba(107, 114, 128, .15);
+  border: 1px solid rgba(107, 114, 128, .3);
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #4b5563;
+  cursor: help;
+}
+
+.block-reasons {
+  margin-top: 10px;
+  padding: 10px 12px;
+  background: rgba(161, 61, 61, .06);
+  border: 1px solid rgba(161, 61, 61, .2);
+  border-radius: 8px;
+}
+
+.block-reasons-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--bad);
+  margin-bottom: 6px;
+}
+
+.block-reasons-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.block-reasons-list li {
+  font-size: 12px;
+  color: var(--ink);
+  padding-left: 16px;
+  position: relative;
+  line-height: 1.4;
+}
+
+.block-reasons-list li::before {
+  content: '▸';
+  position: absolute;
+  left: 2px;
+  color: var(--bad);
+  font-weight: 700;
+}
+
+.borrowability-dimensions {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px dashed var(--line);
+}
+
+.borrowability-dimensions-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--muted);
+  margin-bottom: 8px;
+}
+
+.dimension-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 8px;
+}
+
+.dimension-item {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.dimension-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 11px;
+}
+
+.dimension-name {
+  font-weight: 600;
+  color: var(--ink);
+}
+
+.dimension-score {
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.dimension-bar {
+  height: 6px;
+  background: rgba(0, 0, 0, .06);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.dimension-bar-fill {
+  height: 100%;
+  border-radius: 999px;
+  transition: width .3s ease;
+}
+
+.dimension-bar-fill.ok { background: var(--ok); }
+.dimension-bar-fill.warn { background: var(--warn); }
+.dimension-bar-fill.bad { background: var(--bad); }
+.dimension-bar-fill.extreme { background: #7f1d1d; }
+
+.suggested-actions {
+  margin-top: 10px;
+  padding: 10px 12px;
+  background: rgba(17, 97, 92, .05);
+  border: 1px solid rgba(17, 97, 92, .2);
+  border-radius: 8px;
+}
+
+.suggested-actions-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 800;
+  color: var(--accent);
+  margin-bottom: 6px;
+}
+
+.suggested-actions-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.suggested-actions-list li {
+  font-size: 12px;
+  color: var(--ink);
+  padding-left: 16px;
+  position: relative;
+  line-height: 1.4;
+}
+
+.suggested-actions-list li::before {
+  content: '➤';
+  position: absolute;
+  left: 0;
+  color: var(--accent);
+  font-size: 10px;
+}
+
+.borrowability-summary {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 10px;
+  margin: 10px 0;
+}
+
+.borrowability-summary-item {
+  background: var(--panel-2);
+  border-radius: 8px;
+  padding: 12px;
+  text-align: center;
+  border: 1px solid var(--line);
+}
+
+.borrowability-summary-item.ok {
+  background: rgba(38, 115, 77, .06);
+  border-color: rgba(38, 115, 77, .25);
+}
+
+.borrowability-summary-item.warn {
+  background: rgba(163, 92, 0, .06);
+  border-color: rgba(163, 92, 0, .25);
+}
+
+.borrowability-summary-item.bad {
+  background: rgba(161, 61, 61, .06);
+  border-color: rgba(161, 61, 61, .25);
+}
+
+.borrowability-summary-item.extreme {
+  background: rgba(127, 29, 29, .06);
+  border-color: rgba(127, 29, 29, .25);
+}
+
+.borrowability-summary-label {
+  display: block;
+  font-size: 11px;
+  color: var(--muted);
+  font-weight: 700;
+  margin-bottom: 4px;
+}
+
+.borrowability-summary-count {
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--ink);
+}
+
+.borrowability-summary-item.ok .borrowability-summary-count { color: var(--ok); }
+.borrowability-summary-item.warn .borrowability-summary-count { color: var(--warn); }
+.borrowability-summary-item.bad .borrowability-summary-count { color: var(--bad); }
+.borrowability-summary-item.extreme .borrowability-summary-count { color: #7f1d1d; }
+
+.borrowability-preview {
+  margin-top: 12px;
+  padding: 12px;
+  border-radius: 8px;
+  border: 1px dashed var(--line);
+  background: #f7f3eb;
+}
+
+.borrowability-preview-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  font-weight: 700;
+  font-size: 13px;
+  color: var(--ink);
+}
+
+.borrowability-preview-icon {
+  font-size: 16px;
+}
+
+.borrowability-preview-loading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.borrowability-preview-loading::before {
+  content: '';
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--line);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+.borrowability-decision-note {
+  font-size: 11px;
+  color: var(--muted);
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top: 1px dashed var(--line);
+  line-height: 1.5;
+}
+
+.borrowability-missing-fields {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 6px;
+}
+
+.borrowability-missing-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 6px;
+  background: rgba(107, 114, 128, .1);
+  border: 1px solid rgba(107, 114, 128, .2);
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 600;
+  color: #6b7280;
+}
+
+.borrowability-card.compact .borrowability-dimensions,
+.borrowability-card.compact .suggested-actions,
+.borrowability-card.compact .borrowability-score span:not(strong) {
+  display: none;
+}
+
+.borrowability-card.compact .borrowability-head {
+  margin-bottom: 0;
+}
+
+.borrowability-card.compact .block-reasons {
+  margin-top: 6px;
+  padding: 6px 8px;
+}
+
+.borrowability-card.compact .block-reasons-title {
+  margin-bottom: 3px;
+}
+
+.borrowability-card.compact .borrowability-title {
+  font-size: 13px;
+}
+
+.borrowability-card.compact .borrowability-icon {
+  font-size: 16px;
+}

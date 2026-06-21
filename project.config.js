@@ -445,5 +445,123 @@ module.exports = {
       icon: '⏰',
       desc: '限定在特定时段内查阅，例如工作日上午 9:00-11:00'
     }
+  },
+  borrowabilityDecision: {
+    levels: [
+      { value: '可借阅', label: '可借阅', minScore: 0, maxScore: 30, tone: 'ok' },
+      { value: '需审批', label: '需审批', minScore: 31, maxScore: 60, tone: 'warn' },
+      { value: '限制借阅', label: '限制借阅', minScore: 61, maxScore: 85, tone: 'bad' },
+      { value: '不可借阅', label: '不可借阅', minScore: 86, maxScore: 100, tone: 'extreme' }
+    ],
+    dimensions: {
+      protectionLevel: {
+        weight: 30,
+        label: '保护等级',
+        scores: { '一级': 30, '二级': 15, '三级': 5 }
+      },
+      damage: {
+        weight: 25,
+        label: '残损描述',
+        keywordRules: [
+          { keywords: ['虫蛀', '霉斑', '霉变', '脆化', '脆裂', '碳化', '粘连', '空洞', '腐烂'], score: 25, label: '严重残损' },
+          { keywords: ['残损', '断裂', '撕裂', '脱落', '缺损', '缺行', '缺页'], score: 18, label: '明显残损' },
+          { keywords: ['水渍', '磨损', '褶皱', '脱胶', '卷曲', '受潮', '潮湿', '折痕', '污迹'], score: 12, label: '轻度残损' },
+          { keywords: ['轻微', '少量', '边缘', '完好'], score: -5, label: '轻微情况' }
+        ]
+      },
+      lastRepair: {
+        weight: 15,
+        label: '最近修补状态',
+        statusScores: {
+          '进行中': 25,
+          '计划中': 15,
+          '已完成': { within7Days: 8, after7Days: -3 }
+        }
+      },
+      pendingRepairBatches: {
+        weight: 15,
+        label: '未完成修补批次',
+        scorePerBatch: 20
+      },
+      imagingClarity: {
+        weight: 8,
+        label: '影像清晰度',
+        clarityScores: { '清晰': -5, '模糊': 10, '待重拍': 15 }
+      },
+      pendingInventory: {
+        weight: 12,
+        label: '待复核盘点',
+        score: 15
+      },
+      materialWarning: {
+        weight: 5,
+        label: '材料预警',
+        statusScores: { '已过期': 10, '即将到期': 5, '低余量': 3, '正常': 0 }
+      },
+      futureReservations: {
+        weight: 10,
+        label: '未来预约',
+        overlappingScore: 12,
+        within7DaysScore: 8
+      }
+    },
+    blockingRules: [
+      {
+        id: 'protection-level-1-direct-block',
+        condition: (data) => data.scroll?.protectionLevel === '一级' && data.damageScore >= 18,
+        result: '不可借阅',
+        reason: '一级保护经卷且存在明显/严重残损，禁止借阅',
+        suggestion: '推荐使用数字化影像或高仿复制件'
+      },
+      {
+        id: 'active-repair-block',
+        condition: (data) => data.hasActiveRepair || data.hasPendingBatch,
+        result: '不可借阅',
+        reason: '经卷正在修补中或有未完成修补批次',
+        suggestion: '待修补完成并静养7日后再评估'
+      },
+      {
+        id: 'pending-inventory-block',
+        condition: (data) => data.hasPendingInventory,
+        result: '限制借阅',
+        reason: '存在待复核的盘点异常',
+        suggestion: '先完成盘点复核，确认经卷状态正常'
+      },
+      {
+        id: 'imaging-blur-block',
+        condition: (data) => data.latestClarity === '模糊' || data.latestClarity === '待重拍',
+        result: '限制借阅',
+        reason: '影像清晰度不足，需重新采集',
+        suggestion: '先完成高清影像采集存档'
+      }
+    ],
+    suggestionActions: {
+      '可借阅': [
+        '按正常流程办理借阅登记',
+        '查阅时佩戴白手套，轻取轻放',
+        '归还时检查有无新增损伤'
+      ],
+      '需审批': [
+        '提交借阅用途说明，由部门负责人审批',
+        '查阅时在旁监护，限制翻阅速度',
+        '优先使用数字化版本，原件仅供必要核对'
+      ],
+      '限制借阅': [
+        '原则上不提供原件借阅',
+        '确需使用须提交专项申请，馆长办公会审议',
+        '仅限馆内特藏室查阅，全程专人监护'
+      ],
+      '不可借阅': [
+        '禁止任何形式的原件借阅',
+        '推荐使用高清数字化影像或高仿复制件',
+        '纳入重点保护名录，加强日常巡检'
+      ]
+    },
+    conservativeMode: {
+      enabled: true,
+      defaultLevel: '需审批',
+      incompleteDataReason: '部分历史数据字段不完整，采用保守评估结论',
+      requiredFields: ['protectionLevel', 'damage']
+    }
   }
 };

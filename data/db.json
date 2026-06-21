@@ -209,6 +209,126 @@
         "borrowStatus": "需审批",
         "generatedAt": "2026-06-21T04:23:16.460Z"
       }
+    },
+    {
+      "id": "scroll-seed-5",
+      "title": "维摩诘所说经",
+      "material": "竹纸",
+      "era": "唐代",
+      "damage": "卷轴完好，字迹清晰",
+      "inscription": "有藏经院印",
+      "cabinet": "普通柜D-02",
+      "protectionLevel": "三级",
+      "borrowStatus": "可借阅",
+      "createdAt": "2026-06-01T08:00:00.000Z",
+      "updatedAt": "2026-06-15T08:00:00.000Z",
+      "history": [
+        {
+          "at": "2026-06-15T08:00:00.000Z",
+          "action": "保护评估",
+          "note": "可借阅"
+        }
+      ]
+    },
+    {
+      "id": "scroll-seed-6",
+      "title": "楞伽阿跋多罗宝经",
+      "material": "楮皮纸",
+      "era": "元代",
+      "damage": "",
+      "inscription": "",
+      "cabinet": "恒湿柜C-03",
+      "protectionLevel": "二级",
+      "borrowStatus": "可借阅",
+      "createdAt": "2026-05-20T08:00:00.000Z",
+      "updatedAt": "2026-06-10T08:00:00.000Z",
+      "history": [
+        {
+          "at": "2026-06-10T08:00:00.000Z",
+          "action": "保护评估",
+          "note": "可借阅"
+        }
+      ]
+    },
+    {
+      "id": "scroll-seed-7",
+      "title": "妙法莲华经卷第七",
+      "material": "麻纸",
+      "era": "北宋",
+      "damage": "严重霉变，多处粘连",
+      "inscription": "首尾完整",
+      "cabinet": "恒湿柜B-05",
+      "protectionLevel": "一级",
+      "borrowStatus": "可借阅",
+      "createdAt": "2026-05-15T08:00:00.000Z",
+      "updatedAt": "2026-06-18T08:00:00.000Z",
+      "history": [
+        {
+          "at": "2026-06-18T08:00:00.000Z",
+          "action": "保护评估",
+          "note": "可借阅"
+        }
+      ]
+    },
+    {
+      "id": "scroll-seed-8",
+      "title": "佛说阿弥陀经",
+      "material": "宣纸",
+      "era": "民国",
+      "damage": "有轻微折痕",
+      "inscription": "有印光大师跋",
+      "cabinet": "普通柜E-01",
+      "protectionLevel": "三级",
+      "borrowStatus": "可借阅",
+      "createdAt": "2026-06-10T08:00:00.000Z",
+      "updatedAt": "2026-06-20T08:00:00.000Z",
+      "history": [
+        {
+          "at": "2026-06-20T08:00:00.000Z",
+          "action": "保护评估",
+          "note": "可借阅"
+        }
+      ]
+    },
+    {
+      "id": "scroll-seed-9",
+      "title": "大般涅槃经卷第二十二",
+      "material": "黄麻纸",
+      "era": "南北朝",
+      "damage": "尾部缺3行，有虫蛀空洞",
+      "inscription": "有敦煌藏经洞印",
+      "cabinet": "恒湿柜A-01",
+      "protectionLevel": "一级",
+      "borrowStatus": "可借阅",
+      "createdAt": "2026-05-10T08:00:00.000Z",
+      "updatedAt": "2026-06-12T08:00:00.000Z",
+      "history": [
+        {
+          "at": "2026-06-12T08:00:00.000Z",
+          "action": "保护评估",
+          "note": "可借阅"
+        }
+      ]
+    },
+    {
+      "id": "scroll-seed-10",
+      "title": "六祖大师法宝坛经",
+      "material": "皮纸",
+      "era": "清代",
+      "damage": "完好无损",
+      "inscription": "有光绪年间藏家印",
+      "cabinet": "普通柜D-05",
+      "protectionLevel": "二级",
+      "borrowStatus": "可借阅",
+      "createdAt": "2026-06-05T08:00:00.000Z",
+      "updatedAt": "2026-06-18T08:00:00.000Z",
+      "history": [
+        {
+          "at": "2026-06-18T08:00:00.000Z",
+          "action": "保护评估",
+          "note": "可借阅"
+        }
+      ]
     }
   ],
   "repairs": [
@@ -628,21 +748,74 @@
     {
       "id": "imaging-seed-1",
       "scrollId": "scroll-seed-1",
-      "batch": "2026-A-001",
-      "photographer": "李明",
-      "captureDate": "2026-06-20",
-      "imageCode": "IMG-2026-0620-001",
+      "captureDate": "2026-06-10",
+      "clarity": "高清",
+      "resolution": "400dpi",
+      "format": "TIFF",
+      "operator": "李影像",
+      "note": "多光谱扫描",
+      "createdAt": "2026-06-10T10:00:00.000Z",
+      "updatedAt": "2026-06-10T10:00:00.000Z"
+    },
+    {
+      "id": "imaging-seed-2",
+      "scrollId": "scroll-seed-2",
+      "captureDate": "2026-05-20",
       "clarity": "清晰",
-      "note": "卷首高清拍摄，完整覆盖",
-      "createdAt": "2026-06-20T08:00:00.000Z",
-      "updatedAt": "2026-06-20T08:00:00.000Z",
-      "history": [
-        {
-          "at": "2026-06-20T08:00:00.000Z",
-          "action": "创建",
-          "note": "卷首高清拍摄，完整覆盖"
-        }
-      ]
+      "resolution": "300dpi",
+      "format": "JPEG",
+      "operator": "李影像",
+      "note": "常规扫描",
+      "createdAt": "2026-05-20T10:00:00.000Z",
+      "updatedAt": "2026-05-20T10:00:00.000Z"
+    },
+    {
+      "id": "imaging-seed-3",
+      "scrollId": "scroll-seed-3",
+      "captureDate": "2026-06-18",
+      "clarity": "模糊",
+      "resolution": "200dpi",
+      "format": "TIFF",
+      "operator": "李影像",
+      "note": "残损部位图像待重扫",
+      "createdAt": "2026-06-18T10:00:00.000Z",
+      "updatedAt": "2026-06-18T10:00:00.000Z"
+    },
+    {
+      "id": "imaging-seed-4",
+      "scrollId": "scroll-seed-5",
+      "captureDate": "2026-06-05",
+      "clarity": "高清",
+      "resolution": "400dpi",
+      "format": "TIFF",
+      "operator": "李影像",
+      "note": "完整扫描",
+      "createdAt": "2026-06-05T10:00:00.000Z",
+      "updatedAt": "2026-06-05T10:00:00.000Z"
+    },
+    {
+      "id": "imaging-seed-5",
+      "scrollId": "scroll-seed-7",
+      "captureDate": "2026-05-10",
+      "clarity": "无法辨识",
+      "resolution": "150dpi",
+      "format": "JPEG",
+      "operator": "李影像",
+      "note": "霉变粘连严重，待修复后重扫",
+      "createdAt": "2026-05-10T10:00:00.000Z",
+      "updatedAt": "2026-05-10T10:00:00.000Z"
+    },
+    {
+      "id": "imaging-seed-6",
+      "scrollId": "scroll-seed-9",
+      "captureDate": "2026-06-12",
+      "clarity": "清晰",
+      "resolution": "400dpi",
+      "format": "TIFF",
+      "operator": "李影像",
+      "note": "敦煌遗书专项扫描",
+      "createdAt": "2026-06-12T10:00:00.000Z",
+      "updatedAt": "2026-06-12T10:00:00.000Z"
     }
   ],
   "materials": [
@@ -760,6 +933,34 @@
           "note": "标记已过期"
         }
       ]
+    },
+    {
+      "id": "material-seed-6",
+      "name": "绫绢",
+      "type": "修复材料",
+      "specification": "100cm/卷",
+      "quantity": 0,
+      "unit": "卷",
+      "expiryDate": "",
+      "status": "低余量",
+      "location": "材料柜A-3",
+      "note": "用于包边修复",
+      "createdAt": "2026-02-15T08:00:00.000Z",
+      "updatedAt": "2026-06-21T08:00:00.000Z"
+    },
+    {
+      "id": "material-seed-7",
+      "name": "酒精",
+      "type": "清洁材料",
+      "specification": "500ml/瓶",
+      "quantity": 1,
+      "unit": "瓶",
+      "expiryDate": "2026-05-20",
+      "status": "已过期",
+      "location": "化学品柜",
+      "note": "75%医用酒精",
+      "createdAt": "2025-12-01T08:00:00.000Z",
+      "updatedAt": "2026-06-20T08:00:00.000Z"
     }
   ],
   "observations": [
@@ -800,40 +1001,32 @@
     {
       "id": "inventory-seed-1",
       "scrollId": "scroll-seed-1",
-      "inventoryPerson": "王静安",
-      "inventoryDate": "2026-06-19",
-      "cabinet": "恒湿柜C-01",
-      "result": "正常",
-      "exceptionNote": "",
-      "status": "正常",
-      "createdAt": "2026-06-19T09:00:00.000Z",
-      "updatedAt": "2026-06-19T09:00:00.000Z",
-      "history": [
-        {
-          "at": "2026-06-19T09:00:00.000Z",
-          "action": "创建",
-          "note": "柜位盘点，结果正常"
-        }
-      ]
+      "inventoryDate": "2026-06-15",
+      "status": "待复核",
+      "operator": "王典藏",
+      "note": "卷首脆裂程度需复核确认",
+      "createdAt": "2026-06-15T10:00:00.000Z",
+      "updatedAt": "2026-06-15T10:00:00.000Z"
     },
     {
       "id": "inventory-seed-2",
-      "scrollId": "scroll-seed-1",
-      "inventoryPerson": "张怀瑾",
-      "inventoryDate": "2026-06-20",
-      "cabinet": "恒湿柜C-01",
-      "result": "异常",
-      "exceptionNote": "卷首封皮边角微潮湿，疑有冷凝水渗透",
+      "scrollId": "scroll-seed-9",
+      "inventoryDate": "2026-06-10",
       "status": "待复核",
-      "createdAt": "2026-06-20T08:30:00.000Z",
-      "updatedAt": "2026-06-20T08:30:00.000Z",
-      "history": [
-        {
-          "at": "2026-06-20T08:30:00.000Z",
-          "action": "创建",
-          "note": "卷首封皮边角微潮湿，疑有冷凝水渗透"
-        }
-      ]
+      "operator": "王典藏",
+      "note": "尾部缺行数需双人复核",
+      "createdAt": "2026-06-10T10:00:00.000Z",
+      "updatedAt": "2026-06-10T10:00:00.000Z"
+    },
+    {
+      "id": "inventory-seed-3",
+      "scrollId": "scroll-seed-3",
+      "inventoryDate": "2026-06-18",
+      "status": "已完成",
+      "operator": "王典藏",
+      "note": "与档案记录一致",
+      "createdAt": "2026-06-18T10:00:00.000Z",
+      "updatedAt": "2026-06-18T10:00:00.000Z"
     }
   ],
   "repairTemplates": [
@@ -887,7 +1080,44 @@
     }
   ],
   "drafts": [],
-  "repairBatches": [],
+  "repairBatches": [
+    {
+      "id": "batch-seed-1",
+      "name": "2026年春季常规修补",
+      "scrollId": "scroll-seed-3",
+      "status": "进行中",
+      "startDate": "2026-06-15",
+      "expectedEndDate": "2026-06-25",
+      "conservator": "苏怀瑾",
+      "note": "宋代残损经卷系统性修复",
+      "createdAt": "2026-06-15T08:00:00.000Z",
+      "updatedAt": "2026-06-19T10:00:00.000Z"
+    },
+    {
+      "id": "batch-seed-2",
+      "name": "2026年虫害专项处理",
+      "scrollId": "scroll-seed-1",
+      "status": "进行中",
+      "startDate": "2026-06-20",
+      "expectedEndDate": "2026-06-27",
+      "conservator": "周问",
+      "note": "虫蛀经卷低温冷冻杀虫处理",
+      "createdAt": "2026-06-20T08:00:00.000Z",
+      "updatedAt": "2026-06-20T08:00:00.000Z"
+    },
+    {
+      "id": "batch-seed-3",
+      "name": "2026年数字化前预处理",
+      "scrollId": "scroll-seed-7",
+      "status": "计划中",
+      "startDate": "2026-07-01",
+      "expectedEndDate": "2026-07-10",
+      "conservator": "苏怀瑾",
+      "note": "霉变经卷揭裱处理后数字化",
+      "createdAt": "2026-06-18T08:00:00.000Z",
+      "updatedAt": "2026-06-18T08:00:00.000Z"
+    }
+  ],
   "audits": [
     {
       "id": "audit-1782017847902-0fcd0",

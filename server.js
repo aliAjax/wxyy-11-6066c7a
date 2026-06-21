@@ -531,67 +531,32 @@ function assessLoanRisk(db, loan) {
     };
   }
 
+  const decisionOptions = {};
+  if (loan.borrowDate) decisionOptions.borrowDate = loan.borrowDate;
+  if (loan.dueDate) decisionOptions.dueDate = loan.dueDate;
+  const borrowability = assessBorrowability(db, scroll.id, decisionOptions);
+
   const reasons = [];
   let score = 0;
 
-  const protectionScore = PROTECTION_LEVEL_SCORE[scroll.protectionLevel] || 0;
-  if (protectionScore > 0) {
-    score += protectionScore;
-    reasons.push(`${scroll.protectionLevel}保护经卷`);
+  score += borrowability.score;
+  reasons.push(`可借阅性评估：${borrowability.levelLabel}（得分${borrowability.score}）`);
+  
+  if (borrowability.blockReasons && borrowability.blockReasons.length > 0) {
+    for (const reason of borrowability.blockReasons) {
+      reasons.push(`阻断原因：${reason}`);
+    }
   }
 
-  const statusScore = BORROW_STATUS_SCORE[scroll.borrowStatus] || 0;
-  if (statusScore > 0) {
-    score += statusScore;
-    if (scroll.borrowStatus === '修补中') {
-      reasons.push(`借阅状态：修补中（不可借阅）`);
-    } else if (scroll.borrowStatus === '限制借阅') {
-      reasons.push(`借阅状态：限制借阅`);
-    } else if (scroll.borrowStatus === '需审批') {
-      reasons.push(`借阅状态：需审批`);
-    }
+  if (borrowability.level === '不可借阅') {
+    score += 20;
+  } else if (borrowability.level === '限制借阅') {
+    score += 10;
   }
 
   const purposeRisk = PURPOSE_RISK[loan.purpose] || DEFAULT_PURPOSE_RISK;
   score += purposeRisk.score;
   reasons.push(`借阅用途：${purposeRisk.desc}`);
-
-  const damageText = (scroll.damage || '').trim();
-  if (damageText) {
-    let damageScore = 5;
-    let damageLabel = '存在残损记录';
-    for (const rule of DAMAGE_KEYWORDS) {
-      if (rule.keywords.some((kw) => damageText.includes(kw))) {
-        damageScore += rule.score;
-        damageLabel = rule.label;
-      }
-    }
-    damageScore = Math.max(0, damageScore);
-    if (damageScore > 0) {
-      score += damageScore;
-      reasons.push(`残损情况：${damageText}（${damageLabel}）`);
-    }
-  }
-
-  const lastRepair = getLastRepair(db, scroll.id);
-  if (lastRepair) {
-    if (lastRepair.status === '进行中') {
-      score += 20;
-      reasons.push(`最近修补：${lastRepair.process}进行中，未完成`);
-    } else if (lastRepair.status === '计划中') {
-      score += 10;
-      reasons.push(`最近修补：${lastRepair.process}计划中，待开始`);
-    } else if (lastRepair.status === '已完成') {
-      const daysSinceRepair = Math.floor((Date.now() - new Date(lastRepair.date || lastRepair.createdAt).getTime()) / (1000 * 60 * 60 * 24));
-      if (daysSinceRepair < 7) {
-        score += 5;
-        reasons.push(`最近修补：${lastRepair.process}已完成（${daysSinceRepair}天前，建议静养）`);
-      } else {
-        score -= 3;
-        reasons.push(`最近修补：${lastRepair.process}已完成（${daysSinceRepair}天前）`);
-      }
-    }
-  }
 
   const borrowDate = loan.borrowDate ? parseDate(loan.borrowDate) : null;
   const dueDate = loan.dueDate ? parseDate(loan.dueDate) : null;
@@ -612,12 +577,17 @@ function assessLoanRisk(db, loan) {
   score = Math.max(0, Math.min(100, score));
 
   let level;
-  if (score >= 85) level = '极高风险';
-  else if (score >= 65) level = '高风险';
-  else if (score >= 40) level = '中风险';
-  else level = '低风险';
+  if (borrowability.level === '不可借阅' || score >= 85) {
+    level = '极高风险';
+  } else if (borrowability.level === '限制借阅' || score >= 65) {
+    level = '高风险';
+  } else if (borrowability.level === '需审批' || score >= 40) {
+    level = '中风险';
+  } else {
+    level = '低风险';
+  }
 
-  const isStrictMode = scroll.protectionLevel === '一级' || scroll.borrowStatus === '修补中';
+  const isStrictMode = borrowability.level === '不可借阅' || borrowability.level === '限制借阅';
 
   return {
     level,
@@ -626,11 +596,7 @@ function assessLoanRisk(db, loan) {
     evaluatedAt: new Date().toISOString(),
     protectionLevel: scroll.protectionLevel,
     borrowStatus: scroll.borrowStatus,
-    lastRepair: lastRepair ? {
-      date: lastRepair.date,
-      status: lastRepair.status,
-      process: lastRepair.process
-    } : null,
+    borrowability,
     isStrictMode
   };
 }
@@ -638,6 +604,325 @@ function assessLoanRisk(db, loan) {
 function formatRiskNote(assessment, actionLabel) {
   const reasonSummary = assessment.reasons.slice(0, 2).join('；');
   return `风险评估：${assessment.level}（得分${assessment.score}${assessment.isStrictMode ? '，严格模式' : ''}）- ${reasonSummary}`;
+}
+
+function assessBorrowability(db, scrollId, options = {}) {
+  const decisionConfig = config.borrowabilityDecision;
+  const scroll = (db.scrolls || []).find((s) => s.id === scrollId);
+  const context = { scroll, scrollId };
+
+  if (!scroll) {
+    return {
+      scrollId,
+      level: '需审批',
+      levelLabel: '需审批',
+      score: 50,
+      tone: 'warn',
+      blockReasons: ['未找到对应经卷档案'],
+      suggestionActions: decisionConfig.suggestionActions['需审批'],
+      dimensionScores: {},
+      isConservative: true,
+      conservativeReason: '经卷档案不存在，采用保守评估',
+      missingFields: ['scroll'],
+      evaluatedAt: new Date().toISOString()
+    };
+  }
+
+  const missingFields = [];
+  const conservativeMode = decisionConfig.conservativeMode;
+  const requiredFields = conservativeMode?.requiredFields || [];
+  for (const field of requiredFields) {
+    if (scroll[field] === undefined || scroll[field] === null || scroll[field] === '') {
+      missingFields.push(field);
+    }
+  }
+
+  const scrollRepairs = (db.repairs || []).filter((r) => r.scrollId === scrollId);
+  const lastRepair = scrollRepairs
+    .sort((a, b) => new Date(b.date || b.createdAt) - new Date(a.date || a.createdAt))[0] || null;
+  const activeRepairs = scrollRepairs.filter((r) => r.status === '进行中' || r.status === '计划中');
+  const hasActiveRepair = activeRepairs.length > 0;
+
+  const scrollBatches = (db.repairBatches || []).filter((b) => b.scrollId === scrollId);
+  const pendingBatches = scrollBatches.filter((b) => b.status === '进行中');
+  const hasPendingBatch = pendingBatches.length > 0;
+
+  const scrollImagings = (db.imagings || []).filter((i) => i.scrollId === scrollId);
+  const latestImaging = scrollImagings
+    .sort((a, b) => new Date(b.captureDate || b.createdAt) - new Date(a.captureDate || a.createdAt))[0] || null;
+  const latestClarity = latestImaging?.clarity || null;
+
+  const scrollInventories = (db.inventories || []).filter((i) => i.scrollId === scrollId);
+  const pendingInventories = scrollInventories.filter((i) => i.status === '待复核');
+  const hasPendingInventory = pendingInventories.length > 0;
+
+  const scrollLoans = (db.loans || []).filter((l) => l.scrollId === scrollId);
+  const activeLoans = scrollLoans.filter((l) => ACTIVE_LOAN_STATUSES.includes(l.status));
+  const now = new Date();
+  const todayStr = now.toISOString().split('T')[0];
+  const futureReservations = activeLoans.filter((l) => {
+    if (!l.borrowDate) return false;
+    return parseDate(l.borrowDate) >= parseDate(todayStr);
+  });
+
+  const scrollMaterials = (db.materials || []).filter((m) => {
+    if (!lastRepair) return false;
+    if (lastRepair.materialId && m.id === lastRepair.materialId) return true;
+    const usedNames = String(lastRepair.materialUsed || '').split(/[、,，;；/\\\s]+/).map(n => n.trim()).filter(Boolean);
+    return usedNames.includes(m.name);
+  });
+  const worstMaterialStatus = scrollMaterials.reduce((worst, m) => {
+    const statusOrder = { '正常': 0, '低余量': 1, '即将到期': 2, '已过期': 3 };
+    const current = statusOrder[m.status] || 0;
+    return current > worst ? current : worst;
+  }, 0);
+  const materialStatusKey = { 0: '正常', 1: '低余量', 2: '即将到期', 3: '已过期' }[worstMaterialStatus];
+
+  const dimConfig = decisionConfig.dimensions;
+
+  let protectionLevelScore = 0;
+  if (scroll.protectionLevel) {
+    protectionLevelScore = dimConfig.protectionLevel.scores[scroll.protectionLevel] || 0;
+  } else {
+    missingFields.push('protectionLevel');
+    protectionLevelScore = dimConfig.protectionLevel.scores['三级'];
+  }
+
+  let damageScore = 0;
+  let damageLabels = [];
+  const damageText = (scroll.damage || '').trim();
+  if (damageText) {
+    for (const rule of dimConfig.damage.keywordRules) {
+      if (rule.keywords.some((kw) => damageText.includes(kw))) {
+        damageScore += rule.score;
+        if (!damageLabels.includes(rule.label)) {
+          damageLabels.push(rule.label);
+        }
+      }
+    }
+    damageScore = Math.max(0, damageScore);
+  } else {
+    missingFields.push('damage');
+    damageScore = 12;
+    damageLabels = ['残损信息缺失'];
+  }
+
+  let lastRepairScore = 0;
+  let lastRepairInfo = null;
+  if (lastRepair) {
+    lastRepairInfo = {
+      date: lastRepair.date,
+      status: lastRepair.status,
+      process: lastRepair.process
+    };
+    const statusScore = dimConfig.lastRepair.statusScores[lastRepair.status];
+    if (typeof statusScore === 'object') {
+      const daysSinceRepair = Math.floor((Date.now() - new Date(lastRepair.date || lastRepair.createdAt).getTime()) / (1000 * 60 * 60 * 24));
+      lastRepairScore = daysSinceRepair < 7 ? statusScore.within7Days : statusScore.after7Days;
+    } else {
+      lastRepairScore = statusScore || 0;
+    }
+  }
+
+  const pendingBatchCount = pendingBatches.length;
+  const pendingBatchScore = pendingBatchCount * dimConfig.pendingRepairBatches.scorePerBatch;
+
+  let clarityScore = 0;
+  if (latestClarity) {
+    clarityScore = dimConfig.imagingClarity.clarityScores[latestClarity] || 0;
+  }
+
+  const pendingInventoryScore = hasPendingInventory ? dimConfig.pendingInventory.score : 0;
+
+  const materialScore = dimConfig.materialWarning.statusScores[materialStatusKey] || 0;
+
+  let futureReservationScore = 0;
+  const { borrowDate: targetBorrowDate, dueDate: targetDueDate } = options;
+  if (targetBorrowDate && targetDueDate) {
+    const overlapping = futureReservations.some((l) => dateOverlap(targetBorrowDate, targetDueDate, l.borrowDate, l.dueDate));
+    if (overlapping) {
+      futureReservationScore = dimConfig.futureReservations.overlappingScore;
+    }
+  } else {
+    const within7Days = futureReservations.some((l) => {
+      if (!l.borrowDate) return false;
+      const borrowTime = parseDate(l.borrowDate).getTime();
+      const daysDiff = Math.ceil((borrowTime - now.getTime()) / (1000 * 60 * 60 * 24));
+      return daysDiff >= 0 && daysDiff <= 7;
+    });
+    if (within7Days) {
+      futureReservationScore = dimConfig.futureReservations.within7DaysScore;
+    }
+  }
+
+  const rawScore =
+    protectionLevelScore +
+    damageScore +
+    lastRepairScore +
+    pendingBatchScore +
+    clarityScore +
+    pendingInventoryScore +
+    materialScore +
+    futureReservationScore;
+
+  const finalScore = Math.max(0, Math.min(100, Math.round(rawScore)));
+
+  const decisionData = {
+    scroll,
+    protectionLevel: scroll.protectionLevel,
+    damageScore,
+    hasActiveRepair,
+    hasPendingBatch,
+    latestClarity,
+    hasPendingInventory,
+    materialStatusKey
+  };
+
+  let finalLevel = null;
+  let finalLevelLabel = null;
+  let finalTone = null;
+  let blockReasons = [];
+  let blockSuggestions = [];
+  let triggeredBlockRule = null;
+
+  for (const rule of decisionConfig.blockingRules) {
+    try {
+      if (rule.condition(decisionData)) {
+        finalLevel = rule.result;
+        triggeredBlockRule = rule.id;
+        blockReasons.push(rule.reason);
+        blockSuggestions.push(rule.suggestion);
+        break;
+      }
+    } catch (e) {
+      console.error('Blocking rule evaluation error:', rule.id, e);
+    }
+  }
+
+  let isConservative = false;
+  let conservativeReason = '';
+  if (conservativeMode?.enabled && missingFields.length > 0 && !finalLevel) {
+    isConservative = true;
+    finalLevel = conservativeMode.defaultLevel || '需审批';
+    conservativeReason = conservativeMode.incompleteDataReason || '数据不完整，采用保守评估';
+    blockReasons.push(conservativeReason);
+  }
+
+  if (!finalLevel) {
+    for (const level of decisionConfig.levels) {
+      if (finalScore >= level.minScore && finalScore <= level.maxScore) {
+        finalLevel = level.value;
+        finalLevelLabel = level.label;
+        finalTone = level.tone;
+        break;
+      }
+    }
+    if (!finalLevel) {
+      finalLevel = '需审批';
+      finalLevelLabel = '需审批';
+      finalTone = 'warn';
+    }
+  } else {
+    const matchedLevel = decisionConfig.levels.find((l) => l.value === finalLevel);
+    finalLevelLabel = matchedLevel?.label || finalLevel;
+    finalTone = matchedLevel?.tone || 'warn';
+  }
+
+  const suggestionActions = [
+    ...blockSuggestions,
+    ...(decisionConfig.suggestionActions[finalLevel] || [])
+  ];
+
+  const dimensionScores = {
+    protectionLevel: {
+      label: dimConfig.protectionLevel.label,
+      score: protectionLevelScore,
+      weight: dimConfig.protectionLevel.weight,
+      value: scroll.protectionLevel || '未知'
+    },
+    damage: {
+      label: dimConfig.damage.label,
+      score: damageScore,
+      weight: dimConfig.damage.weight,
+      value: damageText || '无',
+      labels: damageLabels
+    },
+    lastRepair: {
+      label: dimConfig.lastRepair.label,
+      score: lastRepairScore,
+      weight: dimConfig.lastRepair.weight,
+      value: lastRepair ? `${lastRepair.process}（${lastRepair.status}）` : '无修补记录',
+      info: lastRepairInfo
+    },
+    pendingRepairBatches: {
+      label: dimConfig.pendingRepairBatches.label,
+      score: pendingBatchScore,
+      weight: dimConfig.pendingRepairBatches.weight,
+      value: pendingBatchCount > 0 ? `${pendingBatchCount}个进行中批次` : '无未完成批次',
+      count: pendingBatchCount
+    },
+    imagingClarity: {
+      label: dimConfig.imagingClarity.label,
+      score: clarityScore,
+      weight: dimConfig.imagingClarity.weight,
+      value: latestClarity || '无影像记录'
+    },
+    pendingInventory: {
+      label: dimConfig.pendingInventory.label,
+      score: pendingInventoryScore,
+      weight: dimConfig.pendingInventory.weight,
+      value: hasPendingInventory ? `${pendingInventories.length}条待复核` : '无待复核盘点',
+      count: pendingInventories.length
+    },
+    materialWarning: {
+      label: dimConfig.materialWarning.label,
+      score: materialScore,
+      weight: dimConfig.materialWarning.weight,
+      value: materialStatusKey,
+      affectedMaterials: scrollMaterials.map((m) => ({ id: m.id, name: m.name, status: m.status }))
+    },
+    futureReservations: {
+      label: dimConfig.futureReservations.label,
+      score: futureReservationScore,
+      weight: dimConfig.futureReservations.weight,
+      value: futureReservations.length > 0 ? `${futureReservations.length}个未来预约` : '无未来预约',
+      count: futureReservations.length
+    }
+  };
+
+  return {
+    scrollId,
+    scrollTitle: scroll.title,
+    level: finalLevel,
+    levelLabel: finalLevelLabel,
+    score: finalScore,
+    tone: finalTone,
+    blockReasons,
+    suggestionActions,
+    dimensionScores,
+    triggeredBlockRule,
+    isConservative,
+    conservativeReason,
+    missingFields,
+    hasActiveRepair,
+    hasPendingBatch,
+    hasPendingInventory,
+    latestClarity,
+    futureReservationCount: futureReservations.length,
+    evaluatedAt: new Date().toISOString()
+  };
+}
+
+function assessBorrowabilityBatch(db, scrollIds = null, options = {}) {
+  const scrolls = scrollIds
+    ? (db.scrolls || []).filter((s) => scrollIds.includes(s.id))
+    : (db.scrolls || []);
+  
+  const results = {};
+  for (const scroll of scrolls) {
+    results[scroll.id] = assessBorrowability(db, scroll.id, options);
+  }
+  return results;
 }
 
 app.use(express.json({ limit: '2mb' }));
@@ -1125,6 +1410,12 @@ app.get('/api/db', async (req, res) => {
         m.updatedAt = new Date().toISOString();
       }
       m.statusReasons = computed.reasons;
+    }
+  }
+  if (Array.isArray(db.scrolls)) {
+    const borrowabilityDecisions = assessBorrowabilityBatch(db, null, {});
+    for (const scroll of db.scrolls) {
+      scroll.borrowabilityDecision = borrowabilityDecisions[scroll.id] || null;
     }
   }
   const role = getCurrentRole(req);
@@ -2728,6 +3019,101 @@ function runConsistencyCheck(db) {
         autoFixable: true
       });
     }
+
+    const borrowability = assessBorrowability(db, scroll.id);
+    if (borrowability) {
+      if (borrowability.isConservative) {
+        issues.push({
+          id: `cc-${scroll.id}-8`,
+          type: 'borrowability-conservative',
+          severity: 'low',
+          title: '可借阅性评估采用了保守模式',
+          description: `经卷「${scroll.title}」因部分字段缺失（${borrowability.missingFields.join('、')}），可借阅性评估采用保守模式，结果可能偏严格`,
+          scrollId: scroll.id,
+          scrollTitle: scroll.title,
+          currentBorrowStatus: scroll.borrowStatus,
+          borrowabilityDecision: borrowability,
+          affectedLoans: [],
+          affectedRepairs: [],
+          suggestion: null,
+          suggestionLabel: '请补充完善相关字段信息',
+          autoFixable: false
+        });
+      }
+
+      const statusLevelMap = {
+        '可借阅': '可借阅',
+        '需审批': '需审批',
+        '限制借阅': '限制借阅',
+        '修补中': '不可借阅',
+        '不可借阅': '不可借阅'
+      };
+      const mappedStatus = statusLevelMap[scroll.borrowStatus] || scroll.borrowStatus;
+      
+      const levelOrder = { '可借阅': 0, '需审批': 1, '限制借阅': 2, '不可借阅': 3 };
+      const statusOrder = levelOrder[mappedStatus] ?? -1;
+      const decisionOrder = levelOrder[borrowability.level] ?? -1;
+
+      if (statusOrder >= 0 && decisionOrder >= 0 && statusOrder < decisionOrder - 1) {
+        issues.push({
+          id: `cc-${scroll.id}-9`,
+          type: 'borrowability-mismatch',
+          severity: 'high',
+          title: '经卷借阅状态与可借阅性决策不符',
+          description: `经卷「${scroll.title}」当前状态为「${scroll.borrowStatus}」，但可借阅性决策为「${borrowability.level}」，${borrowability.blockReasons.length > 0 ? '阻断原因：' + borrowability.blockReasons.join('；') : ''}，存在状态过松风险`,
+          scrollId: scroll.id,
+          scrollTitle: scroll.title,
+          currentBorrowStatus: scroll.borrowStatus,
+          borrowabilityDecision: borrowability,
+          affectedLoans: [],
+          affectedRepairs: [],
+          suggestion: 'fix-borrowability-to-decision',
+          suggestionLabel: `根据决策建议将状态修正为「${borrowability.level}」`,
+          autoFixable: true
+        });
+      }
+
+      if (borrowability.triggeredBlockRule && scroll.borrowStatus !== '限制借阅' && scroll.borrowStatus !== '不可借阅') {
+        issues.push({
+          id: `cc-${scroll.id}-10`,
+          type: 'borrowability-blocked-but-available',
+          severity: 'high',
+          title: '存在硬性阻断规则但经卷仍可借阅',
+          description: `经卷「${scroll.title}」触发阻断规则「${borrowability.triggeredBlockRule}」，阻断原因：${borrowability.blockReasons.join('；')}，但当前借阅状态为「${scroll.borrowStatus}」`,
+          scrollId: scroll.id,
+          scrollTitle: scroll.title,
+          currentBorrowStatus: scroll.borrowStatus,
+          borrowabilityDecision: borrowability,
+          affectedLoans: [],
+          affectedRepairs: [],
+          suggestion: 'fix-status-to-blocked',
+          suggestionLabel: `根据阻断规则将状态修正为「${borrowability.level}」`,
+          autoFixable: true
+        });
+      }
+
+      if (borrowability.dimensionScores) {
+        const dims = borrowability.dimensionScores;
+        if (dims.protectionLevel?.score >= 25 && dims.damage?.score >= 18 && scroll.borrowStatus !== '不可借阅') {
+          issues.push({
+            id: `cc-${scroll.id}-11`,
+            type: 'high-risk-dimensions',
+            severity: 'high',
+            title: '多维度高风险但未限制借阅',
+            description: `经卷「${scroll.title}」保护等级得分${dims.protectionLevel.score}分，残损得分${dims.damage.score}分，均为高风险，但当前借阅状态为「${scroll.borrowStatus}」`,
+            scrollId: scroll.id,
+            scrollTitle: scroll.title,
+            currentBorrowStatus: scroll.borrowStatus,
+            borrowabilityDecision: borrowability,
+            affectedLoans: [],
+            affectedRepairs: [],
+            suggestion: 'fix-status-to-blocked',
+            suggestionLabel: '根据风险维度将状态修正为「不可借阅」',
+            autoFixable: true
+          });
+        }
+      }
+    }
   }
 
   return issues;
@@ -2806,8 +3192,103 @@ const CONSISTENCY_FIX_MAP = {
     },
     historyAction: '保护评估',
     historyNote: '巡检修复：一级保护经卷不应标记为可借阅，修正为需审批'
+  },
+  'fix-borrowability-to-decision': {
+    targetBorrowStatus: null,
+    priority: 70,
+    validate: (db, scroll) => {
+      const decision = assessBorrowability(db, scroll.id);
+      return decision && scroll.borrowStatus !== decision.level && 
+             ['可借阅', '需审批', '限制借阅', '不可借阅'].includes(decision.level);
+    },
+    getTargetStatus: (db, scroll) => {
+      const decision = assessBorrowability(db, scroll.id);
+      return decision?.level || '需审批';
+    },
+    historyAction: '可借阅性决策',
+    getHistoryNote: (db, scroll) => {
+      const decision = assessBorrowability(db, scroll.id);
+      const reasons = decision?.blockReasons?.join('；') || '';
+      return `巡检修复：根据可借阅性决策结果（得分${decision?.score}）将状态从「${scroll.borrowStatus}」修正为「${decision?.level}」。${reasons}`;
+    }
+  },
+  'fix-status-to-blocked': {
+    targetBorrowStatus: null,
+    priority: 90,
+    validate: (db, scroll) => {
+      const decision = assessBorrowability(db, scroll.id);
+      return decision && decision.triggeredBlockRule && 
+             scroll.borrowStatus !== '限制借阅' && scroll.borrowStatus !== '不可借阅';
+    },
+    getTargetStatus: (db, scroll) => {
+      const decision = assessBorrowability(db, scroll.id);
+      return decision?.level || '不可借阅';
+    },
+    historyAction: '阻断规则触发',
+    getHistoryNote: (db, scroll) => {
+      const decision = assessBorrowability(db, scroll.id);
+      const reasons = decision?.blockReasons?.join('；') || '';
+      return `巡检修复：触发阻断规则「${decision?.triggeredBlockRule}」，将状态从「${scroll.borrowStatus}」修正为「${decision?.level}」。${reasons}`;
+    }
   }
 };
+
+app.get('/api/scrolls/:id/borrowability', requirePermission('scrolls', 'view'), async (req, res) => {
+  const { id } = req.params;
+  const { borrowDate, dueDate } = req.query;
+  
+  const db = await readDb();
+  const options = {};
+  if (borrowDate) options.borrowDate = borrowDate;
+  if (dueDate) options.dueDate = dueDate;
+  
+  const decision = assessBorrowability(db, id, options);
+  res.json(decision);
+});
+
+app.post('/api/scrolls/borrowability/batch', requirePermission('scrolls', 'view'), async (req, res) => {
+  const { scrollIds, borrowDate, dueDate } = req.body || {};
+  const db = await readDb();
+  const options = {};
+  if (borrowDate) options.borrowDate = borrowDate;
+  if (dueDate) options.dueDate = dueDate;
+  
+  const results = assessBorrowabilityBatch(db, scrollIds, options);
+  res.json({ results, generatedAt: new Date().toISOString() });
+});
+
+app.get('/api/scrolls/borrowability/preview', requirePermission('scrolls', 'view'), async (req, res) => {
+  const db = await readDb();
+  const results = assessBorrowabilityBatch(db, null, {});
+  
+  const stats = {
+    total: Object.keys(results).length,
+    byLevel: {},
+    withBlockReasons: 0,
+    conservativeDecisions: 0,
+    scoreDistribution: { '0-30': 0, '31-60': 0, '61-85': 0, '86-100': 0 }
+  };
+  
+  for (const level of config.borrowabilityDecision.levels) {
+    stats.byLevel[level.value] = 0;
+  }
+  
+  for (const [scrollId, decision] of Object.entries(results)) {
+    stats.byLevel[decision.level] = (stats.byLevel[decision.level] || 0) + 1;
+    if (decision.blockReasons && decision.blockReasons.length > 0) {
+      stats.withBlockReasons++;
+    }
+    if (decision.isConservative) {
+      stats.conservativeDecisions++;
+    }
+    if (decision.score <= 30) stats.scoreDistribution['0-30']++;
+    else if (decision.score <= 60) stats.scoreDistribution['31-60']++;
+    else if (decision.score <= 85) stats.scoreDistribution['61-85']++;
+    else stats.scoreDistribution['86-100']++;
+  }
+  
+  res.json({ stats, results, generatedAt: new Date().toISOString() });
+});
 
 app.get('/api/consistency-check', requirePermission('scrolls', 'view'), async (req, res) => {
   const db = await readDb();
@@ -2829,6 +3310,14 @@ function buildFixPlanForIssue(db, issue) {
   const scroll = (db.scrolls || []).find((s) => s.id === issue.scrollId);
   if (!scroll) return null;
 
+  const targetBorrowStatus = typeof fixConfig.getTargetStatus === 'function'
+    ? fixConfig.getTargetStatus(db, scroll)
+    : fixConfig.targetBorrowStatus;
+
+  const historyNote = typeof fixConfig.getHistoryNote === 'function'
+    ? fixConfig.getHistoryNote(db, scroll)
+    : fixConfig.historyNote;
+
   const affectedLoans = (db.loans || []).filter((l) => (issue.affectedLoans || []).includes(l.id));
   const affectedRepairs = (db.repairs || []).filter((r) => (issue.affectedRepairs || []).includes(r.id));
   const affectedBatches = (db.repairBatches || []).filter((b) => (issue.affectedRepairs || []).includes(b.id));
@@ -2846,11 +3335,11 @@ function buildFixPlanForIssue(db, issue) {
     affectedRepairs.some((r) => repairUsesMaterial(r, m))
   );
 
-  const statusWillChange = fixConfig.targetBorrowStatus !== null && scroll.borrowStatus !== fixConfig.targetBorrowStatus;
+  const statusWillChange = targetBorrowStatus !== null && scroll.borrowStatus !== targetBorrowStatus;
 
   const historySummary = {
     action: fixConfig.historyAction,
-    note: fixConfig.historyNote
+    note: historyNote
   };
 
   return {
@@ -2862,7 +3351,7 @@ function buildFixPlanForIssue(db, issue) {
       id: scroll.id,
       title: scroll.title,
       borrowStatus: scroll.borrowStatus,
-      targetBorrowStatus: fixConfig.targetBorrowStatus,
+      targetBorrowStatus: targetBorrowStatus,
       statusWillChange
     },
     loans: affectedLoans.map((l) => ({
@@ -2914,9 +3403,17 @@ async function applySingleFix(db, req, issue, userNote = '') {
     return { success: false, issueId: issue.id, error: '经卷不存在' };
   }
 
+  const targetBorrowStatus = typeof fixConfig.getTargetStatus === 'function'
+    ? fixConfig.getTargetStatus(db, scroll)
+    : fixConfig.targetBorrowStatus;
+
+  const historyNote = typeof fixConfig.getHistoryNote === 'function'
+    ? fixConfig.getHistoryNote(db, scroll)
+    : fixConfig.historyNote;
+
   const oldBorrowStatus = scroll.borrowStatus;
-  const statusWillChange = fixConfig.targetBorrowStatus !== null;
-  if (statusWillChange && scroll.borrowStatus === fixConfig.targetBorrowStatus) {
+  const statusWillChange = targetBorrowStatus !== null;
+  if (statusWillChange && scroll.borrowStatus === targetBorrowStatus) {
     return { success: false, issueId: issue.id, error: '经卷状态已是目标状态，无需修复' };
   }
 
@@ -2926,14 +3423,14 @@ async function applySingleFix(db, req, issue, userNote = '') {
 
   const trimmedNote = (userNote || '').trim();
   const finalHistoryNote = trimmedNote
-    ? `${fixConfig.historyNote} | 用户说明：${trimmedNote}`
-    : fixConfig.historyNote;
+    ? `${historyNote} | 用户说明：${trimmedNote}`
+    : historyNote;
   const finalAuditNote = trimmedNote
-    ? `一致性巡检批量修复：${issue.title} - ${fixConfig.historyNote} | 用户说明：${trimmedNote}`
-    : `一致性巡检批量修复：${issue.title} - ${fixConfig.historyNote}`;
+    ? `一致性巡检批量修复：${issue.title} - ${historyNote} | 用户说明：${trimmedNote}`
+    : `一致性巡检批量修复：${issue.title} - ${historyNote}`;
 
   if (statusWillChange) {
-    scroll.borrowStatus = fixConfig.targetBorrowStatus;
+    scroll.borrowStatus = targetBorrowStatus;
     const advice = generateProtectionAdvice(scroll);
     scroll.protectionAdvice = advice;
   }
@@ -2942,7 +3439,7 @@ async function applySingleFix(db, req, issue, userNote = '') {
   scroll.history.unshift(stamp(fixConfig.historyAction, finalHistoryNote));
 
   const auditChanges = statusWillChange
-    ? { borrowStatus: { before: oldBorrowStatus, after: fixConfig.targetBorrowStatus } }
+    ? { borrowStatus: { before: oldBorrowStatus, after: targetBorrowStatus } }
     : { historyAdded: { action: fixConfig.historyAction, note: finalHistoryNote } };
   await writeAuditLog(db, req, {
     collection: 'scrolls',
@@ -2959,7 +3456,7 @@ async function applySingleFix(db, req, issue, userNote = '') {
     scrollId: scroll.id,
     scrollTitle: scroll.title,
     oldBorrowStatus,
-    newBorrowStatus: fixConfig.targetBorrowStatus || oldBorrowStatus,
+    newBorrowStatus: targetBorrowStatus || oldBorrowStatus,
     statusChanged: statusWillChange,
     historyAppended: true
   };

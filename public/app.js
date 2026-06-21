@@ -187,6 +187,27 @@ async function previewRisk(loanData) {
   }
 }
 
+async function previewBorrowability(scrollId, borrowDate, dueDate) {
+  if (!scrollId) {
+    state.borrowabilityPreview = null;
+    return null;
+  }
+  try {
+    let url = `/api/scrolls/${encodeURIComponent(scrollId)}/borrowability`;
+    const params = [];
+    if (borrowDate) params.push(`borrowDate=${encodeURIComponent(borrowDate)}`);
+    if (dueDate) params.push(`dueDate=${encodeURIComponent(dueDate)}`);
+    if (params.length > 0) url += '?' + params.join('&');
+    
+    const result = await api(url);
+    state.borrowabilityPreview = result;
+    return result;
+  } catch (e) {
+    state.borrowabilityPreview = null;
+    return null;
+  }
+}
+
 function toneForRisk(level) {
   if (level === '低风险') return 'risk-low';
   if (level === '中风险') return 'risk-warn';
@@ -370,6 +391,195 @@ function renderProtectionAdvice(advice) {
     <ul class="protection-advice-list">${items}</ul>
     ${generatedAt}
   </div>`;
+}
+
+function renderBorrowabilityCard(decision, options = {}) {
+  if (!decision) return '';
+  const { compact = false, showDimensions = true, showActions = true } = options;
+  
+  const tone = decision.tone || toneFor(decision.level);
+  const levelPill = pill(decision.levelLabel || decision.level, tone);
+  
+  const conservativeHtml = decision.isConservative
+    ? `<div class="conservative-badge" title="${escapeHtml(decision.conservativeReason || '')}">
+         ⚠️ 保守评估（${decision.missingFields?.length || 0}个字段缺失）
+       </div>`
+    : '';
+
+  let blockReasonsHtml = '';
+  if (decision.blockReasons && decision.blockReasons.length > 0) {
+    const items = decision.blockReasons.map((r) => `
+      <li class="block-reason-item">
+        <span class="block-reason-icon">🚫</span>
+        <span>${escapeHtml(r)}</span>
+      </li>
+    `).join('');
+    blockReasonsHtml = `
+      <div class="block-reasons">
+        <div class="block-reasons-title">阻断原因</div>
+        <ul class="block-reasons-list">${items}</ul>
+      </div>
+    `;
+  }
+
+  let dimensionsHtml = '';
+  if (showDimensions && decision.dimensionScores) {
+    const dims = decision.dimensionScores;
+    const dimItems = Object.entries(dims).map(([key, dim]) => {
+      const pct = Math.max(0, Math.min(100, dim.score));
+      const barTone = dim.score >= 20 ? 'extreme' : dim.score >= 10 ? 'bad' : dim.score >= 5 ? 'warn' : 'ok';
+      return `
+        <div class="dimension-item" data-dimension="${escapeHtml(key)}">
+          <div class="dimension-label">
+            <span>${escapeHtml(dim.label)}</span>
+            <span class="dimension-value">${escapeHtml(dim.value)}</span>
+          </div>
+          <div class="dimension-bar">
+            <div class="dimension-bar-fill ${barTone}" style="width:${pct}%"></div>
+          </div>
+          <div class="dimension-score">${dim.score}分 / ${dim.weight}权重</div>
+        </div>
+      `;
+    }).join('');
+    dimensionsHtml = `
+      <div class="borrowability-dimensions">
+        <div class="dimensions-title">📊 多维度评估详情</div>
+        <div class="dimensions-grid">${dimItems}</div>
+      </div>
+    `;
+  }
+
+  let actionsHtml = '';
+  if (showActions && decision.suggestionActions && decision.suggestionActions.length > 0) {
+    const items = decision.suggestionActions.map((a, idx) => `
+      <li class="action-item" style="animation-delay:${idx * 50}ms">
+        <span class="action-icon">${idx === 0 ? '🎯' : '✅'}</span>
+        <span>${escapeHtml(a)}</span>
+      </li>
+    `).join('');
+    actionsHtml = `
+      <div class="suggested-actions">
+        <div class="actions-title">💡 建议动作</div>
+        <ul class="actions-list">${items}</ul>
+      </div>
+    `;
+  }
+
+  const scoreBarPct = Math.max(0, Math.min(100, decision.score));
+  const scoreTone = decision.score >= 85 ? 'extreme' : decision.score >= 60 ? 'bad' : decision.score >= 30 ? 'warn' : 'ok';
+
+  if (compact) {
+    return `
+      <div class="borrowability-card compact ${tone}">
+        <div class="borrowability-head">
+          <div class="borrowability-level">
+            ${levelPill}
+            <span class="score-badge">${decision.score}分</span>
+          </div>
+          ${conservativeHtml}
+        </div>
+        <div class="borrowability-score-bar">
+          <div class="score-bar-fill ${scoreTone}" style="width:${scoreBarPct}%"></div>
+        </div>
+        ${blockReasonsHtml}
+      </div>
+    `;
+  }
+
+  return `
+    <div class="borrowability-card ${tone}">
+      <div class="borrowability-head">
+        <div class="borrowability-title">
+          <span class="title-icon">🎯</span>
+          <span class="title-text">可借阅性决策中心</span>
+        </div>
+        <div class="borrowability-level">
+          ${levelPill}
+          <span class="score-badge">${decision.score} / 100</span>
+        </div>
+        ${conservativeHtml}
+      </div>
+      
+      <div class="borrowability-score">
+        <div class="score-label">风险指数</div>
+        <div class="borrowability-score-bar">
+          <div class="score-bar-fill ${scoreTone}" style="width:${scoreBarPct}%"></div>
+        </div>
+        <div class="score-legend">
+          <span>可借阅 0-30</span>
+          <span>需审批 31-60</span>
+          <span>限制 61-85</span>
+          <span>不可 86-100</span>
+        </div>
+      </div>
+
+      ${blockReasonsHtml}
+      ${dimensionsHtml}
+      ${actionsHtml}
+      
+      <div class="borrowability-footer">
+        <span class="eval-time">评估时间：${fmtDate(decision.evaluatedAt)}</span>
+        ${decision.scrollId ? `<span class="scroll-ref">${escapeHtml(decision.scrollTitle || decision.scrollId)}</span>` : ''}
+      </div>
+    </div>
+  `;
+}
+
+function renderBorrowabilityPreview(decision) {
+  if (!decision) return '';
+  return `<div class="borrowability-preview">
+    <div class="borrowability-preview-title">🔍 可借阅性实时预览</div>
+    ${renderBorrowabilityCard(decision, { showDimensions: false, compact: false })}
+  </div>`;
+}
+
+function renderBorrowabilitySummary(decisions) {
+  if (!decisions || Object.keys(decisions).length === 0) return '';
+  
+  const stats = {
+    total: Object.keys(decisions).length,
+    byLevel: {},
+    withBlockReasons: 0,
+    conservative: 0,
+    avgScore: 0
+  };
+  
+  let totalScore = 0;
+  for (const d of Object.values(decisions)) {
+    stats.byLevel[d.level] = (stats.byLevel[d.level] || 0) + 1;
+    if (d.blockReasons && d.blockReasons.length > 0) stats.withBlockReasons++;
+    if (d.isConservative) stats.conservative++;
+    totalScore += d.score || 0;
+  }
+  stats.avgScore = Math.round(totalScore / stats.total);
+
+  const levels = ['可借阅', '需审批', '限制借阅', '不可借阅'];
+  const levelItems = levels.map((level) => {
+    const count = stats.byLevel[level] || 0;
+    const pct = stats.total > 0 ? Math.round((count / stats.total) * 100) : 0;
+    const tone = toneFor(level);
+    return `
+      <div class="summary-level-item ${tone}">
+        <div class="level-count">${count}</div>
+        <div class="level-label">${level}</div>
+        <div class="level-pct">${pct}%</div>
+      </div>
+    `;
+  }).join('');
+
+  return `
+    <div class="borrowability-summary">
+      <div class="summary-head">
+        <span class="summary-title">📊 经卷可借阅性概览</span>
+        <span class="summary-stats">共 ${stats.total} 卷 · 平均 ${stats.avgScore} 分</span>
+      </div>
+      <div class="summary-levels">${levelItems}</div>
+      <div class="summary-meta">
+        <span>🚫 有阻断原因：${stats.withBlockReasons} 卷</span>
+        <span>⚠️ 保守评估：${stats.conservative} 卷</span>
+      </div>
+    </div>
+  `;
 }
 
 function renderUnavailableRanges(scrollId) {
@@ -801,6 +1011,17 @@ function setTab(tabId) {
 }
 
 function renderStats() {
+  const scrolls = state.db.scrolls || [];
+  const decisions = {};
+  for (const scroll of scrolls) {
+    if (scroll.borrowabilityDecision) {
+      decisions[scroll.id] = scroll.borrowabilityDecision;
+    }
+  }
+  const borrowabilitySummaryHtml = Object.keys(decisions).length > 0
+    ? renderBorrowabilitySummary(decisions)
+    : '';
+
   return `<div class="stats">${state.config.stats.map((stat) => {
     const items = state.db[stat.collection] || [];
     let value;
@@ -814,7 +1035,8 @@ function renderStats() {
       value = items.length;
     }
     return `<div class="stat"><span>${escapeHtml(stat.label)}</span><strong>${value}</strong></div>`;
-  }).join('')}</div>`;
+  }).join('')}</div>
+  ${borrowabilitySummaryHtml}`;
 }
 
 function renderCard(item, collection, view) {
@@ -883,6 +1105,10 @@ function renderCard(item, collection, view) {
 
   const adviceHtml = collection === 'scrolls' ? renderProtectionAdvice(item.protectionAdvice) : '';
 
+  const borrowabilityHtml = collection === 'scrolls' && item.borrowabilityDecision
+    ? renderBorrowabilityCard(item.borrowabilityDecision, { compact: false, showDimensions: true, showActions: true })
+    : '';
+
   let materialStatusHtml = '';
   if (collection === 'materials') {
     const reasons = item.statusReasons || [];
@@ -939,6 +1165,7 @@ function renderCard(item, collection, view) {
     ${summary ? `<p>${escapeHtml(summary)}</p>` : ''}
     ${details ? `<div class="detail">${details}</div>` : ''}
     ${adviceHtml}
+    ${borrowabilityHtml}
     ${materialStatusHtml}
     ${batchProgressHtml}
     ${riskHtml}
@@ -1125,6 +1352,9 @@ function renderCrudView(view) {
   const riskPreviewHtml = view.id === 'loans' && state.riskPreview
     ? renderRiskPreview(state.riskPreview)
     : '';
+  const borrowabilityPreviewHtml = view.id === 'loans' && state.borrowabilityPreview
+    ? renderBorrowabilityPreview(state.borrowabilityPreview)
+    : '';
   const materialPreviewHtml = view.id === 'materials'
     ? renderMaterialStatusPreview(computeMaterialStatusLocal({ quantity: '', unit: '张', expiryDate: '' }))
     : '';
@@ -1133,6 +1363,7 @@ function renderCrudView(view) {
       <form class="panel" data-create="${view.collection}" data-view="${view.id}">
         <h2>${escapeHtml(view.formTitle)}</h2>
         <div class="form-grid">${view.fields.map((f) => formField(f, view.id)).join('')}</div>
+        ${borrowabilityPreviewHtml}
         ${riskPreviewHtml}
         ${materialPreviewHtml}
         ${conflictWarning}
@@ -2260,6 +2491,7 @@ document.addEventListener('click', async (event) => {
 
 let conflictCheckTimeout = null;
 let riskPreviewTimeout = null;
+let borrowabilityPreviewTimeout = null;
 
 document.addEventListener('input', async (event) => {
   const view = state.config.views.find((entry) => entry.id && (event.target.id === `search-${entry.id}` || event.target.id === `status-${entry.id}`));
@@ -2332,6 +2564,30 @@ document.addEventListener('input', async (event) => {
         if (previewEl) previewEl.remove();
       }
     }, 250);
+
+    if (borrowabilityPreviewTimeout) clearTimeout(borrowabilityPreviewTimeout);
+    borrowabilityPreviewTimeout = setTimeout(async () => {
+      if (scrollId) {
+        const decision = await previewBorrowability(scrollId, borrowDate, dueDate);
+        const previewEl = form.querySelector('.borrowability-preview');
+        const newPreviewHtml = renderBorrowabilityPreview(decision);
+        if (previewEl) {
+          previewEl.outerHTML = newPreviewHtml || '';
+        } else if (newPreviewHtml) {
+          const riskPreview = form.querySelector('.risk-preview');
+          const formGrid = form.querySelector('.form-grid');
+          if (riskPreview) {
+            riskPreview.insertAdjacentHTML('beforebegin', newPreviewHtml);
+          } else if (formGrid) {
+            formGrid.insertAdjacentHTML('afterend', newPreviewHtml);
+          }
+        }
+      } else {
+        state.borrowabilityPreview = null;
+        const previewEl = form.querySelector('.borrowability-preview');
+        if (previewEl) previewEl.remove();
+      }
+    }, 200);
 
     if (scrollId && borrowDate && dueDate) {
       if (conflictCheckTimeout) clearTimeout(conflictCheckTimeout);
@@ -2704,6 +2960,10 @@ function renderConsistencyCheckView(view) {
           ? `<div class="cc-affected"><span class="cc-affected-label">影响修补：</span>${issue.affectedRepairs.length}条记录</div>`
           : '';
 
+        const borrowabilityIssueHtml = issue.borrowabilityDecision
+          ? renderBorrowabilityCard(issue.borrowabilityDecision, { compact: true, showDimensions: false, showActions: false })
+          : '';
+
         const fixBtnHtml = issue.autoFixable
           ? `<button class="cc-fix-btn" data-cc-fix-issue="${issue.id}" data-cc-fix-suggestion="${issue.suggestion}" ${isFixing ? 'disabled' : ''}>
               ${isFixing ? '修复中...' : '🔧 单独修复'}
@@ -2733,6 +2993,7 @@ function renderConsistencyCheckView(view) {
             ${affectedLoansHtml}
             ${affectedRepairsHtml}
           </div>
+          ${borrowabilityIssueHtml}
           <div class="cc-issue-actions">
             <div class="cc-suggestion">💡 建议：${escapeHtml(issue.suggestionLabel)}</div>
             ${fixBtnHtml}
