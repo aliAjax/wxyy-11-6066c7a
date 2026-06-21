@@ -2499,7 +2499,9 @@ function renderFixPlanModalHtml(plan) {
             ${item.materials.map((m) => `
               <div class="cc-plan-detail-item">
                 <strong>${escapeHtml(m.name)}</strong>
-                <span class="cc-plan-detail-meta">批次：${escapeHtml(m.batch || '-')} · 数量：${escapeHtml(String(m.quantity ?? '-'))}</span>
+                <span class="cc-plan-detail-meta">${escapeHtml(m.category || '')} · 批次：${escapeHtml(m.batch || '-')} · ${escapeHtml(String(m.quantity ?? '-'))}${escapeHtml(m.unit || '')}</span>
+                ${m.status ? `<div class="cc-plan-detail-sub">状态：${escapeHtml(m.status)}</div>` : ''}
+                ${m.usedIn && m.usedIn.length ? `<div class="cc-plan-detail-sub">用于：${m.usedIn.map((u) => escapeHtml(u)).join('、')}</div>` : ''}
               </div>
             `).join('')}
           </div>
@@ -2531,6 +2533,17 @@ function renderFixPlanModalHtml(plan) {
     </div>`;
   }).join('');
 
+  const materialSummaryHtml = plan.materialSummary && Object.keys(plan.materialSummary).length
+    ? `<div class="cc-plan-material-summary">
+         <span class="cc-plan-material-summary-label">材料类别：</span>
+         ${Object.entries(plan.materialSummary).map(([cat, names]) => `
+           <span class="cc-plan-material-cat">
+             <strong>${escapeHtml(cat)}</strong>：${names.map((n) => escapeHtml(n)).join('、')}
+           </span>
+         `).join('')}
+       </div>`
+    : '';
+
   return `<div class="cc-plan-modal">
     <div class="cc-plan-summary">
       <div class="cc-plan-summary-item"><span>修复项</span><strong>${plan.totalItems}</strong></div>
@@ -2545,6 +2558,7 @@ function renderFixPlanModalHtml(plan) {
       <span class="cc-plan-affected-chip">修补 ${plan.affectedCounts.repairs}</span>
       <span class="cc-plan-affected-chip">材料 ${plan.affectedCounts.materials}</span>
     </div>
+    ${materialSummaryHtml}
     <div class="cc-plan-items">${itemsHtml}</div>
     <div style="margin-top:14px">
       <label style="color:var(--muted);font-size:13px;font-weight:700">批量修复说明（选填）：
@@ -2595,14 +2609,33 @@ function renderBatchResultModalHtml(result) {
       </div>`
     : '';
 
+  const skipHtml = result.skipped && result.skipped.length
+    ? `<div class="cc-result-section cc-result-skip">
+        <div class="cc-result-head">
+          <span class="cc-result-icon">⏭️</span>
+          <span class="cc-result-title">自动跳过（${result.skipped.length}）</span>
+        </div>
+        <div class="cc-result-list">
+          ${result.skipped.map((s) => `
+            <div class="cc-result-item">
+              <strong>${escapeHtml(s.scrollTitle || s.issueTitle || '未知项')}</strong>
+              <span class="cc-result-meta cc-result-skip-reason">${escapeHtml(s.reason)}</span>
+            </div>
+          `).join('')}
+        </div>
+      </div>`
+    : '';
+
   return `<div class="cc-batch-result">
     <div class="cc-result-overview">
       <div class="cc-result-overview-item ok"><span>成功</span><strong>${result.totalSucceeded}</strong></div>
       <div class="cc-result-overview-item bad"><span>失败</span><strong>${result.totalFailed}</strong></div>
+      ${result.totalSkipped !== undefined ? `<div class="cc-result-overview-item skip"><span>跳过</span><strong>${result.totalSkipped}</strong></div>` : ''}
       <div class="cc-result-overview-item"><span>总计</span><strong>${result.totalRequested}</strong></div>
     </div>
     ${successHtml}
     ${failHtml}
+    ${skipHtml}
   </div>`;
 }
 

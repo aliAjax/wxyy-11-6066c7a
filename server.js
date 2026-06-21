@@ -2383,42 +2383,39 @@ function runConsistencyCheck(db) {
 const CONSISTENCY_FIX_MAP = {
   'fix-status-to-restricted': {
     targetBorrowStatus: '限制借阅',
+    priority: 80,
     validate: (db, scroll) => {
       const lentOut = (db.loans || []).filter((l) => l.scrollId === scroll.id && l.status === '已借出');
-      return lentOut.length > 0;
+      const activeRepairs = (db.repairs || []).filter((r) => r.scrollId === scroll.id && (r.status === '计划中' || r.status === '进行中'));
+      return lentOut.length > 0 && activeRepairs.length === 0 && scroll.borrowStatus !== '限制借阅';
     },
     historyAction: '状态变更',
     historyNote: '巡检修复：经卷存在已借出记录，状态修正为限制借阅'
   },
   'fix-status-to-repairing': {
     targetBorrowStatus: '修补中',
+    priority: 100,
     validate: (db, scroll) => {
       const active = (db.repairs || []).filter((r) => r.scrollId === scroll.id && (r.status === '计划中' || r.status === '进行中'));
-      return active.length > 0;
+      return active.length > 0 && scroll.borrowStatus !== '修补中';
     },
     historyAction: '修补中',
     historyNote: '巡检修复：经卷存在未完成修补，状态修正为修补中'
   },
   'fix-status-to-approval': {
     targetBorrowStatus: '需审批',
+    priority: 50,
     validate: (db, scroll) => {
-      const active = (db.loans || []).filter((l) => l.scrollId === scroll.id && ACTIVE_LOAN_STATUSES.includes(l.status));
-      return active.length === 0;
+      const activeLoans = (db.loans || []).filter((l) => l.scrollId === scroll.id && ACTIVE_LOAN_STATUSES.includes(l.status));
+      const activeRepairs = (db.repairs || []).filter((r) => r.scrollId === scroll.id && (r.status === '计划中' || r.status === '进行中'));
+      return activeLoans.length === 0 && activeRepairs.length === 0 && scroll.borrowStatus !== '需审批' && scroll.borrowStatus !== '可借阅';
     },
     historyAction: '状态变更',
     historyNote: '巡检修复：无活跃借阅或修补已结束，状态修正为需审批'
   },
   'fix-repair-complete-no-history': {
     targetBorrowStatus: '需审批',
-    validate: (db, scroll) => {
-      const active = (db.repairs || []).filter((r) => r.scrollId === scroll.id && (r.status === '计划中' || r.status === '进行中'));
-      return active.length === 0;
-    },
-    historyAction: '修补完成',
-    historyNote: '巡检修复：修补已完成但缺少历史记录，补充修补完成记录并修正为需审批'
-  },
-  'fix-repair-history-only': {
-    targetBorrowStatus: null,
+    priority: 60,
     validate: (db, scroll) => {
       const active = (db.repairs || []).filter((r) => r.scrollId === scroll.id && (r.status === '计划中' || r.status === '进行中'));
       const completed = (db.repairs || []).filter((r) => r.scrollId === scroll.id && r.status === '已完成');
@@ -2427,14 +2424,33 @@ const CONSISTENCY_FIX_MAP = {
       const hasHistoryEntry = (scroll.history || []).some(
         (h) => h.action === '修补完成' || (h.note && h.note.includes('修补完成'))
       );
-      return active.length === 0 && (completed.length > 0 || completedBatches.length > 0) && !hasHistoryEntry;
+      return active.length === 0 && (completed.length > 0 || completedBatches.length > 0) && !hasHistoryEntry && scroll.borrowStatus === '修补中';
+    },
+    historyAction: '修补完成',
+    historyNote: '巡检修复：修补已完成但缺少历史记录，补充修补完成记录并修正为需审批'
+  },
+  'fix-repair-history-only': {
+    targetBorrowStatus: null,
+    priority: 30,
+    validate: (db, scroll) => {
+      const active = (db.repairs || []).filter((r) => r.scrollId === scroll.id && (r.status === '计划中' || r.status === '进行中'));
+      const completed = (db.repairs || []).filter((r) => r.scrollId === scroll.id && r.status === '已完成');
+      const batches = (db.repairBatches || []).filter((b) => b.scrollId === scroll.id);
+      const completedBatches = batches.filter((b) => b.status === '已完成');
+      const hasHistoryEntry = (scroll.history || []).some(
+        (h) => h.action === '修补完成' || (h.note && h.note.includes('修补完成'))
+      );
+      return active.length === 0 && (completed.length > 0 || completedBatches.length > 0) && !hasHistoryEntry && scroll.borrowStatus !== '修补中';
     },
     historyAction: '修补完成',
     historyNote: '巡检修复：修补已完成但缺少历史记录，补充修补完成记录'
   },
   'fix-level1-to-approval': {
     targetBorrowStatus: '需审批',
-    validate: () => true,
+    priority: 40,
+    validate: (db, scroll) => {
+      return scroll.protectionLevel === '一级' && scroll.borrowStatus === '可借阅';
+    },
     historyAction: '保护评估',
     historyNote: '巡检修复：一级保护经卷不应标记为可借阅，修正为需审批'
   }
@@ -2515,8 +2531,12 @@ function buildFixPlanForIssue(db, issue) {
     materials: affectedMaterials.map((m) => ({
       id: m.id,
       name: m.name,
+      category: m.category,
       batch: m.batch,
-      quantity: m.quantity
+      quantity: m.quantity,
+      unit: m.unit,
+      status: m.status,
+      usedIn: affectedRepairs.filter((r) => r.materialId === m.id).map((r) => r.process || r.id)
     })),
     historySummary,
     suggestionLabel: issue.suggestionLabel
@@ -2670,7 +2690,18 @@ app.post('/api/consistency-check/plan', requirePermission('scrolls', 'view'), as
   const affectedLoansCount = planItems.reduce((sum, p) => sum + p.loans.length, 0);
   const affectedRepairsCount = planItems.reduce((sum, p) => sum + p.repairs.length, 0);
   const affectedBatchesCount = planItems.reduce((sum, p) => sum + p.repairBatches.length, 0);
-  const affectedMaterialsCount = planItems.reduce((sum, p) => sum + p.materials.length, 0);
+  const materialSet = new Set();
+  const materialCategoryMap = {};
+  for (const p of planItems) {
+    for (const m of p.materials) {
+      materialSet.add(m.id);
+      if (!materialCategoryMap[m.category]) materialCategoryMap[m.category] = [];
+      if (!materialCategoryMap[m.category].includes(m.name)) {
+        materialCategoryMap[m.category].push(m.name);
+      }
+    }
+  }
+  const affectedMaterialsCount = materialSet.size;
 
   res.json({
     planGeneratedAt: new Date().toISOString(),
@@ -2684,6 +2715,7 @@ app.post('/api/consistency-check/plan', requirePermission('scrolls', 'view'), as
       batches: affectedBatchesCount,
       materials: affectedMaterialsCount
     },
+    materialSummary: materialCategoryMap,
     items: planItems,
     skipped: skippedIssues
   });
@@ -2702,31 +2734,74 @@ app.post('/api/consistency-check/batch-fix', requirePermission('scrolls', 'updat
   const targetIssues = currentIssues.filter((i) => issueIds.includes(i.id) && i.autoFixable);
   const notFoundIds = issueIds.filter((id) => !targetIssues.find((i) => i.id === id));
 
+  const scrollGroups = {};
+  for (const issue of targetIssues) {
+    if (!scrollGroups[issue.scrollId]) {
+      scrollGroups[issue.scrollId] = [];
+    }
+    scrollGroups[issue.scrollId].push(issue);
+  }
+  for (const scrollId of Object.keys(scrollGroups)) {
+    scrollGroups[scrollId].sort((a, b) => {
+      const pa = CONSISTENCY_FIX_MAP[a.suggestion]?.priority || 0;
+      const pb = CONSISTENCY_FIX_MAP[b.suggestion]?.priority || 0;
+      return pb - pa;
+    });
+  }
+
   const succeeded = [];
   const failed = [];
+  const skipped = [];
 
-  for (const issue of targetIssues) {
-    const result = await applySingleFix(db, req, issue, note);
-    if (result.success) {
-      succeeded.push(result);
-    } else {
-      failed.push({
-        issueId: issue.id,
-        scrollId: issue.scrollId,
-        scrollTitle: issue.scrollTitle,
-        issueTitle: issue.title,
-        error: result.error
-      });
+  for (const scrollId of Object.keys(scrollGroups)) {
+    const scrollIssues = scrollGroups[scrollId];
+    for (const issue of scrollIssues) {
+      const scroll = (db.scrolls || []).find((s) => s.id === issue.scrollId);
+      const fixConfig = CONSISTENCY_FIX_MAP[issue.suggestion];
+      if (!scroll || !fixConfig) {
+        failed.push({
+          issueId: issue.id,
+          scrollId: issue.scrollId,
+          scrollTitle: issue.scrollTitle,
+          issueTitle: issue.title,
+          error: '经卷或修复配置不存在'
+        });
+        continue;
+      }
+
+      if (!fixConfig.validate(db, scroll)) {
+        skipped.push({
+          issueId: issue.id,
+          scrollId: issue.scrollId,
+          scrollTitle: issue.scrollTitle,
+          issueTitle: issue.title,
+          reason: '同经卷其他修复已解决该问题，无需重复执行'
+        });
+        continue;
+      }
+
+      const result = await applySingleFix(db, req, issue, note);
+      if (result.success) {
+        succeeded.push(result);
+      } else {
+        failed.push({
+          issueId: issue.id,
+          scrollId: issue.scrollId,
+          scrollTitle: issue.scrollTitle,
+          issueTitle: issue.title,
+          error: result.error
+        });
+      }
     }
   }
 
   for (const id of notFoundIds) {
-    const originalIssue = (currentIssues.find((i) => i.id === id)) || {};
+    const originalIssue = currentIssues.find((i) => i.id === id);
     failed.push({
       issueId: id,
-      scrollId: originalIssue.scrollId,
-      scrollTitle: originalIssue.scrollTitle,
-      issueTitle: originalIssue.title || '未知问题',
+      scrollId: originalIssue?.scrollId,
+      scrollTitle: originalIssue?.scrollTitle,
+      issueTitle: originalIssue?.title || '未知问题',
       error: '问题不存在或已被修复'
     });
   }
@@ -2747,7 +2822,7 @@ app.post('/api/consistency-check/batch-fix', requirePermission('scrolls', 'updat
   await writeAuditLog(db, req, {
     collection: 'audits',
     itemId: null,
-    itemTitle: `批量修复 ${succeeded.length} 项，失败 ${failed.length} 项`,
+    itemTitle: `批量修复 ${succeeded.length} 项，失败 ${failed.length} 项，跳过 ${skipped.length} 项`,
     action: 'update',
     changes: {
       batchStartedAt,
@@ -2755,10 +2830,12 @@ app.post('/api/consistency-check/batch-fix', requirePermission('scrolls', 'updat
       issueCount: issueIds.length,
       succeeded: succeeded.length,
       failed: failed.length,
+      skipped: skipped.length,
       succeededIssueIds: succeeded.map((s) => s.issueId),
-      failedIssues: failed.map((f) => ({ issueId: f.issueId, error: f.error }))
+      failedIssues: failed.map((f) => ({ issueId: f.issueId, error: f.error })),
+      skippedIssues: skipped.map((s) => ({ issueId: s.issueId, reason: s.reason }))
     },
-    note: `一致性巡检批量修复完成：成功 ${succeeded.length} 项，失败 ${failed.length} 项`
+    note: `一致性巡检批量修复完成：成功 ${succeeded.length} 项，失败 ${failed.length} 项，跳过 ${skipped.length} 项`
   });
 
   await writeDb(db);
@@ -2772,8 +2849,10 @@ app.post('/api/consistency-check/batch-fix', requirePermission('scrolls', 'updat
     totalRequested: issueIds.length,
     totalSucceeded: succeeded.length,
     totalFailed: failed.length,
+    totalSkipped: skipped.length,
     succeeded,
     failed,
+    skipped,
     remainingSummary
   });
 });
