@@ -2558,6 +2558,7 @@ app.post('/api/scrolls/batch/import', async (req, res) => {
       cabinet: (data.cabinet || '').trim(),
       protectionLevel: data.protectionLevel ? data.protectionLevel.trim() : '三级',
       borrowStatus: data.borrowStatus ? data.borrowStatus.trim() : '需审批',
+      blockReason: (data.blockReason || '').trim(),
       createdAt: now,
       updatedAt: now
     };
@@ -2650,7 +2651,8 @@ app.post('/api/scrolls/batch/draft', async (req, res) => {
         inscription: (data.inscription || '').trim(),
         cabinet: (data.cabinet || '').trim(),
         protectionLevel: data.protectionLevel ? data.protectionLevel.trim() : '三级',
-        borrowStatus: data.borrowStatus ? data.borrowStatus.trim() : '需审批'
+        borrowStatus: data.borrowStatus ? data.borrowStatus.trim() : '需审批',
+        blockReason: (data.blockReason || '').trim()
       },
       validationErrors: errors.map((e) => ({ type: e.type, field: e.field, message: e.message })),
       isValid: errors.length === 0,
@@ -2864,6 +2866,7 @@ app.post('/api/drafts/:id/confirm', async (req, res) => {
     cabinet: (data.cabinet || '').trim(),
     protectionLevel: data.protectionLevel || '三级',
     borrowStatus: data.borrowStatus || '需审批',
+    blockReason: data.blockReason || '',
     createdAt: now,
     updatedAt: now
   };
