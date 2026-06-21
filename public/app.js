@@ -2706,8 +2706,10 @@ function executeBatchFix(note) {
     cc.batchResult = result;
     cc.selectedIssueIds = new Set();
     const msg = result.totalFailed > 0
-      ? `批量修复完成：成功${result.totalSucceeded}项，失败${result.totalFailed}项`
-      : `批量修复完成：全部${result.totalSucceeded}项全部成功`;
+      ? `批量修复完成：成功${result.totalSucceeded}项，失败${result.totalFailed}项，跳过${result.totalSkipped || 0}项`
+      : result.totalSkipped > 0
+        ? `批量修复完成：成功${result.totalSucceeded}项，跳过${result.totalSkipped}项`
+        : `批量修复完成：全部${result.totalSucceeded}项全部成功`;
     toast(msg);
     loadConsistencyCheck().then(() => {
       load();

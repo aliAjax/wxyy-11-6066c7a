@@ -2480,11 +2480,18 @@ function buildFixPlanForIssue(db, issue) {
   const affectedRepairs = (db.repairs || []).filter((r) => (issue.affectedRepairs || []).includes(r.id));
   const affectedBatches = (db.repairBatches || []).filter((b) => (issue.affectedRepairs || []).includes(b.id));
 
-  const affectedMaterialIds = new Set();
-  for (const r of affectedRepairs) {
-    if (r.materialId) affectedMaterialIds.add(r.materialId);
-  }
-  const affectedMaterials = (db.materials || []).filter((m) => affectedMaterialIds.has(m.id));
+  const repairUsesMaterial = (repair, material) => {
+    if (!repair || !material) return false;
+    if (repair.materialId && repair.materialId === material.id) return true;
+    const usedNames = String(repair.materialUsed || '')
+      .split(/[、,，;；/\\\s]+/)
+      .map((name) => name.trim())
+      .filter(Boolean);
+    return usedNames.includes(material.name);
+  };
+  const affectedMaterials = (db.materials || []).filter((m) =>
+    affectedRepairs.some((r) => repairUsesMaterial(r, m))
+  );
 
   const statusWillChange = fixConfig.targetBorrowStatus !== null && scroll.borrowStatus !== fixConfig.targetBorrowStatus;
 
@@ -2536,7 +2543,7 @@ function buildFixPlanForIssue(db, issue) {
       quantity: m.quantity,
       unit: m.unit,
       status: m.status,
-      usedIn: affectedRepairs.filter((r) => r.materialId === m.id).map((r) => r.process || r.id)
+      usedIn: affectedRepairs.filter((r) => repairUsesMaterial(r, m)).map((r) => r.process || r.id)
     })),
     historySummary,
     suggestionLabel: issue.suggestionLabel
