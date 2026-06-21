@@ -260,22 +260,26 @@ main {
   white-space: nowrap;
 }
 
-.pill.ok {
+.pill.ok,
+.pill.risk-low {
   background: rgba(38, 115, 77, .13);
   color: var(--ok);
 }
 
-.pill.warn {
+.pill.warn,
+.pill.risk-warn {
   background: rgba(163, 92, 0, .14);
   color: var(--warn);
 }
 
-.pill.bad {
+.pill.bad,
+.pill.risk-bad {
   background: rgba(161, 61, 61, .14);
   color: var(--bad);
 }
 
-.pill.extreme {
+.pill.extreme,
+.pill.risk-extreme {
   background: rgba(109, 20, 20, .2);
   color: #6d1414;
   border: 1px solid #a13d3d;
@@ -525,22 +529,26 @@ main {
   border-left: 3px solid transparent;
 }
 
-.calendar-event.ok {
+.calendar-event.ok,
+.calendar-event.risk-low {
   background: rgba(16, 133, 92, .12);
   border-left-color: var(--ok);
 }
 
-.calendar-event.warn {
+.calendar-event.warn,
+.calendar-event.risk-warn {
   background: rgba(163, 92, 0, .15);
   border-left-color: var(--warn);
 }
 
-.calendar-event.bad {
+.calendar-event.bad,
+.calendar-event.risk-bad {
   background: rgba(161, 61, 61, .13);
   border-left-color: var(--bad);
 }
 
-.calendar-event.extreme {
+.calendar-event.extreme,
+.calendar-event.risk-extreme {
   background: rgba(122, 0, 0, .15);
   border-left-color: #7a0000;
 }
@@ -574,10 +582,14 @@ main {
   line-height: 1.6;
 }
 
-.calendar-event .event-risk.ok { background: var(--ok); }
-.calendar-event .event-risk.warn { background: var(--warn); }
-.calendar-event .event-risk.bad { background: var(--bad); }
-.calendar-event .event-risk.extreme { background: #7a0000; }
+.calendar-event .event-risk.ok,
+.calendar-event .event-risk.risk-low { background: var(--ok); }
+.calendar-event .event-risk.warn,
+.calendar-event .event-risk.risk-warn { background: var(--warn); }
+.calendar-event .event-risk.bad,
+.calendar-event .event-risk.risk-bad { background: var(--bad); }
+.calendar-event .event-risk.extreme,
+.calendar-event .event-risk.risk-extreme { background: #7a0000; }
 
 .calendar-event.more {
   background: var(--panel-2);
