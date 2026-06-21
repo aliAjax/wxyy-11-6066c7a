@@ -9,10 +9,20 @@
       "inscription": "尾题残缺，有朱笔圈点",
       "cabinet": "恒湿柜C-01",
       "protectionLevel": "一级",
-      "borrowStatus": "限制借阅",
+      "borrowStatus": "需审批",
       "createdAt": "2026-06-12T08:00:00.000Z",
-      "updatedAt": "2026-06-20T14:21:14.382Z",
+      "updatedAt": "2026-06-21T02:49:41.023Z",
       "history": [
+        {
+          "at": "2026-06-21T02:49:41.023Z",
+          "action": "修补完成",
+          "note": "修补批次\"常规除尘修补\"全部工序完成，转入需审批"
+        },
+        {
+          "at": "2026-06-21T02:45:28.116Z",
+          "action": "修补中",
+          "note": "启动修补批次\"常规除尘修补\""
+        },
         {
           "at": "2026-06-20T14:21:14.382Z",
           "action": "保护建议更新",
@@ -30,23 +40,27 @@
         }
       ],
       "protectionAdvice": {
-        "content": "脆裂纸张应采用浆糊补缀法修复，避免继续扩展\n虫蛀经卷需做熏蒸除虫，隔离存放，防止蔓延\n一级文物需恒温恒湿保存，温度控制在18-22℃，湿度50-55%\n一级文物应配备专用无酸纸函套，避免光照直射\n一级文物每季度做一次专业状态检查，记录完整档案\n限制借阅的经卷原则上不对外提供原件，可提供影印或数字化版本借阅\n限制借阅状态下如需调阅原件，须经馆长审批并全程监护",
+        "content": "经卷存在虫蛀痕迹，需立即放入低温冷冻柜进行杀虫处理（-18℃冷冻72小时）\n处理后置于密封盒中，内放樟脑丸或芸香草以防再次虫害\n检查相邻经卷是否受波及，必要时整柜熏蒸\n纸张脆裂需进行托裱加固，注意拼接处纹理对齐\n脆裂部位避免受力，操作时使用软纸衬垫\n建议制作仿真复制本供查阅使用，原件封存\n【一级保护】原件仅限馆内特藏室查阅，须两人以上在场\n【一级保护】禁止外借展出，如需展示须使用高仿复制件\n【一级保护】每季度进行一次外观检查，每年做一次专业除尘\n【一级保护】存放于恒温恒湿柜（温度18-22℃，湿度45-55%）\n借阅需审批：使用前须评估用途风险，查阅时在旁监护\n归还时须当面检查经卷状态，确认完好后签收归档",
         "suggestions": [
-          "脆裂纸张应采用浆糊补缀法修复，避免继续扩展",
-          "虫蛀经卷需做熏蒸除虫，隔离存放，防止蔓延",
-          "一级文物需恒温恒湿保存，温度控制在18-22℃，湿度50-55%",
-          "一级文物应配备专用无酸纸函套，避免光照直射",
-          "一级文物每季度做一次专业状态检查，记录完整档案",
-          "限制借阅的经卷原则上不对外提供原件，可提供影印或数字化版本借阅",
-          "限制借阅状态下如需调阅原件，须经馆长审批并全程监护"
+          "经卷存在虫蛀痕迹，需立即放入低温冷冻柜进行杀虫处理（-18℃冷冻72小时）",
+          "处理后置于密封盒中，内放樟脑丸或芸香草以防再次虫害",
+          "检查相邻经卷是否受波及，必要时整柜熏蒸",
+          "纸张脆裂需进行托裱加固，注意拼接处纹理对齐",
+          "脆裂部位避免受力，操作时使用软纸衬垫",
+          "建议制作仿真复制本供查阅使用，原件封存",
+          "【一级保护】原件仅限馆内特藏室查阅，须两人以上在场",
+          "【一级保护】禁止外借展出，如需展示须使用高仿复制件",
+          "【一级保护】每季度进行一次外观检查，每年做一次专业除尘",
+          "【一级保护】存放于恒温恒湿柜（温度18-22℃，湿度45-55%）",
+          "借阅需审批：使用前须评估用途风险，查阅时在旁监护",
+          "归还时须当面检查经卷状态，确认完好后签收归档"
         ],
         "damageLabels": [
-          "明显残损",
           "严重残损"
         ],
         "protectionLevel": "一级",
-        "borrowStatus": "限制借阅",
-        "generatedAt": "2026-06-20T14:21:14.382Z"
+        "borrowStatus": "需审批",
+        "generatedAt": "2026-06-21T02:49:41.023Z"
       }
     },
     {
@@ -510,6 +524,84 @@
         }
       ],
       "note": "开始修补"
+    },
+    {
+      "id": "repairs-1782009928116-5dbec",
+      "scrollId": "scroll-seed-1",
+      "batchId": "repairBatches-1782009928116-a20f6",
+      "process": "除尘",
+      "sortOrder": 0,
+      "conservator": "测试员",
+      "date": "2026-06-22",
+      "status": "已完成",
+      "materialUsed": "",
+      "note": "由模板\"常规除尘修补\"生成",
+      "createdAt": "2026-06-21T02:45:28.116Z",
+      "updatedAt": "2026-06-21T02:46:59.672Z",
+      "history": [
+        {
+          "at": "2026-06-21T02:46:59.672Z",
+          "action": "已完成",
+          "note": ""
+        },
+        {
+          "at": "2026-06-21T02:45:28.116Z",
+          "action": "创建",
+          "note": "批次生成：除尘（第1道工序）"
+        }
+      ]
+    },
+    {
+      "id": "repairs-1782009928116-cf9a6",
+      "scrollId": "scroll-seed-1",
+      "batchId": "repairBatches-1782009928116-a20f6",
+      "process": "展平",
+      "sortOrder": 1,
+      "conservator": "测试员",
+      "date": "2026-06-22",
+      "status": "已完成",
+      "materialUsed": "",
+      "note": "由模板\"常规除尘修补\"生成",
+      "createdAt": "2026-06-21T02:45:28.116Z",
+      "updatedAt": "2026-06-21T02:47:27.908Z",
+      "history": [
+        {
+          "at": "2026-06-21T02:47:27.908Z",
+          "action": "已完成",
+          "note": ""
+        },
+        {
+          "at": "2026-06-21T02:45:28.116Z",
+          "action": "创建",
+          "note": "批次生成：展平（第2道工序）"
+        }
+      ]
+    },
+    {
+      "id": "repairs-1782009928116-27685",
+      "scrollId": "scroll-seed-1",
+      "batchId": "repairBatches-1782009928116-a20f6",
+      "process": "装函",
+      "sortOrder": 2,
+      "conservator": "测试员",
+      "date": "2026-06-22",
+      "status": "已完成",
+      "materialUsed": "",
+      "note": "由模板\"常规除尘修补\"生成",
+      "createdAt": "2026-06-21T02:45:28.116Z",
+      "updatedAt": "2026-06-21T02:49:41.022Z",
+      "history": [
+        {
+          "at": "2026-06-21T02:49:41.023Z",
+          "action": "已完成",
+          "note": ""
+        },
+        {
+          "at": "2026-06-21T02:45:28.116Z",
+          "action": "创建",
+          "note": "批次生成：装函（第3道工序）"
+        }
+      ]
     }
   ],
   "loans": [
@@ -927,7 +1019,11 @@
       "dueDate": "2026-07-08",
       "reason": "国家图书馆馆藏敦煌写卷S.259号与本馆藏卷校勘比对，需查阅原卷核对字形",
       "status": "条件批准",
-      "conditions": ["馆内阅览", "禁止拍照", "修补陪同"],
+      "conditions": [
+        "馆内阅览",
+        "禁止拍照",
+        "修补陪同"
+      ],
       "conditionsSummary": "限馆内阅览、禁止任何影像采集、查阅全过程须由专职修补人员陪同",
       "conditionsNote": "限定在特藏室A区查阅，每日查阅时段为上午9:00-11:30，查阅期间须佩戴白手套，修补人员为赵师傅",
       "riskAssessment": {
@@ -1336,9 +1432,235 @@
           "note": "从模板\"测试模板-标准修复\"生成5道工序"
         }
       ]
+    },
+    {
+      "id": "repairBatches-1782009928116-a20f6",
+      "scrollId": "scroll-seed-1",
+      "templateId": "template-seed-1",
+      "templateName": "常规除尘修补",
+      "conservator": "测试员",
+      "startDate": "2026-06-22",
+      "status": "已完成",
+      "progressSummary": "3/3 已完成",
+      "note": "测试工序依赖功能",
+      "createdAt": "2026-06-21T02:45:28.116Z",
+      "updatedAt": "2026-06-21T02:49:41.023Z",
+      "history": [
+        {
+          "at": "2026-06-21T02:49:41.023Z",
+          "action": "批次完成",
+          "note": "所有修补工序已完成"
+        },
+        {
+          "at": "2026-06-21T02:47:27.908Z",
+          "action": "进度更新",
+          "note": "展平已完成（2/3）"
+        },
+        {
+          "at": "2026-06-21T02:46:59.672Z",
+          "action": "进度更新",
+          "note": "除尘已完成（1/3）"
+        },
+        {
+          "at": "2026-06-21T02:45:28.116Z",
+          "action": "创建",
+          "note": "从模板\"常规除尘修补\"生成3道工序"
+        }
+      ]
     }
   ],
   "audits": [
+    {
+      "id": "audit-1782010181023-11309",
+      "timestamp": "2026-06-21T02:49:41.023Z",
+      "operator": "系统",
+      "operatorRole": "admin",
+      "operatorRoleName": "管理员",
+      "collection": "repairBatches",
+      "collectionLabel": "修补批次",
+      "itemId": "repairBatches-1782009928116-a20f6",
+      "itemTitle": "常规除尘修补",
+      "action": "statusChange",
+      "actionLabel": "状态变更",
+      "changes": null,
+      "note": "批次进度更新：3/3 已完成",
+      "ip": "::1"
+    },
+    {
+      "id": "audit-1782010181023-550c5",
+      "timestamp": "2026-06-21T02:49:41.023Z",
+      "operator": "系统",
+      "operatorRole": "admin",
+      "operatorRoleName": "管理员",
+      "collection": "scrolls",
+      "collectionLabel": "经卷档案",
+      "itemId": "scroll-seed-1",
+      "itemTitle": "妙法莲华经卷第三",
+      "action": "statusChange",
+      "actionLabel": "状态变更",
+      "changes": null,
+      "note": "经卷状态变更（修补工序装函：已完成）",
+      "ip": "::1"
+    },
+    {
+      "id": "audit-1782010181023-8ae0d",
+      "timestamp": "2026-06-21T02:49:41.023Z",
+      "operator": "系统",
+      "operatorRole": "admin",
+      "operatorRoleName": "管理员",
+      "collection": "repairs",
+      "collectionLabel": "修补记录",
+      "itemId": "repairs-1782009928116-27685",
+      "itemTitle": "装函",
+      "action": "statusChange",
+      "actionLabel": "状态变更",
+      "changes": {
+        "status": {
+          "before": "计划中",
+          "after": "已完成"
+        }
+      },
+      "note": "",
+      "ip": "::1"
+    },
+    {
+      "id": "audit-1782010047909-bd9ce",
+      "timestamp": "2026-06-21T02:47:27.909Z",
+      "operator": "系统",
+      "operatorRole": "admin",
+      "operatorRoleName": "管理员",
+      "collection": "repairBatches",
+      "collectionLabel": "修补批次",
+      "itemId": "repairBatches-1782009928116-a20f6",
+      "itemTitle": "常规除尘修补",
+      "action": "statusChange",
+      "actionLabel": "状态变更",
+      "changes": null,
+      "note": "批次进度更新：2/3 已完成",
+      "ip": "::1"
+    },
+    {
+      "id": "audit-1782010047909-7509f",
+      "timestamp": "2026-06-21T02:47:27.909Z",
+      "operator": "系统",
+      "operatorRole": "admin",
+      "operatorRoleName": "管理员",
+      "collection": "scrolls",
+      "collectionLabel": "经卷档案",
+      "itemId": "scroll-seed-1",
+      "itemTitle": "妙法莲华经卷第三",
+      "action": "statusChange",
+      "actionLabel": "状态变更",
+      "changes": null,
+      "note": "经卷状态变更（修补工序展平：已完成）",
+      "ip": "::1"
+    },
+    {
+      "id": "audit-1782010047908-c6850",
+      "timestamp": "2026-06-21T02:47:27.908Z",
+      "operator": "系统",
+      "operatorRole": "admin",
+      "operatorRoleName": "管理员",
+      "collection": "repairs",
+      "collectionLabel": "修补记录",
+      "itemId": "repairs-1782009928116-cf9a6",
+      "itemTitle": "展平",
+      "action": "statusChange",
+      "actionLabel": "状态变更",
+      "changes": {
+        "status": {
+          "before": "计划中",
+          "after": "已完成"
+        }
+      },
+      "note": "",
+      "ip": "::1"
+    },
+    {
+      "id": "audit-1782010019672-b9262",
+      "timestamp": "2026-06-21T02:46:59.672Z",
+      "operator": "系统",
+      "operatorRole": "admin",
+      "operatorRoleName": "管理员",
+      "collection": "repairBatches",
+      "collectionLabel": "修补批次",
+      "itemId": "repairBatches-1782009928116-a20f6",
+      "itemTitle": "常规除尘修补",
+      "action": "statusChange",
+      "actionLabel": "状态变更",
+      "changes": null,
+      "note": "批次进度更新：1/3 已完成",
+      "ip": "::1"
+    },
+    {
+      "id": "audit-1782010019672-e6932",
+      "timestamp": "2026-06-21T02:46:59.672Z",
+      "operator": "系统",
+      "operatorRole": "admin",
+      "operatorRoleName": "管理员",
+      "collection": "scrolls",
+      "collectionLabel": "经卷档案",
+      "itemId": "scroll-seed-1",
+      "itemTitle": "妙法莲华经卷第三",
+      "action": "statusChange",
+      "actionLabel": "状态变更",
+      "changes": null,
+      "note": "经卷状态变更（修补工序除尘：已完成）",
+      "ip": "::1"
+    },
+    {
+      "id": "audit-1782010019672-2c528",
+      "timestamp": "2026-06-21T02:46:59.672Z",
+      "operator": "系统",
+      "operatorRole": "admin",
+      "operatorRoleName": "管理员",
+      "collection": "repairs",
+      "collectionLabel": "修补记录",
+      "itemId": "repairs-1782009928116-5dbec",
+      "itemTitle": "除尘",
+      "action": "statusChange",
+      "actionLabel": "状态变更",
+      "changes": {
+        "status": {
+          "before": "计划中",
+          "after": "已完成"
+        }
+      },
+      "note": "",
+      "ip": "::1"
+    },
+    {
+      "id": "audit-1782009928117-3f97d",
+      "timestamp": "2026-06-21T02:45:28.117Z",
+      "operator": "系统",
+      "operatorRole": "admin",
+      "operatorRoleName": "管理员",
+      "collection": "scrolls",
+      "collectionLabel": "经卷档案",
+      "itemId": "scroll-seed-1",
+      "itemTitle": "妙法莲华经卷第三",
+      "action": "statusChange",
+      "actionLabel": "状态变更",
+      "changes": null,
+      "note": "状态变更为修补中（启动修补批次\"常规除尘修补\"）",
+      "ip": "::1"
+    },
+    {
+      "id": "audit-1782009928117-cfccd",
+      "timestamp": "2026-06-21T02:45:28.117Z",
+      "operator": "系统",
+      "operatorRole": "admin",
+      "operatorRoleName": "管理员",
+      "collection": "repairBatches",
+      "collectionLabel": "修补批次",
+      "itemId": "repairBatches-1782009928116-a20f6",
+      "itemTitle": "常规除尘修补 - 妙法莲华经卷第三",
+      "action": "create",
+      "actionLabel": "新增",
+      "changes": null,
+      "note": "生成3道修补工序",
+      "ip": "::1"
+    },
     {
       "id": "audit-condition-approve-demo",
       "timestamp": "2026-06-22T11:00:00.000Z",
@@ -1352,10 +1674,26 @@
       "action": "approve",
       "actionLabel": "条件批准",
       "changes": {
-        "status": { "before": "待审批", "after": "条件批准" },
-        "conditions": { "before": null, "after": ["馆内阅览", "禁止拍照", "修补陪同"] },
-        "conditionsSummary": { "before": null, "after": "限馆内阅览、禁止任何影像采集、查阅全过程须由专职修补人员陪同" },
-        "conditionsNote": { "before": null, "after": "限定在特藏室A区查阅，每日查阅时段为上午9:00-11:30，查阅期间须佩戴白手套，修补人员为赵师傅" }
+        "status": {
+          "before": "待审批",
+          "after": "条件批准"
+        },
+        "conditions": {
+          "before": null,
+          "after": [
+            "馆内阅览",
+            "禁止拍照",
+            "修补陪同"
+          ]
+        },
+        "conditionsSummary": {
+          "before": null,
+          "after": "限馆内阅览、禁止任何影像采集、查阅全过程须由专职修补人员陪同"
+        },
+        "conditionsNote": {
+          "before": null,
+          "after": "限定在特藏室A区查阅，每日查阅时段为上午9:00-11:30，查阅期间须佩戴白手套，修补人员为赵师傅"
+        }
       },
       "note": "条件批准：限馆内阅览、禁止任何影像采集、查阅全过程须由专职修补人员陪同 | 补充说明：限定在特藏室A区查阅，每日查阅时段为上午9:00-11:30，查阅期间须佩戴白手套，修补人员为赵师傅 | 审批理由：陈研究员长期从事敦煌文献整理工作，信誉良好。本次校勘为其国家社科基金重大项目子课题，有正式公函。",
       "ip": "::1"

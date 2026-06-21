@@ -502,15 +502,42 @@ function historyHtml(item) {
 function renderBatchTasksDetail(tasks) {
   const statuses = ['计划中', '进行中', '已完成'];
   return `<div class="batch-tasks-detail">
-    ${tasks.map((t) => {
+    ${tasks.map((t, idx) => {
       const statusTone = toneFor(t.status);
+      const lockInfo = t.lockInfo || {};
+      const isLocked = lockInfo.isLocked;
+      const lockReason = lockInfo.lockReason || '';
+      const canStart = lockInfo.canStart !== false;
+      const canComplete = lockInfo.canComplete !== false;
+      const canRevert = lockInfo.canRevert !== false;
+      const sortOrder = lockInfo.sortOrder !== undefined ? lockInfo.sortOrder : idx;
+      const taskNumber = sortOrder + 1;
+
       const quickActions = [];
-      if (t.status !== '计划中') quickActions.push(`<button class="task-quick" data-task-quick="计划中" data-task-id="${t.id}">📋 待办</button>`);
-      if (t.status !== '进行中') quickActions.push(`<button class="task-quick" data-task-quick="进行中" data-task-id="${t.id}">🔧 进行</button>`);
-      if (t.status !== '已完成') quickActions.push(`<button class="task-quick task-quick-done" data-task-quick="已完成" data-task-id="${t.id}">✅ 完成</button>`);
-      return `<div class="task-card" data-task-card="${t.id}">
+      if (t.status !== '计划中') {
+        const disabled = !canRevert ? 'disabled' : '';
+        const title = !canRevert ? `title="${escapeHtml(lockReason || '后序工序已开始，无法回退')}"` : '';
+        quickActions.push(`<button class="task-quick" data-task-quick="计划中" data-task-id="${t.id}" ${disabled} ${title}>📋 待办</button>`);
+      }
+      if (t.status !== '进行中') {
+        const disabled = !canStart ? 'disabled' : '';
+        const title = !canStart ? `title="${escapeHtml(lockReason || '暂不可开始')}"` : '';
+        quickActions.push(`<button class="task-quick" data-task-quick="进行中" data-task-id="${t.id}" ${disabled} ${title}>🔧 进行</button>`);
+      }
+      if (t.status !== '已完成') {
+        const disabled = !canComplete ? 'disabled' : '';
+        const title = !canComplete ? `title="${escapeHtml(lockReason || '暂不可完成')}"` : '';
+        quickActions.push(`<button class="task-quick task-quick-done" data-task-quick="已完成" data-task-id="${t.id}" ${disabled} ${title}>✅ 完成</button>`);
+      }
+
+      const lockBadge = isLocked
+        ? `<span class="task-lock-badge" title="${escapeHtml(lockReason)}">🔒 ${escapeHtml(lockReason)}</span>`
+        : '';
+
+      return `<div class="task-card${isLocked ? ' task-locked' : ''}${t.status === '已完成' ? ' task-done' : ''}" data-task-card="${t.id}">
         <div class="task-card-head">
           <div class="task-card-title">
+            <span class="task-order-badge">第 ${taskNumber} 道</span>
             <span class="task-process-name">${escapeHtml(t.process || '-')}</span>
             <span class="task-status-display">${pill(t.status || '-', statusTone)}</span>
             <select class="task-status-input" style="display:none" data-field="status">
@@ -521,6 +548,7 @@ function renderBatchTasksDetail(tasks) {
             <button class="ghost" data-task-edit="${t.id}">✏️ 编辑</button>
           </div>
         </div>
+        ${lockBadge ? `<div class="task-lock-notice">${lockBadge}</div>` : ''}
         <div class="task-card-body">
           <div class="task-field">
             <span class="task-field-label">👤 负责人</span>
@@ -2019,8 +2047,8 @@ document.addEventListener('input', async (event) => {
       if (template) {
         const processList = (template.processes || '').split('\n').map((p) => p.trim()).filter(Boolean);
         const previewHtml = `<div class="template-preview">
-          <div class="template-preview-title">📋 模板工序预览（共${processList.length}道）</div>
-          <div class="template-processes">${processList.map((p) => `<span class="template-process-tag">${escapeHtml(p)}</span>`).join('')}</div>
+          <div class="template-preview-title">📋 模板工序预览（共${processList.length}道，按顺序执行）</div>
+          <div class="template-processes">${processList.map((p, i) => `<span class="template-process-tag">${i + 1}. ${escapeHtml(p)}</span>`).join('')}</div>
           ${template.description ? `<div class="template-desc">${escapeHtml(template.description)}</div>` : ''}
         </div>`;
         if (previewEl) {

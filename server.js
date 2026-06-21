@@ -700,6 +700,94 @@ function sortNewest(a, b) {
   return new Date(b.updatedAt || b.createdAt || 0) - new Date(a.updatedAt || a.createdAt || 0);
 }
 
+function getBatchRepairsSorted(db, batchId) {
+  const repairs = (db.repairs || []).filter((r) => r.batchId === batchId);
+  repairs.sort((a, b) => {
+    const orderA = a.sortOrder !== undefined ? a.sortOrder : 999;
+    const orderB = b.sortOrder !== undefined ? b.sortOrder : 999;
+    if (orderA !== orderB) return orderA - orderB;
+    return new Date(a.createdAt || 0) - new Date(b.createdAt || 0);
+  });
+  repairs.forEach((r, idx) => {
+    if (r.sortOrder === undefined) {
+      r.sortOrder = idx;
+    }
+  });
+  return repairs;
+}
+
+function computeTaskLockInfo(db, task) {
+  if (!task.batchId) {
+    return { isLocked: false, lockReason: '', canStart: true, canComplete: true, canRevert: true };
+  }
+  const batchRepairs = getBatchRepairsSorted(db, task.batchId);
+  const taskIndex = batchRepairs.findIndex((r) => r.id === task.id);
+  if (taskIndex < 0) {
+    return { isLocked: false, lockReason: '', canStart: true, canComplete: true, canRevert: true };
+  }
+
+  const isFirst = taskIndex === 0;
+  const prevTask = isFirst ? null : batchRepairs[taskIndex - 1];
+  const nextTask = taskIndex >= batchRepairs.length - 1 ? null : batchRepairs[taskIndex + 1];
+
+  const prevCompleted = !prevTask || prevTask.status === '已完成';
+  const nextStarted = nextTask && nextTask.status !== '计划中';
+
+  let isLocked = false;
+  let lockReason = '';
+  let canStart = true;
+  let canComplete = true;
+  let canRevert = true;
+
+  if (!prevCompleted && task.status !== '已完成') {
+    isLocked = true;
+    lockReason = `前序工序"${prevTask.process}"未完成，暂不可开始`;
+    canStart = false;
+    canComplete = false;
+  }
+
+  if (nextStarted && task.status === '已完成') {
+    canRevert = false;
+  }
+
+  return {
+    isLocked,
+    lockReason,
+    canStart,
+    canComplete,
+    canRevert,
+    sortOrder: task.sortOrder !== undefined ? task.sortOrder : taskIndex,
+    totalCount: batchRepairs.length,
+    prevTask: prevTask ? { id: prevTask.id, process: prevTask.process, status: prevTask.status } : null,
+    nextTask: nextTask ? { id: nextTask.id, process: nextTask.process, status: nextTask.status } : null
+  };
+}
+
+function validateTaskStatusChange(db, taskId, newStatus, oldStatus) {
+  const task = (db.repairs || []).find((r) => r.id === taskId);
+  if (!task) return { valid: true, reason: '' };
+  if (!task.batchId) return { valid: true, reason: '' };
+  if (newStatus === oldStatus) return { valid: true, reason: '' };
+
+  const lockInfo = computeTaskLockInfo(db, task);
+
+  const becomingActive = newStatus === '进行中';
+  const becomingDone = newStatus === '已完成';
+  const reverting = oldStatus === '已完成' && newStatus !== '已完成';
+
+  if (becomingActive && !lockInfo.canStart) {
+    return { valid: false, reason: lockInfo.lockReason || '无法开始此工序' };
+  }
+  if (becomingDone && !lockInfo.canComplete) {
+    return { valid: false, reason: lockInfo.lockReason || '无法完成此工序' };
+  }
+  if (reverting && !lockInfo.canRevert) {
+    return { valid: false, reason: `后序工序"${lockInfo.nextTask?.process}"已开始，无法回退此工序` };
+  }
+
+  return { valid: true, reason: '' };
+}
+
 app.get('/api/scrolls/:id/timeline', async (req, res) => {
   const db = await readDb();
   const scrollId = req.params.id;
@@ -1041,8 +1129,12 @@ app.get('/api/loans/assess/:id', async (req, res) => {
 app.get('/api/repair-batches/:id/tasks', async (req, res) => {
   const db = await readDb();
   const batchId = req.params.id;
-  const tasks = (db.repairs || []).filter((r) => r.batchId === batchId);
-  res.json(tasks);
+  const tasks = getBatchRepairsSorted(db, batchId);
+  const tasksWithLockInfo = tasks.map((task) => {
+    const lockInfo = computeTaskLockInfo(db, task);
+    return { ...task, lockInfo };
+  });
+  res.json(tasksWithLockInfo);
 });
 
 app.post('/api/loans/assess-preview', async (req, res) => {
@@ -1113,11 +1205,12 @@ app.post('/api/:collection', requirePermission(':collection', 'create'), async (
       history: [stamp('创建', `从模板"${template.name}"生成${processList.length}道工序`)]
     };
 
-    const repairItems = processList.map((processName) => ({
+    const repairItems = processList.map((processName, index) => ({
       id: `repairs-${Date.now()}-${Math.random().toString(16).slice(2, 7)}`,
       scrollId,
       batchId,
       process: processName,
+      sortOrder: index,
       conservator,
       date: startDate,
       status: '计划中',
@@ -1125,7 +1218,7 @@ app.post('/api/:collection', requirePermission(':collection', 'create'), async (
       note: `由模板"${template.name}"生成`,
       createdAt: now,
       updatedAt: now,
-      history: [stamp('创建', `批次生成：${processName}`)]
+      history: [stamp('创建', `批次生成：${processName}（第${index + 1}道工序）`)]
     }));
 
     if (!Array.isArray(db.repairBatches)) db.repairBatches = [];
@@ -1287,6 +1380,14 @@ app.patch('/api/:collection/:id', async (req, res) => {
   const historyAction = req.body.historyAction;
   delete req.body.historyAction;
   const prevStatus = item.status;
+
+  if (collection === 'repairs' && req.body.status && req.body.status !== prevStatus) {
+    const validation = validateTaskStatusChange(db, id, req.body.status, prevStatus);
+    if (!validation.valid) {
+      return res.status(409).json({ error: validation.reason });
+    }
+  }
+
   Object.assign(item, req.body, { updatedAt: new Date().toISOString() });
 
   if (collection === 'scrolls') {
@@ -1553,6 +1654,14 @@ app.post('/api/action/:actionId/:id', async (req, res) => {
   }
 
   const oldItem = { ...item };
+
+  if (action.id === 'repair-done' && collection === 'repairs') {
+    const validation = validateTaskStatusChange(db, item.id, '已完成', item.status);
+    if (!validation.valid) {
+      return res.status(409).json({ error: validation.reason });
+    }
+  }
+
   const result = runAction(db, action, item, { conditions, conditionsNote });
   if (result.error) return res.status(409).json({ error: result.error });
 

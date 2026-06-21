@@ -1490,6 +1490,63 @@ main {
   background: rgba(38, 115, 77, .08);
 }
 
+.task-quick:disabled {
+  opacity: .45;
+  cursor: not-allowed;
+  background: var(--panel-2);
+  border-color: var(--line);
+  color: var(--muted);
+}
+
+.task-quick:disabled:hover {
+  background: var(--panel-2);
+  border-color: var(--line);
+}
+
+.task-order-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--accent);
+  color: white;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 999px;
+  letter-spacing: .3px;
+}
+
+.task-lock-notice {
+  margin-bottom: 10px;
+}
+
+.task-lock-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: rgba(163, 92, 0, .1);
+  color: var(--warn);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 5px 10px;
+  border-radius: 6px;
+  border: 1px dashed rgba(163, 92, 0, .3);
+}
+
+.task-locked {
+  opacity: .75;
+  background: #faf7f0;
+}
+
+.task-locked .task-process-name {
+  color: var(--muted);
+}
+
+.task-done {
+  background: #f5faf6;
+  border-color: rgba(38, 115, 77, .25);
+}
+
 @media (max-width: 620px) {
   .task-field {
     grid-template-columns: 1fr;
