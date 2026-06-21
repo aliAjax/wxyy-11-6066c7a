@@ -2453,50 +2453,104 @@ app.get('/api/consistency-check', requirePermission('scrolls', 'view'), async (r
   res.json({ issues, summary, checkedAt: new Date().toISOString() });
 });
 
-app.post('/api/consistency-check/fix', requirePermission('scrolls', 'update'), async (req, res) => {
-  const { issueId, fixSuggestion, note } = req.body || {};
-  if (!issueId || !fixSuggestion) {
-    return res.status(400).json({ error: '缺少必要参数：issueId, fixSuggestion' });
-  }
+function buildFixPlanForIssue(db, issue) {
+  const fixConfig = CONSISTENCY_FIX_MAP[issue.suggestion];
+  if (!fixConfig) return null;
 
-  const fixConfig = CONSISTENCY_FIX_MAP[fixSuggestion];
+  const scroll = (db.scrolls || []).find((s) => s.id === issue.scrollId);
+  if (!scroll) return null;
+
+  const affectedLoans = (db.loans || []).filter((l) => (issue.affectedLoans || []).includes(l.id));
+  const affectedRepairs = (db.repairs || []).filter((r) => (issue.affectedRepairs || []).includes(r.id));
+  const affectedBatches = (db.repairBatches || []).filter((b) => (issue.affectedRepairs || []).includes(b.id));
+
+  const affectedMaterialIds = new Set();
+  for (const r of affectedRepairs) {
+    if (r.materialId) affectedMaterialIds.add(r.materialId);
+  }
+  const affectedMaterials = (db.materials || []).filter((m) => affectedMaterialIds.has(m.id));
+
+  const statusWillChange = fixConfig.targetBorrowStatus !== null && scroll.borrowStatus !== fixConfig.targetBorrowStatus;
+
+  const historySummary = {
+    action: fixConfig.historyAction,
+    note: fixConfig.historyNote
+  };
+
+  return {
+    issueId: issue.id,
+    issueType: issue.type,
+    issueTitle: issue.title,
+    severity: issue.severity,
+    scroll: {
+      id: scroll.id,
+      title: scroll.title,
+      borrowStatus: scroll.borrowStatus,
+      targetBorrowStatus: fixConfig.targetBorrowStatus,
+      statusWillChange
+    },
+    loans: affectedLoans.map((l) => ({
+      id: l.id,
+      borrower: l.borrower,
+      status: l.status,
+      borrowDate: l.borrowDate,
+      dueDate: l.dueDate
+    })),
+    repairBatches: affectedBatches.map((b) => ({
+      id: b.id,
+      templateName: b.templateName,
+      status: b.status,
+      conservator: b.conservator,
+      startDate: b.startDate
+    })),
+    repairs: affectedRepairs.map((r) => ({
+      id: r.id,
+      process: r.process,
+      status: r.status,
+      conservator: r.conservator,
+      date: r.date,
+      materialUsed: r.materialUsed,
+      materialId: r.materialId
+    })),
+    materials: affectedMaterials.map((m) => ({
+      id: m.id,
+      name: m.name,
+      batch: m.batch,
+      quantity: m.quantity
+    })),
+    historySummary,
+    suggestionLabel: issue.suggestionLabel
+  };
+}
+
+async function applySingleFix(db, req, issue, userNote = '') {
+  const fixConfig = CONSISTENCY_FIX_MAP[issue.suggestion];
   if (!fixConfig) {
-    return res.status(400).json({ error: '无效的修复动作' });
-  }
-
-  const db = await readDb();
-  const currentIssues = runConsistencyCheck(db);
-  const issue = currentIssues.find((i) => i.id === issueId);
-  if (!issue) {
-    return res.status(409).json({ error: '该问题已不存在，数据可能已被其他方式修复' });
-  }
-
-  if (issue.suggestion !== fixSuggestion) {
-    return res.status(409).json({ error: '修复动作与问题不匹配' });
+    return { success: false, issueId: issue.id, error: '无效的修复动作' };
   }
 
   const scroll = (db.scrolls || []).find((s) => s.id === issue.scrollId);
   if (!scroll) {
-    return res.status(404).json({ error: '经卷不存在' });
+    return { success: false, issueId: issue.id, error: '经卷不存在' };
   }
 
   const oldBorrowStatus = scroll.borrowStatus;
   const statusWillChange = fixConfig.targetBorrowStatus !== null;
   if (statusWillChange && scroll.borrowStatus === fixConfig.targetBorrowStatus) {
-    return res.status(409).json({ error: '经卷状态已是目标状态，无需修复' });
+    return { success: false, issueId: issue.id, error: '经卷状态已是目标状态，无需修复' };
   }
 
   if (!fixConfig.validate(db, scroll)) {
-    return res.status(409).json({ error: '服务端二次校验失败：当前数据状态不再满足修复条件，请重新巡检' });
+    return { success: false, issueId: issue.id, error: '服务端二次校验失败：当前数据状态不再满足修复条件' };
   }
 
-  const userNote = (note || '').trim();
-  const finalHistoryNote = userNote
-    ? `${fixConfig.historyNote} | 用户说明：${userNote}`
+  const trimmedNote = (userNote || '').trim();
+  const finalHistoryNote = trimmedNote
+    ? `${fixConfig.historyNote} | 用户说明：${trimmedNote}`
     : fixConfig.historyNote;
-  const finalAuditNote = userNote
-    ? `一致性巡检修复：${issue.title} - ${fixConfig.historyNote} | 用户说明：${userNote}`
-    : `一致性巡检修复：${issue.title} - ${fixConfig.historyNote}`;
+  const finalAuditNote = trimmedNote
+    ? `一致性巡检批量修复：${issue.title} - ${fixConfig.historyNote} | 用户说明：${trimmedNote}`
+    : `一致性巡检批量修复：${issue.title} - ${fixConfig.historyNote}`;
 
   if (statusWillChange) {
     scroll.borrowStatus = fixConfig.targetBorrowStatus;
@@ -2519,6 +2573,45 @@ app.post('/api/consistency-check/fix', requirePermission('scrolls', 'update'), a
     note: finalAuditNote
   });
 
+  return {
+    success: true,
+    issueId: issue.id,
+    scrollId: scroll.id,
+    scrollTitle: scroll.title,
+    oldBorrowStatus,
+    newBorrowStatus: fixConfig.targetBorrowStatus || oldBorrowStatus,
+    statusChanged: statusWillChange,
+    historyAppended: true
+  };
+}
+
+app.post('/api/consistency-check/fix', requirePermission('scrolls', 'update'), async (req, res) => {
+  const { issueId, fixSuggestion, note } = req.body || {};
+  if (!issueId || !fixSuggestion) {
+    return res.status(400).json({ error: '缺少必要参数：issueId, fixSuggestion' });
+  }
+
+  const fixConfig = CONSISTENCY_FIX_MAP[fixSuggestion];
+  if (!fixConfig) {
+    return res.status(400).json({ error: '无效的修复动作' });
+  }
+
+  const db = await readDb();
+  const currentIssues = runConsistencyCheck(db);
+  const issue = currentIssues.find((i) => i.id === issueId);
+  if (!issue) {
+    return res.status(409).json({ error: '该问题已不存在，数据可能已被其他方式修复' });
+  }
+
+  if (issue.suggestion !== fixSuggestion) {
+    return res.status(409).json({ error: '修复动作与问题不匹配' });
+  }
+
+  const result = await applySingleFix(db, req, issue, note);
+  if (!result.success) {
+    return res.status(409).json({ error: result.error });
+  }
+
   await writeDb(db);
 
   const remainingIssues = runConsistencyCheck(db);
@@ -2533,14 +2626,155 @@ app.post('/api/consistency-check/fix', requirePermission('scrolls', 'update'), a
   res.json({
     success: true,
     fixedIssue: issueId,
-    scrollId: scroll.id,
-    scrollTitle: scroll.title,
-    oldBorrowStatus,
-    newBorrowStatus: fixConfig.targetBorrowStatus || oldBorrowStatus,
-    statusChanged: statusWillChange,
+    scrollId: result.scrollId,
+    scrollTitle: result.scrollTitle,
+    oldBorrowStatus: result.oldBorrowStatus,
+    newBorrowStatus: result.newBorrowStatus,
+    statusChanged: result.statusChanged,
     historyAppended: true,
     remainingSummary: fixSummary,
     fixedAt: new Date().toISOString()
+  });
+});
+
+app.post('/api/consistency-check/plan', requirePermission('scrolls', 'view'), async (req, res) => {
+  const { issueIds } = req.body || {};
+  if (!Array.isArray(issueIds) || issueIds.length === 0) {
+    return res.status(400).json({ error: '请选择要修复的问题' });
+  }
+
+  const db = await readDb();
+  const currentIssues = runConsistencyCheck(db);
+  const fixableIssues = currentIssues.filter((i) => issueIds.includes(i.id) && i.autoFixable);
+
+  if (fixableIssues.length === 0) {
+    return res.status(400).json({ error: '所选问题中没有可自动修复的项目' });
+  }
+
+  const planItems = [];
+  const skippedIssues = [];
+
+  for (const issue of fixableIssues) {
+    const plan = buildFixPlanForIssue(db, issue);
+    if (plan) {
+      planItems.push(plan);
+    } else {
+      skippedIssues.push({ issueId: issue.id, reason: '无法构建修复计划' });
+    }
+  }
+
+  const scrollIds = [...new Set(planItems.map((p) => p.scroll.id))];
+  const totalStatusChanges = planItems.filter((p) => p.scroll.statusWillChange).length;
+  const totalHistoryEntries = planItems.length;
+
+  const affectedLoansCount = planItems.reduce((sum, p) => sum + p.loans.length, 0);
+  const affectedRepairsCount = planItems.reduce((sum, p) => sum + p.repairs.length, 0);
+  const affectedBatchesCount = planItems.reduce((sum, p) => sum + p.repairBatches.length, 0);
+  const affectedMaterialsCount = planItems.reduce((sum, p) => sum + p.materials.length, 0);
+
+  res.json({
+    planGeneratedAt: new Date().toISOString(),
+    totalItems: planItems.length,
+    totalScrolls: scrollIds.length,
+    totalStatusChanges,
+    totalHistoryEntries,
+    affectedCounts: {
+      loans: affectedLoansCount,
+      repairs: affectedRepairsCount,
+      batches: affectedBatchesCount,
+      materials: affectedMaterialsCount
+    },
+    items: planItems,
+    skipped: skippedIssues
+  });
+});
+
+app.post('/api/consistency-check/batch-fix', requirePermission('scrolls', 'update'), async (req, res) => {
+  const { issueIds, note } = req.body || {};
+  if (!Array.isArray(issueIds) || issueIds.length === 0) {
+    return res.status(400).json({ error: '请选择要修复的问题' });
+  }
+
+  const db = await readDb();
+  const batchStartedAt = new Date().toISOString();
+  const currentIssues = runConsistencyCheck(db);
+
+  const targetIssues = currentIssues.filter((i) => issueIds.includes(i.id) && i.autoFixable);
+  const notFoundIds = issueIds.filter((id) => !targetIssues.find((i) => i.id === id));
+
+  const succeeded = [];
+  const failed = [];
+
+  for (const issue of targetIssues) {
+    const result = await applySingleFix(db, req, issue, note);
+    if (result.success) {
+      succeeded.push(result);
+    } else {
+      failed.push({
+        issueId: issue.id,
+        scrollId: issue.scrollId,
+        scrollTitle: issue.scrollTitle,
+        issueTitle: issue.title,
+        error: result.error
+      });
+    }
+  }
+
+  for (const id of notFoundIds) {
+    const originalIssue = (currentIssues.find((i) => i.id === id)) || {};
+    failed.push({
+      issueId: id,
+      scrollId: originalIssue.scrollId,
+      scrollTitle: originalIssue.scrollTitle,
+      issueTitle: originalIssue.title || '未知问题',
+      error: '问题不存在或已被修复'
+    });
+  }
+
+  await writeDb(db);
+
+  const remainingIssues = runConsistencyCheck(db);
+  const remainingSummary = {
+    total: remainingIssues.length,
+    high: remainingIssues.filter((i) => i.severity === 'high').length,
+    medium: remainingIssues.filter((i) => i.severity === 'medium').length,
+    low: remainingIssues.filter((i) => i.severity === 'low').length,
+    autoFixable: remainingIssues.filter((i) => i.autoFixable).length
+  };
+
+  const batchCompletedAt = new Date().toISOString();
+
+  await writeAuditLog(db, req, {
+    collection: 'audits',
+    itemId: null,
+    itemTitle: `批量修复 ${succeeded.length} 项，失败 ${failed.length} 项`,
+    action: 'update',
+    changes: {
+      batchStartedAt,
+      batchCompletedAt,
+      issueCount: issueIds.length,
+      succeeded: succeeded.length,
+      failed: failed.length,
+      succeededIssueIds: succeeded.map((s) => s.issueId),
+      failedIssues: failed.map((f) => ({ issueId: f.issueId, error: f.error }))
+    },
+    note: `一致性巡检批量修复完成：成功 ${succeeded.length} 项，失败 ${failed.length} 项`
+  });
+
+  await writeDb(db);
+
+  const allSucceeded = failed.length === 0 && succeeded.length > 0;
+
+  res.json({
+    success: allSucceeded,
+    batchStartedAt,
+    batchCompletedAt,
+    totalRequested: issueIds.length,
+    totalSucceeded: succeeded.length,
+    totalFailed: failed.length,
+    succeeded,
+    failed,
+    remainingSummary
   });
 });
 
