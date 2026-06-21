@@ -3931,6 +3931,28 @@ app.post('/api/consistency-check/batch-fix', requirePermission('scrolls', 'updat
   });
 });
 
-app.listen(PORT, () => {
-  console.log(`${config.title} running at http://localhost:${PORT}`);
-});
+if (require.main === module) {
+  app.listen(PORT, () => {
+    console.log(`${config.title} running at http://localhost:${PORT}`);
+  });
+}
+
+module.exports = {
+  app,
+  parseDate,
+  dateOverlap,
+  checkLoanConflict,
+  assessLoanRisk,
+  assessBorrowability,
+  assessBorrowabilityBatch,
+  getActiveLoansByScroll,
+  ACTIVE_LOAN_STATUSES,
+  PURPOSE_RISK,
+  DEFAULT_PURPOSE_RISK,
+  PROTECTION_LEVEL_SCORE,
+  BORROW_STATUS_SCORE,
+  DAMAGE_KEYWORDS,
+  generateProtectionAdvice,
+  formatRiskNote,
+  getLastRepair
+};
