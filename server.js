@@ -103,6 +103,13 @@ const PERMISSIONS = {
     create: [],
     update: [],
     delete: []
+  },
+  drafts: {
+    view: ['admin'],
+    create: ['admin'],
+    update: ['admin'],
+    delete: ['admin'],
+    confirm: ['admin']
   }
 };
 
@@ -161,7 +168,8 @@ function collectionLabel(collection) {
     inventories: '柜位盘点',
     materials: '修补材料',
     observations: '人工观察记录',
-    audits: '审计日志'
+    audits: '审计日志',
+    drafts: '导入草稿'
   };
   return labels[collection] || collection;
 }
@@ -177,7 +185,8 @@ function actionLabel(action) {
     approve: '批准',
     reject: '拒绝',
     lend: '借出',
-    return: '归还'
+    return: '归还',
+    confirm: '确认转正'
   };
   return labels[action] || action;
 }
@@ -2233,6 +2242,321 @@ app.post('/api/scrolls/batch/import', async (req, res) => {
     importedCount: createdScrolls.length,
     createdScrolls
   });
+});
+
+app.post('/api/scrolls/batch/draft', async (req, res) => {
+  const role = getCurrentRole(req);
+  if (!hasPermission(role, 'drafts', 'create')) {
+    const roleInfo = ROLES[role];
+    return res.status(403).json({
+      error: `权限不足：当前身份为"${roleInfo?.name || role}"，没有导入草稿的新增权限`,
+      role,
+      roleName: roleInfo?.name || role,
+      collection: 'drafts',
+      action: 'create'
+    });
+  }
+
+  const { csvText, importRows, previewData } = req.body || {};
+  if (!csvText || !csvText.trim()) {
+    return res.status(400).json({ error: '请提供CSV文本' });
+  }
+  if (!Array.isArray(importRows) || importRows.length === 0) {
+    return res.status(400).json({ error: '没有可导入的有效行' });
+  }
+
+  const db = await readDb();
+  const existingTitles = new Set((db.scrolls || []).map((s) => (s.title || '').trim()));
+
+  const parsed = parseCsvText(csvText);
+  const { mapping } = mapHeadersToFields(parsed.headers);
+  const rowObjects = buildRowObjects(parsed.rows, mapping, parsed.headers);
+
+  const titleCounts = new Map();
+  for (const idx of importRows) {
+    const row = rowObjects[idx];
+    if (!row) continue;
+    const t = (row.data.title || '').trim();
+    if (t) titleCounts.set(t, (titleCounts.get(t) || 0) + 1);
+  }
+
+  const selectedRowObjects = importRows.map((idx) => rowObjects[idx]).filter(Boolean);
+  const now = new Date().toISOString();
+
+  if (!Array.isArray(db.drafts)) db.drafts = [];
+
+  const createdDrafts = [];
+
+  for (const row of selectedRowObjects) {
+    const data = row.data;
+    const { errors } = validateScrollRow(row, existingTitles, titleCounts);
+
+    const draftItem = {
+      id: `draft-${Date.now()}-${Math.random().toString(16).slice(2, 7)}`,
+      sourceRow: row.rowNumber,
+      data: {
+        title: (data.title || '').trim(),
+        material: (data.material || '').trim(),
+        era: (data.era || '').trim(),
+        damage: (data.damage || '').trim(),
+        inscription: (data.inscription || '').trim(),
+        cabinet: (data.cabinet || '').trim(),
+        protectionLevel: data.protectionLevel ? data.protectionLevel.trim() : '三级',
+        borrowStatus: data.borrowStatus ? data.borrowStatus.trim() : '需审批'
+      },
+      validationErrors: errors.map((e) => ({ type: e.type, field: e.field, message: e.message })),
+      isValid: errors.length === 0,
+      previewInfo: {
+        fieldRecognition: previewData?.fieldRecognition || null,
+        duplicateTitles: previewData?.duplicateTitles || [],
+        missingRequired: previewData?.missingRequired || {},
+        protectionAnomalies: previewData?.protectionAnomalies || []
+      },
+      status: '待确认',
+      createdAt: now,
+      updatedAt: now
+    };
+
+    db.drafts.push(draftItem);
+    createdDrafts.push(draftItem);
+  }
+
+  await writeAuditLog(db, req, {
+    collection: 'drafts',
+    itemId: null,
+    itemTitle: `批量导入草稿${createdDrafts.length}条`,
+    action: 'create',
+    note: `批量导入草稿${createdDrafts.length}条，待管理员确认`
+  });
+
+  await writeDb(db);
+
+  res.status(201).json({
+    success: true,
+    draftCount: createdDrafts.length,
+    drafts: createdDrafts
+  });
+});
+
+app.get('/api/drafts', requirePermission('drafts', 'view'), async (req, res) => {
+  const db = await readDb();
+  let drafts = db.drafts || [];
+
+  const { status } = req.query;
+  if (status) {
+    drafts = drafts.filter((d) => d.status === status);
+  }
+
+  drafts.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+  res.json(drafts);
+});
+
+app.patch('/api/drafts/:id', async (req, res) => {
+  const role = getCurrentRole(req);
+  if (!hasPermission(role, 'drafts', 'update')) {
+    const roleInfo = ROLES[role];
+    return res.status(403).json({
+      error: `权限不足：当前身份为"${roleInfo?.name || role}"，没有导入草稿的修改权限`,
+      role,
+      roleName: roleInfo?.name || role,
+      collection: 'drafts',
+      action: 'update'
+    });
+  }
+
+  const db = await readDb();
+  if (!Array.isArray(db.drafts)) return res.status(404).json({ error: '草稿列表不存在' });
+  const draft = db.drafts.find((d) => d.id === req.params.id);
+  if (!draft) return res.status(404).json({ error: '草稿不存在' });
+  if (draft.status !== '待确认') {
+    return res.status(409).json({ error: '只能编辑待确认状态的草稿' });
+  }
+
+  const { data } = req.body || {};
+  if (!data) return res.status(400).json({ error: '请提供修改数据' });
+
+  const existingTitles = new Set((db.scrolls || []).map((s) => (s.title || '').trim()));
+  const otherDraftTitles = new Set(
+    db.drafts.filter((d) => d.id !== draft.id && d.status === '待确认').map((d) => (d.data.title || '').trim())
+  );
+
+  const newErrors = [];
+  const title = (data.title || '').trim();
+  if (!title) {
+    newErrors.push({ type: 'missing', field: 'title', message: '卷名为空' });
+  } else {
+    if (existingTitles.has(title)) {
+      newErrors.push({ type: 'duplicate_db', field: 'title', message: `卷名"${title}"已存在于数据库中` });
+    }
+    if (otherDraftTitles.has(title)) {
+      newErrors.push({ type: 'duplicate_draft', field: 'title', message: `卷名"${title}"在其他草稿中已存在` });
+    }
+  }
+
+  for (const field of SCROLL_REQUIRED_FIELDS) {
+    if (field === 'title') continue;
+    if (!data[field] || !String(data[field]).trim()) {
+      newErrors.push({ type: 'missing', field, message: `缺少必填字段：${field}` });
+    }
+  }
+
+  if (data.protectionLevel && !VALID_PROTECTION_LEVELS.includes(data.protectionLevel.trim())) {
+    newErrors.push({
+      type: 'invalid_protection',
+      field: 'protectionLevel',
+      message: `保护等级"${data.protectionLevel}"无效，有效值：${VALID_PROTECTION_LEVELS.join('、')}`
+    });
+  }
+
+  if (data.borrowStatus && !VALID_BORROW_STATUSES.includes(data.borrowStatus.trim())) {
+    newErrors.push({
+      type: 'invalid_borrow',
+      field: 'borrowStatus',
+      message: `借阅状态"${data.borrowStatus}"无效，有效值：${VALID_BORROW_STATUSES.join('、')}`
+    });
+  }
+
+  draft.data = { ...draft.data, ...data };
+  draft.validationErrors = newErrors;
+  draft.isValid = newErrors.length === 0;
+  draft.updatedAt = new Date().toISOString();
+
+  await writeAuditLog(db, req, {
+    collection: 'drafts',
+    itemId: draft.id,
+    itemTitle: draft.data.title || draft.id,
+    action: 'update',
+    changes: data,
+    note: `编辑草稿：${draft.data.title || draft.id}`
+  });
+
+  await writeDb(db);
+  res.json(draft);
+});
+
+app.delete('/api/drafts/:id', async (req, res) => {
+  const role = getCurrentRole(req);
+  if (!hasPermission(role, 'drafts', 'delete')) {
+    const roleInfo = ROLES[role];
+    return res.status(403).json({
+      error: `权限不足：当前身份为"${roleInfo?.name || role}"，没有导入草稿的删除权限`,
+      role,
+      roleName: roleInfo?.name || role,
+      collection: 'drafts',
+      action: 'delete'
+    });
+  }
+
+  const db = await readDb();
+  if (!Array.isArray(db.drafts)) return res.status(404).json({ error: '草稿列表不存在' });
+  const idx = db.drafts.findIndex((d) => d.id === req.params.id);
+  if (idx < 0) return res.status(404).json({ error: '草稿不存在' });
+
+  const draft = db.drafts[idx];
+  const draftTitle = draft.data?.title || draft.id;
+
+  await writeAuditLog(db, req, {
+    collection: 'drafts',
+    itemId: draft.id,
+    itemTitle: draftTitle,
+    action: 'delete',
+    note: `丢弃草稿：${draftTitle}`
+  });
+
+  db.drafts.splice(idx, 1);
+  await writeDb(db);
+  res.json({ success: true });
+});
+
+app.post('/api/drafts/:id/confirm', async (req, res) => {
+  const role = getCurrentRole(req);
+  if (!hasPermission(role, 'drafts', 'confirm')) {
+    const roleInfo = ROLES[role];
+    return res.status(403).json({
+      error: `权限不足：当前身份为"${roleInfo?.name || role}"，没有导入草稿的确认权限`,
+      role,
+      roleName: roleInfo?.name || role,
+      collection: 'drafts',
+      action: 'confirm'
+    });
+  }
+
+  const db = await readDb();
+  if (!Array.isArray(db.drafts)) return res.status(404).json({ error: '草稿列表不存在' });
+  const draft = db.drafts.find((d) => d.id === req.params.id);
+  if (!draft) return res.status(404).json({ error: '草稿不存在' });
+  if (draft.status !== '待确认') {
+    return res.status(409).json({ error: '只能确认待确认状态的草稿' });
+  }
+
+  const existingTitles = new Set((db.scrolls || []).map((s) => (s.title || '').trim()));
+  if (existingTitles.has((draft.data.title || '').trim())) {
+    return res.status(409).json({ error: `卷名"${draft.data.title}"已存在于数据库中，请先编辑草稿` });
+  }
+
+  if (!draft.isValid) {
+    return res.status(409).json({
+      error: '草稿存在校验错误，请先修正后再确认',
+      validationErrors: draft.validationErrors
+    });
+  }
+
+  if (!Array.isArray(db.scrolls)) db.scrolls = [];
+
+  const data = draft.data;
+  const now = new Date().toISOString();
+  const scrollItem = {
+    id: `scrolls-${Date.now()}-${Math.random().toString(16).slice(2, 7)}`,
+    title: (data.title || '').trim(),
+    material: (data.material || '').trim(),
+    era: (data.era || '').trim(),
+    damage: (data.damage || '').trim(),
+    inscription: (data.inscription || '').trim(),
+    cabinet: (data.cabinet || '').trim(),
+    protectionLevel: data.protectionLevel || '三级',
+    borrowStatus: data.borrowStatus || '需审批',
+    createdAt: now,
+    updatedAt: now
+  };
+
+  const advice = generateProtectionAdvice(scrollItem);
+  scrollItem.protectionAdvice = advice;
+  const adviceSummary = advice.damageLabels.length > 0
+    ? `保护建议已生成（${advice.damageLabels.join('、')}）`
+    : '保护建议已生成';
+  scrollItem.history = [
+    stamp(
+      '创建',
+      `从草稿确认转正（原第${draft.sourceRow}行），保护等级：${data.protectionLevel || '三级'}，借阅状态：${data.borrowStatus || '需审批'} | ${adviceSummary}`
+    )
+  ];
+
+  db.scrolls.push(scrollItem);
+
+  draft.status = '已确认';
+  draft.confirmedScrollId = scrollItem.id;
+  draft.updatedAt = now;
+
+  await writeAuditLog(db, req, {
+    collection: 'drafts',
+    itemId: draft.id,
+    itemTitle: draft.data.title || draft.id,
+    action: 'confirm',
+    note: `草稿确认转正：${draft.data.title} → 经卷档案`
+  });
+
+  await writeAuditLog(db, req, {
+    collection: 'scrolls',
+    itemId: scrollItem.id,
+    itemTitle: scrollItem.title,
+    action: 'create',
+    changes: { ...data },
+    note: `从导入草稿转正创建`
+  });
+
+  await writeDb(db);
+  res.json({ success: true, scroll: scrollItem, draft });
 });
 
 function runConsistencyCheck(db) {

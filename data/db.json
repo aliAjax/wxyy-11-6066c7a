@@ -209,6 +209,86 @@
         "borrowStatus": "需审批",
         "generatedAt": "2026-06-21T04:23:16.460Z"
       }
+    },
+    {
+      "id": "scrolls-1782019145801-959d9",
+      "title": "测试草稿经卷",
+      "material": "楮皮纸",
+      "era": "唐代",
+      "damage": "轻微磨损",
+      "inscription": "",
+      "cabinet": "恒湿柜A-01",
+      "protectionLevel": "二级",
+      "borrowStatus": "可借阅",
+      "createdAt": "2026-06-21T05:19:05.801Z",
+      "updatedAt": "2026-06-21T05:19:05.801Z",
+      "protectionAdvice": {
+        "content": "磨损部位可进行隐补加固，保护纸张纤维\n建议减少翻阅频次，查阅优先使用影印本\n函套内增加软纸衬垫，减少开合摩擦\n【二级保护】馆内查阅需经部门负责人审批\n【二级保护】外借展览须馆长批准，运输使用专用防震箱\n【二级保护】每半年进行一次全面状态检查\n【二级保护】存放于恒湿柜中，避免阳光直射\n借阅状态正常：仍需遵守轻取轻放原则，查阅时佩戴干净手套\n归还时检查有无新增损伤，异常情况及时登记报告",
+        "suggestions": [
+          "磨损部位可进行隐补加固，保护纸张纤维",
+          "建议减少翻阅频次，查阅优先使用影印本",
+          "函套内增加软纸衬垫，减少开合摩擦",
+          "【二级保护】馆内查阅需经部门负责人审批",
+          "【二级保护】外借展览须馆长批准，运输使用专用防震箱",
+          "【二级保护】每半年进行一次全面状态检查",
+          "【二级保护】存放于恒湿柜中，避免阳光直射",
+          "借阅状态正常：仍需遵守轻取轻放原则，查阅时佩戴干净手套",
+          "归还时检查有无新增损伤，异常情况及时登记报告"
+        ],
+        "damageLabels": [
+          "轻度残损"
+        ],
+        "protectionLevel": "二级",
+        "borrowStatus": "可借阅",
+        "generatedAt": "2026-06-21T05:19:05.801Z"
+      },
+      "history": [
+        {
+          "at": "2026-06-21T05:19:05.801Z",
+          "action": "创建",
+          "note": "从草稿确认转正（原第2行），保护等级：二级，借阅状态：可借阅 | 保护建议已生成（轻度残损）"
+        }
+      ]
+    },
+    {
+      "id": "scrolls-1782019268309-61deb",
+      "title": "维摩诘经卷上",
+      "material": "楮皮纸",
+      "era": "唐代",
+      "damage": "首尾完整中部略有虫蛀",
+      "inscription": "有贞观年款",
+      "cabinet": "恒湿柜A-01",
+      "protectionLevel": "一级",
+      "borrowStatus": "需审批",
+      "createdAt": "2026-06-21T05:21:08.309Z",
+      "updatedAt": "2026-06-21T05:21:08.309Z",
+      "protectionAdvice": {
+        "content": "经卷存在虫蛀痕迹，需立即放入低温冷冻柜进行杀虫处理（-18℃冷冻72小时）\n处理后置于密封盒中，内放樟脑丸或芸香草以防再次虫害\n检查相邻经卷是否受波及，必要时整柜熏蒸\n【一级保护】原件仅限馆内特藏室查阅，须两人以上在场\n【一级保护】禁止外借展出，如需展示须使用高仿复制件\n【一级保护】每季度进行一次外观检查，每年做一次专业除尘\n【一级保护】存放于恒温恒湿柜（温度18-22℃，湿度45-55%）\n借阅需审批：使用前须评估用途风险，查阅时在旁监护\n归还时须当面检查经卷状态，确认完好后签收归档",
+        "suggestions": [
+          "经卷存在虫蛀痕迹，需立即放入低温冷冻柜进行杀虫处理（-18℃冷冻72小时）",
+          "处理后置于密封盒中，内放樟脑丸或芸香草以防再次虫害",
+          "检查相邻经卷是否受波及，必要时整柜熏蒸",
+          "【一级保护】原件仅限馆内特藏室查阅，须两人以上在场",
+          "【一级保护】禁止外借展出，如需展示须使用高仿复制件",
+          "【一级保护】每季度进行一次外观检查，每年做一次专业除尘",
+          "【一级保护】存放于恒温恒湿柜（温度18-22℃，湿度45-55%）",
+          "借阅需审批：使用前须评估用途风险，查阅时在旁监护",
+          "归还时须当面检查经卷状态，确认完好后签收归档"
+        ],
+        "damageLabels": [
+          "严重残损"
+        ],
+        "protectionLevel": "一级",
+        "borrowStatus": "需审批",
+        "generatedAt": "2026-06-21T05:21:08.309Z"
+      },
+      "history": [
+        {
+          "at": "2026-06-21T05:21:08.309Z",
+          "action": "创建",
+          "note": "从草稿确认转正（原第2行），保护等级：一级，借阅状态：需审批 | 保护建议已生成（严重残损）"
+        }
+      ]
     }
   ],
   "repairs": [
@@ -886,8 +966,346 @@
       ]
     }
   ],
+  "drafts": [
+    {
+      "id": "draft-1782019137874-8520c",
+      "sourceRow": 2,
+      "data": {
+        "title": "测试草稿经卷",
+        "material": "楮皮纸",
+        "era": "唐代",
+        "damage": "轻微磨损",
+        "inscription": "",
+        "cabinet": "恒湿柜A-01",
+        "protectionLevel": "二级",
+        "borrowStatus": "可借阅"
+      },
+      "validationErrors": [],
+      "isValid": true,
+      "previewInfo": {
+        "fieldRecognition": {
+          "recognized": [
+            {
+              "header": "卷名",
+              "field": "title"
+            }
+          ],
+          "unrecognized": [],
+          "hasAllRequired": true
+        },
+        "duplicateTitles": [],
+        "missingRequired": {},
+        "protectionAnomalies": []
+      },
+      "status": "已确认",
+      "createdAt": "2026-06-21T05:18:57.874Z",
+      "updatedAt": "2026-06-21T05:19:05.801Z",
+      "confirmedScrollId": "scrolls-1782019145801-959d9"
+    },
+    {
+      "id": "draft-1782019250061-88e46",
+      "sourceRow": 2,
+      "data": {
+        "title": "维摩诘经卷上",
+        "material": "楮皮纸",
+        "era": "唐代",
+        "damage": "首尾完整中部略有虫蛀",
+        "inscription": "有贞观年款",
+        "cabinet": "恒湿柜A-01",
+        "protectionLevel": "一级",
+        "borrowStatus": "需审批"
+      },
+      "validationErrors": [],
+      "isValid": true,
+      "previewInfo": {
+        "fieldRecognition": {
+          "recognized": [
+            {
+              "header": "卷名",
+              "field": "title"
+            },
+            {
+              "header": "材质",
+              "field": "material"
+            },
+            {
+              "header": "年代",
+              "field": "era"
+            },
+            {
+              "header": "残损",
+              "field": "damage"
+            },
+            {
+              "header": "题跋",
+              "field": "inscription"
+            },
+            {
+              "header": "柜位",
+              "field": "cabinet"
+            },
+            {
+              "header": "保护等级",
+              "field": "protectionLevel"
+            },
+            {
+              "header": "借阅状态",
+              "field": "borrowStatus"
+            }
+          ],
+          "unrecognized": [],
+          "hasAllRequired": true
+        },
+        "duplicateTitles": [],
+        "missingRequired": {},
+        "protectionAnomalies": []
+      },
+      "status": "已确认",
+      "createdAt": "2026-06-21T05:20:50.061Z",
+      "updatedAt": "2026-06-21T05:21:08.309Z",
+      "confirmedScrollId": "scrolls-1782019268309-61deb"
+    },
+    {
+      "id": "draft-1782019250061-aa8e7",
+      "sourceRow": 3,
+      "data": {
+        "title": "楞伽阿跋多罗宝经",
+        "material": "宣纸",
+        "era": "宋代",
+        "damage": "边缘轻微磨损",
+        "inscription": "无",
+        "cabinet": "恒湿柜B-02",
+        "protectionLevel": "二级",
+        "borrowStatus": "可借阅"
+      },
+      "validationErrors": [],
+      "isValid": true,
+      "previewInfo": {
+        "fieldRecognition": {
+          "recognized": [
+            {
+              "header": "卷名",
+              "field": "title"
+            },
+            {
+              "header": "材质",
+              "field": "material"
+            },
+            {
+              "header": "年代",
+              "field": "era"
+            },
+            {
+              "header": "残损",
+              "field": "damage"
+            },
+            {
+              "header": "题跋",
+              "field": "inscription"
+            },
+            {
+              "header": "柜位",
+              "field": "cabinet"
+            },
+            {
+              "header": "保护等级",
+              "field": "protectionLevel"
+            },
+            {
+              "header": "借阅状态",
+              "field": "borrowStatus"
+            }
+          ],
+          "unrecognized": [],
+          "hasAllRequired": true
+        },
+        "duplicateTitles": [],
+        "missingRequired": {},
+        "protectionAnomalies": []
+      },
+      "status": "待确认",
+      "createdAt": "2026-06-21T05:20:50.061Z",
+      "updatedAt": "2026-06-21T05:20:50.061Z"
+    },
+    {
+      "id": "draft-1782019250061-a7c36",
+      "sourceRow": 4,
+      "data": {
+        "title": "妙法莲华经卷第七",
+        "material": "麻纸",
+        "era": "元代",
+        "damage": "无明显残损",
+        "inscription": "尾题完整",
+        "cabinet": "恒湿柜C-03",
+        "protectionLevel": "三级",
+        "borrowStatus": "可借阅"
+      },
+      "validationErrors": [],
+      "isValid": true,
+      "previewInfo": {
+        "fieldRecognition": {
+          "recognized": [
+            {
+              "header": "卷名",
+              "field": "title"
+            },
+            {
+              "header": "材质",
+              "field": "material"
+            },
+            {
+              "header": "年代",
+              "field": "era"
+            },
+            {
+              "header": "残损",
+              "field": "damage"
+            },
+            {
+              "header": "题跋",
+              "field": "inscription"
+            },
+            {
+              "header": "柜位",
+              "field": "cabinet"
+            },
+            {
+              "header": "保护等级",
+              "field": "protectionLevel"
+            },
+            {
+              "header": "借阅状态",
+              "field": "borrowStatus"
+            }
+          ],
+          "unrecognized": [],
+          "hasAllRequired": true
+        },
+        "duplicateTitles": [],
+        "missingRequired": {},
+        "protectionAnomalies": []
+      },
+      "status": "待确认",
+      "createdAt": "2026-06-21T05:20:50.061Z",
+      "updatedAt": "2026-06-21T05:20:50.061Z"
+    }
+  ],
   "repairBatches": [],
   "audits": [
+    {
+      "id": "audit-1782019268309-641e4",
+      "timestamp": "2026-06-21T05:21:08.309Z",
+      "operator": "系统",
+      "operatorRole": "admin",
+      "operatorRoleName": "管理员",
+      "collection": "scrolls",
+      "collectionLabel": "经卷档案",
+      "itemId": "scrolls-1782019268309-61deb",
+      "itemTitle": "维摩诘经卷上",
+      "action": "create",
+      "actionLabel": "新增",
+      "changes": {
+        "title": "维摩诘经卷上",
+        "material": "楮皮纸",
+        "era": "唐代",
+        "damage": "首尾完整中部略有虫蛀",
+        "inscription": "有贞观年款",
+        "cabinet": "恒湿柜A-01",
+        "protectionLevel": "一级",
+        "borrowStatus": "需审批"
+      },
+      "note": "从导入草稿转正创建",
+      "ip": "::1"
+    },
+    {
+      "id": "audit-1782019268309-75fc9",
+      "timestamp": "2026-06-21T05:21:08.309Z",
+      "operator": "系统",
+      "operatorRole": "admin",
+      "operatorRoleName": "管理员",
+      "collection": "drafts",
+      "collectionLabel": "导入草稿",
+      "itemId": "draft-1782019250061-88e46",
+      "itemTitle": "维摩诘经卷上",
+      "action": "confirm",
+      "actionLabel": "确认转正",
+      "changes": null,
+      "note": "草稿确认转正：维摩诘经卷上 → 经卷档案",
+      "ip": "::1"
+    },
+    {
+      "id": "audit-1782019250061-fe144",
+      "timestamp": "2026-06-21T05:20:50.061Z",
+      "operator": "系统",
+      "operatorRole": "admin",
+      "operatorRoleName": "管理员",
+      "collection": "drafts",
+      "collectionLabel": "导入草稿",
+      "itemId": null,
+      "itemTitle": "批量导入草稿3条",
+      "action": "create",
+      "actionLabel": "新增",
+      "changes": null,
+      "note": "批量导入草稿3条，待管理员确认",
+      "ip": "::1"
+    },
+    {
+      "id": "audit-1782019145801-1e25b",
+      "timestamp": "2026-06-21T05:19:05.801Z",
+      "operator": "系统",
+      "operatorRole": "admin",
+      "operatorRoleName": "管理员",
+      "collection": "scrolls",
+      "collectionLabel": "经卷档案",
+      "itemId": "scrolls-1782019145801-959d9",
+      "itemTitle": "测试草稿经卷",
+      "action": "create",
+      "actionLabel": "新增",
+      "changes": {
+        "title": "测试草稿经卷",
+        "material": "楮皮纸",
+        "era": "唐代",
+        "damage": "轻微磨损",
+        "inscription": "",
+        "cabinet": "恒湿柜A-01",
+        "protectionLevel": "二级",
+        "borrowStatus": "可借阅"
+      },
+      "note": "从导入草稿转正创建",
+      "ip": "::1"
+    },
+    {
+      "id": "audit-1782019145801-0b0bc",
+      "timestamp": "2026-06-21T05:19:05.801Z",
+      "operator": "系统",
+      "operatorRole": "admin",
+      "operatorRoleName": "管理员",
+      "collection": "drafts",
+      "collectionLabel": "导入草稿",
+      "itemId": "draft-1782019137874-8520c",
+      "itemTitle": "测试草稿经卷",
+      "action": "confirm",
+      "actionLabel": "确认转正",
+      "changes": null,
+      "note": "草稿确认转正：测试草稿经卷 → 经卷档案",
+      "ip": "::1"
+    },
+    {
+      "id": "audit-1782019137874-12077",
+      "timestamp": "2026-06-21T05:18:57.874Z",
+      "operator": "系统",
+      "operatorRole": "admin",
+      "operatorRoleName": "管理员",
+      "collection": "drafts",
+      "collectionLabel": "导入草稿",
+      "itemId": null,
+      "itemTitle": "批量导入草稿1条",
+      "action": "create",
+      "actionLabel": "新增",
+      "changes": null,
+      "note": "批量导入草稿1条，待管理员确认",
+      "ip": "::1"
+    },
     {
       "id": "audit-1782017847902-0fcd0",
       "timestamp": "2026-06-21T04:57:27.902Z",

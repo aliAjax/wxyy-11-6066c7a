@@ -32,7 +32,9 @@ module.exports = {
     '高风险': 'bad',
     '极高风险': 'extreme',
     '启用': 'ok',
-    '停用': 'bad'
+    '停用': 'bad',
+    '待确认': 'warn',
+    '已确认': 'ok'
   },
   collections: {
     scrolls: { label: '经卷档案' },
@@ -43,7 +45,8 @@ module.exports = {
     materials: { label: '修补材料台账' },
     observations: { label: '人工观察记录' },
     repairTemplates: { label: '修补方案模板' },
-    repairBatches: { label: '修补任务批次' }
+    repairBatches: { label: '修补任务批次' },
+    drafts: { label: '导入草稿' }
   },
   materialWarning: {
     lowStockThresholds: { '张': 20, '瓶': 3, '套': 3, '把': 2, '袋': 5, '米': 10, '卷': 5, '盒': 2, '个': 5 },
@@ -60,7 +63,8 @@ module.exports = {
     { label: '材料品类', collection: 'materials' },
     { label: '材料预警', collection: 'materials', filter: { field: 'status', anyOf: ['低余量', '即将到期', '已过期'] } },
     { label: '方案模板', collection: 'repairTemplates' },
-    { label: '进行中批次', collection: 'repairBatches', filter: { field: 'status', value: '进行中' } }
+    { label: '进行中批次', collection: 'repairBatches', filter: { field: 'status', value: '进行中' } },
+    { label: '待确认草稿', collection: 'drafts', filter: { field: 'status', value: '待确认' } }
   ],
   views: [
     {
@@ -320,6 +324,12 @@ module.exports = {
       label: '批量导入预检',
       type: 'batchImport',
       targetCollection: 'scrolls'
+    },
+    {
+      id: 'drafts',
+      label: '导入草稿',
+      type: 'draftList',
+      collection: 'drafts'
     },
     {
       id: 'consistency-check',

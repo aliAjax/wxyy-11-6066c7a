@@ -17,7 +17,8 @@ const state = {
     csvText: '',
     previewData: null,
     selectedRows: new Set(),
-    importing: false
+    importing: false,
+    draftMode: false
   },
   consistencyCheck: {
     issues: [],
@@ -31,6 +32,10 @@ const state = {
     planLoading: false,
     batchExecuting: false,
     batchResult: null
+  },
+  drafts: {
+    items: [],
+    filter: ''
   },
   currentRole: 'admin',
   currentRoleName: '管理员',
@@ -1301,6 +1306,9 @@ function renderBatchImportView(view) {
       <button id="batch-import-btn" ${bi.selectedRows.size === 0 || bi.importing ? 'disabled' : ''}>
         ${bi.importing ? '导入中...' : `确认导入（${bi.selectedRows.size}条）`}
       </button>
+      <button class="ghost" id="batch-draft-btn" ${bi.selectedRows.size === 0 ? 'disabled' : ''}>
+        📝 导入为草稿（${bi.selectedRows.size}条）
+      </button>
     </div>`;
   }
 
@@ -1338,6 +1346,101 @@ function renderBatchImportView(view) {
   </section>`;
 }
 
+function renderDraftView(view) {
+  const drafts = state.drafts.items || [];
+  const filter = state.drafts.filter || '';
+  const filtered = filter
+    ? drafts.filter((d) => d.status === filter)
+    : drafts;
+  const pendingDrafts = filtered.filter((d) => d.status === '待确认');
+  const confirmedDrafts = filtered.filter((d) => d.status === '已确认');
+  const pendingCount = drafts.filter((d) => d.status === '待确认').length;
+
+  const filterOptions = [
+    { value: '', label: '全部' },
+    { value: '待确认', label: '待确认' },
+    { value: '已确认', label: '已确认' }
+  ].map((opt) => `<option value="${opt.value}" ${filter === opt.value ? 'selected' : ''}>${opt.label}${opt.value === '待确认' && pendingCount > 0 ? `（${pendingCount}）` : ''}</option>`).join('');
+
+  const draftCard = (draft) => {
+    const d = draft.data;
+    const isValid = draft.isValid;
+    const statusTone = draft.status === '已确认' ? 'ok' : (isValid ? 'warn' : 'bad');
+    const errorHtml = !isValid && draft.validationErrors && draft.validationErrors.length > 0
+      ? `<div class="draft-errors">${draft.validationErrors.map((e) => `<span class="pill bad">${escapeHtml(e.message)}</span>`).join('')}</div>`
+      : '';
+    const previewInfoHtml = draft.previewInfo ? (() => {
+      const pi = draft.previewInfo;
+      const parts = [];
+      if (pi.duplicateTitles && pi.duplicateTitles.length > 0) {
+        parts.push(`<span class="batch-field-bad">⚠️ 重复卷名${pi.duplicateTitles.length}条</span>`);
+      }
+      if (pi.protectionAnomalies && pi.protectionAnomalies.length > 0) {
+        parts.push(`<span class="batch-field-bad">⚠️ 保护等级异常${pi.protectionAnomalies.length}条</span>`);
+      }
+      if (pi.missingRequired && Object.keys(pi.missingRequired).length > 0) {
+        parts.push(`<span class="batch-field-bad">⚠️ 缺失必填项</span>`);
+      }
+      if (pi.fieldRecognition) {
+        const fr = pi.fieldRecognition;
+        if (fr.unrecognized && fr.unrecognized.length > 0) {
+          parts.push(`<span class="batch-field-bad">⚠️ ${fr.unrecognized.length}列未识别</span>`);
+        }
+        if (fr.hasAllRequired) {
+          parts.push(`<span class="batch-field-ok">✅ 必填字段齐全</span>`);
+        }
+      }
+      return parts.length ? `<div class="draft-preview-info">${parts.join('')}</div>` : '';
+    })() : '';
+
+    const actionsHtml = draft.status === '待确认'
+      ? `<div class="actions">
+          <button class="ghost" data-draft-edit="${draft.id}">✏️ 编辑</button>
+          <button ${!isValid ? 'disabled title="请先修正校验错误"' : ''} data-draft-confirm="${draft.id}">✅ 确认转正</button>
+          <button class="danger" data-draft-discard="${draft.id}">🗑️ 丢弃</button>
+        </div>`
+      : `<div class="actions">
+          ${draft.confirmedScrollId ? `<span class="pill ok">已转正为经卷档案</span>` : ''}
+        </div>`;
+
+    return `<article class="card draft-card ${draft.status === '已确认' ? 'draft-confirmed' : ''} ${!isValid ? 'draft-invalid' : ''}">
+      <div class="card-head">
+        <h3>${draft.status === '已确认' ? '✅' : isValid ? '📝' : '⚠️'} ${escapeHtml(d.title || '(无卷名)')}</h3>
+        ${pill(draft.status, statusTone)}
+      </div>
+      <div class="detail">
+        <div>材质<br><strong>${escapeHtml(d.material || '-')}</strong></div>
+        <div>年代<br><strong>${escapeHtml(d.era || '-')}</strong></div>
+        <div>保护等级<br><strong>${escapeHtml(d.protectionLevel || '-')}</strong></div>
+        <div>借阅状态<br><strong>${escapeHtml(d.borrowStatus || '-')}</strong></div>
+        <div>柜位<br><strong>${escapeHtml(d.cabinet || '-')}</strong></div>
+        <div>残损<br><strong>${escapeHtml(d.damage || '-')}</strong></div>
+      </div>
+      ${d.inscription ? `<p>题跋：${escapeHtml(d.inscription)}</p>` : ''}
+      ${errorHtml}
+      ${previewInfoHtml}
+      ${actionsHtml}
+      <div class="draft-meta">
+        <span>来源行：第${draft.sourceRow}行</span>
+        <span>创建：${fmtDate(draft.createdAt)}</span>
+      </div>
+    </article>`;
+  };
+
+  return `<section class="view" id="${view.id}">
+    <div class="panel">
+      <h2>📋 导入草稿 ${pendingCount > 0 ? `<span class="draft-count-badge">${pendingCount}</span>` : ''}</h2>
+      <p class="batch-hint">草稿模式的导入结果暂存于此，管理员可逐条确认转正为经卷档案、编辑修正或丢弃。</p>
+      <div class="toolbar">
+        <select id="draft-status-filter">${filterOptions}</select>
+      </div>
+      ${pendingDrafts.length ? `<h3>待确认（${pendingDrafts.length}）</h3><div class="list">${pendingDrafts.map(draftCard).join('')}</div>` : ''}
+      ${confirmedDrafts.length ? `<h3>已确认（${confirmedDrafts.length}）</h3><div class="list">${confirmedDrafts.map(draftCard).join('')}</div>` : ''}
+      ${!pendingDrafts.length && !confirmedDrafts.length ? '<div class="empty">暂无草稿记录</div>' : ''}
+    </div>
+  </section>`;
+}
+
 function getVisibleViews() {
   const allViews = state.config.views || [];
   if (state.currentRole === 'admin') return allViews;
@@ -1362,6 +1465,7 @@ function render() {
     if (view.type === 'dashboard') return renderDashboardView(view);
     if (view.type === 'calendar') return renderCalendarView(view);
     if (view.type === 'batchImport') return renderBatchImportView(view);
+    if (view.type === 'draftList') return renderDraftView(view);
     if (view.type === 'consistencyCheck') return renderConsistencyCheckView(view);
     if (view.type === 'audit') return renderAuditView(view);
     return renderCrudView(view);
@@ -1373,14 +1477,93 @@ function render() {
   setTab(state.activeTab || visibleViews[0]?.id || '');
 }
 
+async function loadDrafts() {
+  try {
+    state.drafts.items = await api('/api/drafts');
+  } catch (e) {
+    state.drafts.items = [];
+  }
+}
+
 async function load() {
   state.db = await api('/api/db');
+  await loadDrafts();
   try {
     state.calendarData = await api('/api/loans/calendar');
   } catch (e) {
     state.calendarData = [];
   }
   render();
+}
+
+function openDraftEditModal(draft) {
+  const d = draft.data;
+  const modal = document.createElement('div');
+  modal.className = 'modal-backdrop';
+  modal.id = 'draft-edit-modal';
+  modal.innerHTML = `
+    <div class="modal">
+      <div class="modal-head">
+        <h3>✏️ 编辑草稿</h3>
+        <button class="modal-close" data-modal-close>×</button>
+      </div>
+      <div class="modal-body">
+        <form data-draft-edit-form="${draft.id}">
+          <div class="form-grid">
+            <label>卷名 <input type="text" name="title" value="${escapeHtml(d.title || '')}" required></label>
+            <label>材质 <input type="text" name="material" value="${escapeHtml(d.material || '')}" required></label>
+            <label>年代判断 <input type="text" name="era" value="${escapeHtml(d.era || '')}" required></label>
+            <label>存放柜位 <input type="text" name="cabinet" value="${escapeHtml(d.cabinet || '')}" required></label>
+            <label>保护等级
+              <select name="protectionLevel">
+                ${['一级', '二级', '三级'].map((opt) => `<option ${d.protectionLevel === opt ? 'selected' : ''}>${opt}</option>`).join('')}
+              </select>
+            </label>
+            <label>借阅状态
+              <select name="borrowStatus">
+                ${['可借阅', '需审批', '限制借阅', '修补中'].map((opt) => `<option ${d.borrowStatus === opt ? 'selected' : ''}>${opt}</option>`).join('')}
+              </select>
+            </label>
+            <label class="wide">残损位置 <textarea name="damage" required>${escapeHtml(d.damage || '')}</textarea></label>
+            <label class="wide">题跋信息 <textarea name="inscription">${escapeHtml(d.inscription || '')}</textarea></label>
+          </div>
+        </form>
+      </div>
+      <div class="modal-foot">
+        <button class="ghost" data-modal-close>取消</button>
+        <button id="draft-edit-save-btn">保存修改</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modal);
+
+  const close = () => {
+    modal.remove();
+  };
+
+  modal.addEventListener('click', (e) => {
+    if (e.target.closest('[data-modal-close]') || e.target === modal) close();
+    if (e.target.id === 'draft-edit-save-btn') {
+      const form = $(`[data-draft-edit-form="${draft.id}"]`, modal);
+      if (!form || !form.checkValidity()) {
+        form?.reportValidity();
+        return;
+      }
+      const formData = Object.fromEntries(new FormData(form).entries());
+      api(`/api/drafts/${encodeURIComponent(draft.id)}`, {
+        method: 'PATCH',
+        body: JSON.stringify({ data: formData })
+      }).then(() => {
+        close();
+        loadDrafts().then(() => {
+          render();
+          toast('草稿已更新');
+        });
+      }).catch((err) => {
+        toast(err.message);
+      });
+    }
+  });
 }
 
 function openStrictConfirmModal(action, item, onConfirm) {
@@ -1640,6 +1823,82 @@ document.addEventListener('click', async (event) => {
       setTab('batch-import');
       toast(e.message);
     }
+    return;
+  }
+
+  const batchDraftBtn = event.target.closest('#batch-draft-btn');
+  if (batchDraftBtn) {
+    const bi = state.batchImport;
+    if (!bi.previewData || bi.selectedRows.size === 0) {
+      toast('请先选择要导入的行');
+      return;
+    }
+    bi.importing = true;
+    render();
+    setTab('batch-import');
+    try {
+      const result = await api('/api/scrolls/batch/draft', {
+        method: 'POST',
+        body: JSON.stringify({
+          csvText: bi.csvText,
+          importRows: [...bi.selectedRows],
+          previewData: {
+            fieldRecognition: bi.previewData.fieldRecognition,
+            duplicateTitles: bi.previewData.duplicateTitles,
+            missingRequired: bi.previewData.missingRequired,
+            protectionAnomalies: bi.previewData.protectionAnomalies
+          }
+        })
+      });
+      bi.importing = false;
+      bi.previewData = null;
+      bi.csvText = '';
+      bi.selectedRows = new Set();
+      await loadDrafts();
+      await load();
+      toast(`已导入${result.draftCount}条草稿，请到草稿列表确认`);
+    } catch (e) {
+      bi.importing = false;
+      render();
+      setTab('batch-import');
+      toast(e.message);
+    }
+    return;
+  }
+
+  const draftConfirmBtn = event.target.closest('[data-draft-confirm]');
+  if (draftConfirmBtn) {
+    const draftId = draftConfirmBtn.dataset.draftConfirm;
+    try {
+      await api(`/api/drafts/${encodeURIComponent(draftId)}/confirm`, { method: 'POST' });
+      await loadDrafts();
+      await load();
+      toast('草稿已确认转正为经卷档案');
+    } catch (e) {
+      toast(e.message);
+    }
+    return;
+  }
+
+  const draftDiscardBtn = event.target.closest('[data-draft-discard]');
+  if (draftDiscardBtn) {
+    const draftId = draftDiscardBtn.dataset.draftDiscard;
+    try {
+      await api(`/api/drafts/${encodeURIComponent(draftId)}`, { method: 'DELETE' });
+      await loadDrafts();
+      toast('草稿已丢弃');
+    } catch (e) {
+      toast(e.message);
+    }
+    return;
+  }
+
+  const draftEditBtn = event.target.closest('[data-draft-edit]');
+  if (draftEditBtn) {
+    const draftId = draftEditBtn.dataset.draftEdit;
+    const draft = state.drafts.items.find((d) => d.id === draftId);
+    if (!draft) return;
+    openDraftEditModal(draft);
     return;
   }
 
@@ -3000,6 +3259,12 @@ document.addEventListener('click', (e) => {
         toast(`巡检完成：发现${s.total}个问题（高危${s.high}，中等${s.medium}，低危${s.low}）`);
       }
     });
+  }
+  const draftFilter = e.target.closest('#draft-status-filter');
+  if (draftFilter) {
+    state.drafts.filter = draftFilter.value;
+    render();
+    setTab('drafts');
   }
   if (e.target.closest('#cc-batch-plan-btn')) {
     const cc = state.consistencyCheck;
