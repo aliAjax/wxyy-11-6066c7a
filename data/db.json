@@ -269,6 +269,27 @@
           "note": "展平工序"
         }
       ]
+    },
+    {
+      "id": "repairs-1782017847902-c8fd0",
+      "scrollId": "scroll-seed-1",
+      "process": "修复测试",
+      "conservator": "修复师",
+      "date": "2026-06-21",
+      "status": "进行中",
+      "materialUsed": "绫绢",
+      "note": "测试带附件的修补记录",
+      "attachmentCode": "REP-TEST-2026-001",
+      "externalLink": "https://example.com/repair/test-001",
+      "createdAt": "2026-06-21T04:57:27.902Z",
+      "updatedAt": "2026-06-21T04:57:27.902Z",
+      "history": [
+        {
+          "at": "2026-06-21T04:57:27.902Z",
+          "action": "创建",
+          "note": "测试带附件的修补记录"
+        }
+      ]
     }
   ],
   "loans": [
@@ -756,6 +777,23 @@
           "note": "经卷托裱工序进展顺利，托纸贴合平整，无气泡产生。建议继续静养2日后再进行下一步检查。"
         }
       ]
+    },
+    {
+      "id": "obs-1782017820115-2e90c",
+      "scrollId": "scroll-seed-1",
+      "observer": "测试员",
+      "content": "保存良好，经卷完整无损",
+      "attachmentCode": "ATT-TEST-2026-001",
+      "externalLink": "https://example.com/archive/test-001",
+      "createdAt": "2026-06-21T04:57:00.115Z",
+      "updatedAt": "2026-06-21T04:57:00.115Z",
+      "history": [
+        {
+          "at": "2026-06-21T04:57:00.115Z",
+          "action": "创建",
+          "note": "保存良好，经卷完整无损"
+        }
+      ]
     }
   ],
   "inventories": [
@@ -850,6 +888,53 @@
   ],
   "repairBatches": [],
   "audits": [
+    {
+      "id": "audit-1782017847902-0fcd0",
+      "timestamp": "2026-06-21T04:57:27.902Z",
+      "operator": "系统",
+      "operatorRole": "admin",
+      "operatorRoleName": "管理员",
+      "collection": "repairs",
+      "collectionLabel": "修补记录",
+      "itemId": "repairs-1782017847902-c8fd0",
+      "itemTitle": "修复测试",
+      "action": "create",
+      "actionLabel": "新增",
+      "changes": {
+        "scrollId": "scroll-seed-1",
+        "process": "修复测试",
+        "conservator": "修复师",
+        "date": "2026-06-21",
+        "status": "进行中",
+        "materialUsed": "绫绢",
+        "note": "测试带附件的修补记录",
+        "attachmentCode": "REP-TEST-2026-001",
+        "externalLink": "https://example.com/repair/test-001"
+      },
+      "note": "测试带附件的修补记录",
+      "ip": "::1"
+    },
+    {
+      "id": "audit-1782017820115-c85b0",
+      "timestamp": "2026-06-21T04:57:00.115Z",
+      "operator": "系统",
+      "operatorRole": "admin",
+      "operatorRoleName": "管理员",
+      "collection": "observations",
+      "collectionLabel": "人工观察记录",
+      "itemId": "obs-1782017820115-2e90c",
+      "itemTitle": "测试员",
+      "action": "create",
+      "actionLabel": "新增",
+      "changes": {
+        "observer": "测试员",
+        "content": "保存良好，经卷完整无损",
+        "attachmentCode": "ATT-TEST-2026-001",
+        "externalLink": "https://example.com/archive/test-001"
+      },
+      "note": "经卷：妙法莲华经卷第三 - 保存良好，经卷完整无损",
+      "ip": "::1"
+    },
     {
       "id": "audit-1782015796461-ba96a",
       "timestamp": "2026-06-21T04:23:16.461Z",

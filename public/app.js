@@ -12,6 +12,7 @@ const state = {
   timelineScrollId: null,
   timelineData: null,
   timelineFilter: '',
+  timelineHasAttachmentFilter: '',
   batchImport: {
     csvText: '',
     previewData: null,
@@ -438,6 +439,11 @@ function displayField(item, field) {
   if (field.name === 'conditionsSummary') {
     return item.conditionsSummary || '-';
   }
+  if (field.name === 'externalLink') {
+    const value = item[field.name] ?? '';
+    if (!value) return '-';
+    return `<a href="${escapeHtml(value)}" target="_blank" rel="noopener" class="field-link">🔗 查看存档</a>`;
+  }
   const value = item[field.name] ?? '';
   if (field.type === 'select' && field.options) return value || field.options[0];
   return value;
@@ -473,10 +479,11 @@ function optionList(items, labelFields) {
 function formField(field, viewId) {
   const required = field.required ? 'required' : '';
   const value = field.default ? `value="${escapeHtml(field.default)}"` : '';
+  const placeholder = field.placeholder ? `placeholder="${escapeHtml(field.placeholder)}"` : '';
   const conflictCheckClass = viewId === 'loans' && (field.name === 'borrowDate' || field.name === 'dueDate') ? 'conflict-check' : '';
   const relationSelectClass = viewId === 'loans' && field.type === 'relation' ? 'scroll-select' : '';
   if (field.type === 'textarea') {
-    return `<label class="${field.wide ? 'wide' : ''}">${field.label}<textarea name="${field.name}" ${required}></textarea></label>`;
+    return `<label class="${field.wide ? 'wide' : ''}">${field.label}<textarea name="${field.name}" ${required} ${placeholder}></textarea></label>`;
   }
   if (field.type === 'select') {
     return `<label class="${field.wide ? 'wide' : ''}">${field.label}<select name="${field.name}" ${required}>${field.options.map((option) => `<option>${escapeHtml(option)}</option>`).join('')}</select></label>`;
@@ -485,7 +492,7 @@ function formField(field, viewId) {
     const items = state.db[field.collection] || [];
     return `<label class="${field.wide ? 'wide' : ''} ${relationSelectClass}">${field.label}<select name="${field.name}" ${required}>${optionList(items, field.labelFields)}</select></label>`;
   }
-  return `<label class="${field.wide ? 'wide' : ''} ${conflictCheckClass}">${field.label}<input type="${field.type || 'text'}" name="${field.name}" ${value} ${required}></label>`;
+  return `<label class="${field.wide ? 'wide' : ''} ${conflictCheckClass}">${field.label}<input type="${field.type || 'text'}" name="${field.name}" ${value} ${placeholder} ${required}></label>`;
 }
 
 function pill(value, tone = '') {
@@ -609,6 +616,32 @@ const TIMELINE_TYPE_TONES = {
   '修补批次': 'warn'
 };
 
+function renderAttachments(attachments, compact = false) {
+  if (!attachments) return '';
+  const { hasAttachment, attachmentCode, externalLink } = attachments;
+  if (!hasAttachment) return '';
+  
+  const codeHtml = attachmentCode
+    ? `<span class="attachment-code" title="证据附件编号">📎 ${escapeHtml(attachmentCode)}</span>`
+    : '';
+  
+  const linkHtml = externalLink
+    ? `<a class="attachment-link" href="${escapeHtml(externalLink)}" target="_blank" title="打开外部存档链接" rel="noopener">🔗 存档链接</a>`
+    : '';
+  
+  if (compact) {
+    return `<div class="attachments-compact">${codeHtml}${linkHtml}</div>`;
+  }
+  
+  return `<div class="attachments-section">
+    <div class="attachments-title">📎 证据附件索引</div>
+    <div class="attachments-content">
+      ${codeHtml ? `<div class="attachment-item"><span class="attachment-label">附件编号：</span>${codeHtml}</div>` : ''}
+      ${linkHtml ? `<div class="attachment-item"><span class="attachment-label">外部存档：</span>${linkHtml}</div>` : ''}
+    </div>
+  </div>`;
+}
+
 function timelineTypeBadge(type) {
   const icon = TIMELINE_TYPE_ICONS[type] || '📌';
   const tone = TIMELINE_TYPE_TONES[type] || '';
@@ -618,6 +651,7 @@ function timelineTypeBadge(type) {
 async function openTimeline(scrollId) {
   state.timelineScrollId = scrollId;
   state.timelineFilter = '';
+  state.timelineHasAttachmentFilter = '';
   try {
     state.timelineData = await api(`/api/scrolls/${encodeURIComponent(scrollId)}/timeline`);
   } catch (e) {
@@ -632,6 +666,7 @@ function closeTimeline() {
   state.timelineScrollId = null;
   state.timelineData = null;
   state.timelineFilter = '';
+  state.timelineHasAttachmentFilter = '';
   const overlay = $('#timeline-overlay');
   if (overlay) overlay.remove();
 }
@@ -645,10 +680,20 @@ function renderTimelineOverlay() {
 
   const allTypes = [...new Set(data.events.map((e) => e.type))];
   const filterOptions = `<option value="">全部事件</option>${allTypes.map((t) => `<option value="${escapeHtml(t)}" ${state.timelineFilter === t ? 'selected' : ''}>${TIMELINE_TYPE_ICONS[t] || '📌'} ${escapeHtml(t)}</option>`).join('')}`;
+  const hasAttachmentOptions = `
+    <option value="">全部记录</option>
+    <option value="has" ${state.timelineHasAttachmentFilter === 'has' ? 'selected' : ''}>📎 有附件</option>
+    <option value="none" ${state.timelineHasAttachmentFilter === 'none' ? 'selected' : ''}>无附件</option>
+  `;
 
   let filtered = data.events;
   if (state.timelineFilter) {
     filtered = filtered.filter((e) => e.type === state.timelineFilter);
+  }
+  if (state.timelineHasAttachmentFilter === 'has') {
+    filtered = filtered.filter((e) => e.attachments?.hasAttachment);
+  } else if (state.timelineHasAttachmentFilter === 'none') {
+    filtered = filtered.filter((e) => !e.attachments?.hasAttachment);
   }
 
   const scroll = state.db.scrolls?.find((s) => s.id === data.scrollId);
@@ -659,21 +704,31 @@ function renderTimelineOverlay() {
   const adviceHtml = renderProtectionAdvice(protectionAdvice);
 
   const eventListHtml = filtered.length
-    ? filtered.map((ev) => `
-      <div class="timeline-event" data-event-type="${escapeHtml(ev.type)}">
+    ? filtered.map((ev) => {
+        const hasAttachment = ev.attachments?.hasAttachment;
+        const attachmentBadge = hasAttachment
+          ? `<span class="timeline-attachment-badge" title="有证据附件">📎</span>`
+          : '';
+        const attachmentsHtml = renderAttachments(ev.attachments, false);
+        return `
+      <div class="timeline-event ${hasAttachment ? 'has-attachment' : ''}" data-event-type="${escapeHtml(ev.type)}">
         <div class="timeline-dot"></div>
         <div class="timeline-content">
           <div class="timeline-head">
             ${timelineTypeBadge(ev.type)}
+            ${attachmentBadge}
             <span class="timeline-time">${fmtDate(ev.timestamp)}</span>
           </div>
           <div class="timeline-title">${escapeHtml(ev.title)}</div>
           ${ev.detail ? `<div class="timeline-detail">${escapeHtml(ev.detail)}</div>` : ''}
+          ${attachmentsHtml}
           <div class="timeline-source">来源：${escapeHtml(state.config.collections[ev.source]?.label || ev.source)}</div>
         </div>
       </div>
-    `).join('')
+    `;}).join('')
     : '<div class="empty">暂无匹配的事件记录</div>';
+
+  const filterApplied = state.timelineFilter || state.timelineHasAttachmentFilter;
 
   const overlay = document.createElement('div');
   overlay.id = 'timeline-overlay';
@@ -693,8 +748,9 @@ function renderTimelineOverlay() {
       </div>
       ${adviceHtml}
       <div class="timeline-toolbar">
-        <label>按类型筛选：<select id="timeline-filter">${filterOptions}</select></label>
-        <span class="timeline-count">共 ${filtered.length} 条事件${state.timelineFilter ? '（已筛选）' : ''}</span>
+        <label>事件类型：<select id="timeline-filter">${filterOptions}</select></label>
+        <label>附件过滤：<select id="timeline-attachment-filter">${hasAttachmentOptions}</select></label>
+        <span class="timeline-count">共 ${filtered.length} 条事件${filterApplied ? '（已筛选）' : ''}</span>
       </div>
       <div class="timeline-body">
         <div class="timeline-line">
@@ -706,7 +762,9 @@ function renderTimelineOverlay() {
         <form data-observation="${data.scrollId}">
           <div class="obs-form-grid">
             <label>观察人<input type="text" name="observer" required placeholder="填写观察人姓名"></label>
-            <label>观察内容<textarea name="content" required placeholder="记录观察发现，不影响业务状态"></textarea></label>
+            <label>证据附件编号<input type="text" name="attachmentCode" placeholder="如：ATT-2026-001"></label>
+            <label class="wide">观察内容<textarea name="content" required placeholder="记录观察发现，不影响业务状态"></textarea></label>
+            <label class="wide">外部存档链接<input type="text" name="externalLink" placeholder="档案系统URL，可选"></label>
           </div>
           <div class="actions"><button type="submit">追加观察记录</button></div>
         </form>
@@ -763,8 +821,11 @@ function renderCard(item, collection, view) {
     let value = raw;
     if (field.type === 'relation') {
       value = relationLabel(field, item[field.name]);
+      value = escapeHtml(value || '-');
     } else if (field.name === 'riskLevel') {
       value = pill(raw || '-', toneFor(raw));
+    } else if (field.name === 'externalLink') {
+      value = raw;
     } else {
       value = escapeHtml(value || '-');
     }
@@ -856,6 +917,17 @@ function renderCard(item, collection, view) {
 
   const conditionsHtml = collection === 'loans' ? renderConditionsSummary(item) : '';
 
+  const attachmentCollections = ['repairs', 'imagings', 'inventories', 'observations'];
+  let attachmentsHtml = '';
+  if (attachmentCollections.includes(collection)) {
+    const attachments = {
+      hasAttachment: !!(item.attachmentCode || item.externalLink),
+      attachmentCode: item.attachmentCode || null,
+      externalLink: item.externalLink || null
+    };
+    attachmentsHtml = renderAttachments(attachments, true);
+  }
+
   return `<article class="card${collection === 'materials' && ['低余量', '即将到期', '已过期'].includes(item.status) ? ' material-warning material-' + toneFor(item.status) : ''}">
     <div class="card-head"><h3>${cardTitleHtml}</h3>${statusValue ? pill(statusValue, toneFor(statusValue)) : ''}</div>
     ${relation}
@@ -866,6 +938,7 @@ function renderCard(item, collection, view) {
     ${batchProgressHtml}
     ${riskHtml}
     ${conditionsHtml}
+    ${attachmentsHtml}
     ${actionsHtml}
     ${timelineBtn ? `<div class="actions">${timelineBtn}</div>` : ''}
     ${historyHtml(item)}
@@ -1939,6 +2012,12 @@ document.addEventListener('input', async (event) => {
     return;
   }
 
+  if (event.target.id === 'timeline-attachment-filter') {
+    state.timelineHasAttachmentFilter = event.target.value;
+    renderTimelineOverlay();
+    return;
+  }
+
   if (event.target.id === 'calendar-scroll-filter') {
     state.selectedScrollId = event.target.value;
     render();
@@ -2105,6 +2184,8 @@ document.addEventListener('submit', async (event) => {
     const scrollId = obsForm.dataset.observation;
     const observer = obsForm.querySelector('[name="observer"]')?.value.trim();
     const content = obsForm.querySelector('[name="content"]')?.value.trim();
+    const attachmentCode = obsForm.querySelector('[name="attachmentCode"]')?.value.trim() || '';
+    const externalLink = obsForm.querySelector('[name="externalLink"]')?.value.trim() || '';
     if (!observer || !content) {
       toast('观察人和观察内容不能为空');
       return;
@@ -2112,7 +2193,7 @@ document.addEventListener('submit', async (event) => {
     try {
       await api(`/api/scrolls/${encodeURIComponent(scrollId)}/observation`, {
         method: 'POST',
-        body: JSON.stringify({ observer, content })
+        body: JSON.stringify({ observer, content, attachmentCode, externalLink })
       });
       toast('观察记录已追加');
       await openTimeline(scrollId);

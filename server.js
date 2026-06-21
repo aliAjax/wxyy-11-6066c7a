@@ -700,6 +700,17 @@ function sortNewest(a, b) {
   return new Date(b.updatedAt || b.createdAt || 0) - new Date(a.updatedAt || a.createdAt || 0);
 }
 
+function extractAttachments(item) {
+  const attachmentCode = item?.attachmentCode || '';
+  const externalLink = item?.externalLink || '';
+  const hasAttachment = !!(attachmentCode || externalLink);
+  return {
+    hasAttachment,
+    attachmentCode: attachmentCode || null,
+    externalLink: externalLink || null
+  };
+}
+
 function getBatchRepairsSorted(db, batchId) {
   const repairs = (db.repairs || []).filter((r) => r.batchId === batchId);
   repairs.sort((a, b) => {
@@ -802,7 +813,8 @@ app.get('/api/scrolls/:id/timeline', async (req, res) => {
     sourceId: scroll.id,
     title: `建档：${scroll.title}`,
     detail: `材质：${scroll.material || '-'}，年代：${scroll.era || '-'}，保护等级：${scroll.protectionLevel || '-'}，柜位：${scroll.cabinet || '-'}`,
-    meta: { protectionLevel: scroll.protectionLevel, borrowStatus: scroll.borrowStatus }
+    meta: { protectionLevel: scroll.protectionLevel, borrowStatus: scroll.borrowStatus },
+    attachments: { hasAttachment: false, attachmentCode: null, externalLink: null }
   });
   for (const entry of scroll.history || []) {
     if (entry.action === '创建') continue;
@@ -816,7 +828,8 @@ app.get('/api/scrolls/:id/timeline', async (req, res) => {
       sourceId: scroll.id,
       title: `${entry.action}`,
       detail: entry.note || '',
-      meta: { action: entry.action }
+      meta: { action: entry.action },
+      attachments: { hasAttachment: false, attachmentCode: null, externalLink: null }
     });
   }
   for (const repair of db.repairs || []) {
@@ -829,7 +842,8 @@ app.get('/api/scrolls/:id/timeline', async (req, res) => {
       sourceId: repair.id,
       title: `修补：${repair.process}（${repair.status}）`,
       detail: `修补人员：${repair.conservator || '-'}，日期：${repair.date || '-'}${repair.materialUsed ? '，材料：' + repair.materialUsed : ''}${repair.note ? '，' + repair.note : ''}`,
-      meta: { process: repair.process, status: repair.status }
+      meta: { process: repair.process, status: repair.status },
+      attachments: extractAttachments(repair)
     });
     for (const entry of repair.history || []) {
       if (entry.action === '创建') continue;
@@ -841,7 +855,8 @@ app.get('/api/scrolls/:id/timeline', async (req, res) => {
         sourceId: repair.id,
         title: `修补${entry.action}`,
         detail: entry.note || '',
-        meta: { process: repair.process, action: entry.action }
+        meta: { process: repair.process, action: entry.action },
+        attachments: extractAttachments(repair)
       });
     }
   }
@@ -862,7 +877,8 @@ app.get('/api/scrolls/:id/timeline', async (req, res) => {
         sourceId: loan.id,
         title: `${entry.action}：${loan.borrower || '-'} - ${loan.purpose || '-'}`,
         detail: detail,
-        meta: { borrower: loan.borrower, purpose: loan.purpose, status: loan.status, borrowDate: loan.borrowDate, dueDate: loan.dueDate, conditions: loan.conditions || null, conditionsSummary: loan.conditionsSummary || '' }
+        meta: { borrower: loan.borrower, purpose: loan.purpose, status: loan.status, borrowDate: loan.borrowDate, dueDate: loan.dueDate, conditions: loan.conditions || null, conditionsSummary: loan.conditionsSummary || '' },
+        attachments: { hasAttachment: false, attachmentCode: null, externalLink: null }
       });
     }
   }
@@ -876,7 +892,8 @@ app.get('/api/scrolls/:id/timeline', async (req, res) => {
       sourceId: imaging.id,
       title: `影像采集：${imaging.batch || '-'}（${imaging.clarity || '-'}）`,
       detail: `拍摄人员：${imaging.photographer || '-'}，影像编号：${imaging.imageCode || '-'}${imaging.note ? '，' + imaging.note : ''}`,
-      meta: { clarity: imaging.clarity, batch: imaging.batch }
+      meta: { clarity: imaging.clarity, batch: imaging.batch },
+      attachments: extractAttachments(imaging)
     });
     for (const entry of imaging.history || []) {
       if (entry.action === '创建') continue;
@@ -888,7 +905,8 @@ app.get('/api/scrolls/:id/timeline', async (req, res) => {
         sourceId: imaging.id,
         title: `影像${entry.action}`,
         detail: entry.note || '',
-        meta: { clarity: imaging.clarity }
+        meta: { clarity: imaging.clarity },
+        attachments: extractAttachments(imaging)
       });
     }
   }
@@ -902,7 +920,8 @@ app.get('/api/scrolls/:id/timeline', async (req, res) => {
       sourceId: inv.id,
       title: `盘点：${inv.cabinet || '-'}（${inv.result || '-'}）`,
       detail: `盘点人：${inv.inventoryPerson || '-'}，日期：${inv.inventoryDate || '-'}${inv.exceptionNote ? '，异常：' + inv.exceptionNote : ''}`,
-      meta: { result: inv.result, status: inv.status }
+      meta: { result: inv.result, status: inv.status },
+      attachments: extractAttachments(inv)
     });
     for (const entry of inv.history || []) {
       if (entry.action === '创建') continue;
@@ -914,7 +933,8 @@ app.get('/api/scrolls/:id/timeline', async (req, res) => {
         sourceId: inv.id,
         title: `盘点${entry.action}`,
         detail: entry.note || '',
-        meta: { result: inv.result }
+        meta: { result: inv.result },
+        attachments: extractAttachments(inv)
       });
     }
   }
@@ -928,7 +948,8 @@ app.get('/api/scrolls/:id/timeline', async (req, res) => {
       sourceId: obs.id,
       title: `人工观察：${obs.observer || '-'}`,
       detail: obs.content || '',
-      meta: { observer: obs.observer }
+      meta: { observer: obs.observer },
+      attachments: extractAttachments(obs)
     });
   }
   for (const batch of db.repairBatches || []) {
@@ -941,7 +962,8 @@ app.get('/api/scrolls/:id/timeline', async (req, res) => {
       sourceId: batch.id,
       title: `修补批次：${batch.templateName || '-'}（${batch.status || '-'}）`,
       detail: `负责人：${batch.conservator || '-'}，进度：${batch.progressSummary || '-'}${batch.note ? '，' + batch.note : ''}`,
-      meta: { templateName: batch.templateName, status: batch.status }
+      meta: { templateName: batch.templateName, status: batch.status },
+      attachments: { hasAttachment: false, attachmentCode: null, externalLink: null }
     });
     for (const entry of batch.history || []) {
       if (entry.action === '创建') continue;
@@ -953,7 +975,8 @@ app.get('/api/scrolls/:id/timeline', async (req, res) => {
         sourceId: batch.id,
         title: `批次${entry.action}`,
         detail: entry.note || '',
-        meta: { templateName: batch.templateName }
+        meta: { templateName: batch.templateName },
+        attachments: { hasAttachment: false, attachmentCode: null, externalLink: null }
       });
     }
   }
@@ -985,7 +1008,7 @@ app.post('/api/scrolls/:id/observation', async (req, res) => {
   const scrollId = req.params.id;
   const scroll = (db.scrolls || []).find((s) => s.id === scrollId);
   if (!scroll) return res.status(404).json({ error: '经卷不存在' });
-  const { observer, content } = req.body || {};
+  const { observer, content, attachmentCode, externalLink } = req.body || {};
   if (!observer || !content) return res.status(400).json({ error: '观察人和观察内容不能为空' });
   if (!Array.isArray(db.observations)) db.observations = [];
   const now = new Date().toISOString();
@@ -994,18 +1017,24 @@ app.post('/api/scrolls/:id/observation', async (req, res) => {
     scrollId,
     observer,
     content,
+    attachmentCode: attachmentCode || '',
+    externalLink: externalLink || '',
     createdAt: now,
     updatedAt: now,
     history: [{ at: now, action: '创建', note: content }]
   };
   db.observations.push(item);
 
+  const changes = { observer, content };
+  if (attachmentCode !== undefined) changes.attachmentCode = attachmentCode;
+  if (externalLink !== undefined) changes.externalLink = externalLink;
+
   await writeAuditLog(db, req, {
     collection: 'observations',
     itemId: item.id,
     itemTitle: observer,
     action: 'create',
-    changes: { observer, content },
+    changes,
     note: `经卷：${scroll.title} - ${content.slice(0, 50)}`
   });
 

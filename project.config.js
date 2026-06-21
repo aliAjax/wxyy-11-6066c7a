@@ -188,7 +188,9 @@ module.exports = {
         { label: '状态', name: 'status' },
         { label: '工序', name: 'process' },
         { label: '所属批次', name: 'batchId', type: 'relation', collection: 'repairBatches', labelFields: ['templateName', 'status'] },
-        { label: '参考材料', name: 'materialId', type: 'relation', collection: 'materials', labelFields: ['name', 'batch'] }
+        { label: '参考材料', name: 'materialId', type: 'relation', collection: 'materials', labelFields: ['name', 'batch'] },
+        { label: '附件编号', name: 'attachmentCode' },
+        { label: '存档链接', name: 'externalLink' }
       ],
       fields: [
         { label: '经卷', name: 'scrollId', type: 'relation', collection: 'scrolls', labelFields: ['title', 'protectionLevel'], required: true, wide: true },
@@ -198,7 +200,9 @@ module.exports = {
         { label: '状态', name: 'status', type: 'select', options: ['计划中', '进行中', '已完成'] },
         { label: '参考材料（台账）', name: 'materialId', type: 'relation', collection: 'materials', labelFields: ['name', 'batch', 'quantity'] },
         { label: '材料说明', name: 'materialUsed', type: 'textarea', wide: true },
-        { label: '记录', name: 'note', type: 'textarea', wide: true }
+        { label: '记录', name: 'note', type: 'textarea', wide: true },
+        { label: '证据附件编号', name: 'attachmentCode', placeholder: '如：ATT-2026-001' },
+        { label: '外部存档链接', name: 'externalLink', placeholder: '档案系统URL，可选' }
       ]
     },
     {
@@ -261,7 +265,9 @@ module.exports = {
       detailFields: [
         { label: '采集日期', name: 'captureDate' },
         { label: '清晰度', name: 'clarity' },
-        { label: '影像编号', name: 'imageCode' }
+        { label: '影像编号', name: 'imageCode' },
+        { label: '附件编号', name: 'attachmentCode' },
+        { label: '存档链接', name: 'externalLink' }
       ],
       fields: [
         { label: '经卷', name: 'scrollId', type: 'relation', collection: 'scrolls', labelFields: ['title', 'protectionLevel'], required: true, wide: true },
@@ -270,7 +276,9 @@ module.exports = {
         { label: '采集日期', name: 'captureDate', type: 'date', required: true },
         { label: '影像编号', name: 'imageCode', required: true },
         { label: '清晰度状态', name: 'clarity', type: 'select', options: ['清晰', '模糊', '待重拍'] },
-        { label: '备注', name: 'note', type: 'textarea', wide: true }
+        { label: '备注', name: 'note', type: 'textarea', wide: true },
+        { label: '证据附件编号', name: 'attachmentCode', placeholder: '如：ATT-2026-001' },
+        { label: '外部存档链接', name: 'externalLink', placeholder: '档案系统URL，可选' }
       ]
     },
     {
@@ -290,7 +298,9 @@ module.exports = {
       detailFields: [
         { label: '盘点日期', name: 'inventoryDate' },
         { label: '盘点结果', name: 'result' },
-        { label: '处理状态', name: 'status' }
+        { label: '处理状态', name: 'status' },
+        { label: '附件编号', name: 'attachmentCode' },
+        { label: '存档链接', name: 'externalLink' }
       ],
       defaults: { result: '正常', status: '正常' },
       fields: [
@@ -300,7 +310,9 @@ module.exports = {
         { label: '存放柜位', name: 'cabinet', required: true },
         { label: '盘点结果', name: 'result', type: 'select', options: ['正常', '异常'], required: true },
         { label: '处理状态', name: 'status', type: 'select', options: ['正常', '待复核', '已处理'], required: true },
-        { label: '异常说明', name: 'exceptionNote', type: 'textarea', wide: true }
+        { label: '异常说明', name: 'exceptionNote', type: 'textarea', wide: true },
+        { label: '证据附件编号', name: 'attachmentCode', placeholder: '如：ATT-2026-001' },
+        { label: '外部存档链接', name: 'externalLink', placeholder: '档案系统URL，可选' }
       ]
     },
     {
