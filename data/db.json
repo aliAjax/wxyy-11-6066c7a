@@ -917,6 +917,53 @@
           "note": "历史遗留数据，缺少 riskAssessment 字段，用于兼容测试"
         }
       ]
+    },
+    {
+      "id": "loan-seed-condition-1",
+      "scrollId": "scroll-seed-4",
+      "borrower": "陈研究员",
+      "purpose": "校勘比对",
+      "borrowDate": "2026-07-01",
+      "dueDate": "2026-07-08",
+      "reason": "国家图书馆馆藏敦煌写卷S.259号与本馆藏卷校勘比对，需查阅原卷核对字形",
+      "status": "条件批准",
+      "conditions": ["馆内阅览", "禁止拍照", "修补陪同"],
+      "conditionsSummary": "限馆内阅览、禁止任何影像采集、查阅全过程须由专职修补人员陪同",
+      "conditionsNote": "限定在特藏室A区查阅，每日查阅时段为上午9:00-11:30，查阅期间须佩戴白手套，修补人员为赵师傅",
+      "riskAssessment": {
+        "level": "高风险",
+        "score": 82,
+        "reasons": [
+          "一级保护经卷",
+          "借阅用途：校勘比对（高风险用途，需频繁翻阅）",
+          "残损情况：首行与尾行有墨迹晕染",
+          "借阅周期：8天（偏长）"
+        ],
+        "evaluatedAt": "2026-06-22T09:30:00.000Z",
+        "protectionLevel": "一级",
+        "borrowStatus": "可借阅",
+        "lastRepair": {
+          "date": "2026-04-10",
+          "status": "已完成",
+          "process": "托裱"
+        },
+        "isStrictMode": true
+      },
+      "createdAt": "2026-06-21T14:20:00.000Z",
+      "updatedAt": "2026-06-22T11:00:00.000Z",
+      "history": [
+        {
+          "at": "2026-06-22T11:00:00.000Z",
+          "action": "条件批准",
+          "note": "条件批准借阅 | 风险评估：高风险（一级保护经卷，校勘比对用途，得分82）| 保护条件：限馆内阅览、禁止任何影像采集、查阅全过程须由专职修补人员陪同 | 补充说明：限定在特藏室A区查阅，每日查阅时段为上午9:00-11:30，查阅期间须佩戴白手套，修补人员为赵师傅"
+        },
+        {
+          "at": "2026-06-21T14:20:00.000Z",
+          "action": "创建",
+          "note": "国家图书馆馆藏敦煌写卷S.259号与本馆藏卷校勘比对 | 风险评估：高风险（得分82）"
+        }
+      ],
+      "note": "陈研究员长期从事敦煌文献整理工作，信誉良好。本次校勘为其国家社科基金重大项目子课题，有正式公函。"
     }
   ],
   "imagings": [
@@ -1292,6 +1339,27 @@
     }
   ],
   "audits": [
+    {
+      "id": "audit-condition-approve-demo",
+      "timestamp": "2026-06-22T11:00:00.000Z",
+      "operator": "王馆长",
+      "operatorRole": "admin",
+      "operatorRoleName": "管理员",
+      "collection": "loans",
+      "collectionLabel": "借阅预约",
+      "itemId": "loan-seed-condition-1",
+      "itemTitle": "陈研究员 / 校勘比对 / 2026-07-01 ~ 2026-07-08",
+      "action": "approve",
+      "actionLabel": "条件批准",
+      "changes": {
+        "status": { "before": "待审批", "after": "条件批准" },
+        "conditions": { "before": null, "after": ["馆内阅览", "禁止拍照", "修补陪同"] },
+        "conditionsSummary": { "before": null, "after": "限馆内阅览、禁止任何影像采集、查阅全过程须由专职修补人员陪同" },
+        "conditionsNote": { "before": null, "after": "限定在特藏室A区查阅，每日查阅时段为上午9:00-11:30，查阅期间须佩戴白手套，修补人员为赵师傅" }
+      },
+      "note": "条件批准：限馆内阅览、禁止任何影像采集、查阅全过程须由专职修补人员陪同 | 补充说明：限定在特藏室A区查阅，每日查阅时段为上午9:00-11:30，查阅期间须佩戴白手套，修补人员为赵师傅 | 审批理由：陈研究员长期从事敦煌文献整理工作，信誉良好。本次校勘为其国家社科基金重大项目子课题，有正式公函。",
+      "ip": "::1"
+    },
     {
       "id": "audit-1781965274382-c705e",
       "timestamp": "2026-06-20T14:21:14.382Z",

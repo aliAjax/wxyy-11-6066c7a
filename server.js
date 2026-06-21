@@ -491,6 +491,9 @@ function getActiveLoansByScroll(db, filters = {}) {
       borrowDate: loan.borrowDate,
       dueDate: loan.dueDate,
       status: loan.status,
+      conditions: loan.conditions || null,
+      conditionsSummary: loan.conditionsSummary || '',
+      conditionsNote: loan.conditionsNote || '',
       riskAssessment
     });
   }
@@ -756,9 +759,13 @@ app.get('/api/scrolls/:id/timeline', async (req, res) => {
   }
   for (const loan of db.loans || []) {
     if (loan.scrollId !== scrollId) continue;
-    const loanTypeMap = { '待审批': '借阅', '已批准': '借阅', '已借出': '借阅', '已归还': '归还', '已拒绝': '借阅' };
+    const loanTypeMap = { '待审批': '借阅', '条件批准': '借阅', '已批准': '借阅', '已借出': '借阅', '已归还': '归还', '已拒绝': '借阅' };
     for (const entry of loan.history || []) {
       const evType = entry.action === '归还' ? '归还' : (entry.action === '创建' ? '借阅' : loanTypeMap[entry.action] || '借阅');
+      let detail = entry.note || '';
+      if (loan.conditionsSummary) {
+        detail = detail ? `${detail} | 保护条件：${loan.conditionsSummary}` : `保护条件：${loan.conditionsSummary}`;
+      }
       events.push({
         id: `ev-loan-hist-${loan.id}-${entry.at}`,
         timestamp: entry.at,
@@ -766,8 +773,8 @@ app.get('/api/scrolls/:id/timeline', async (req, res) => {
         source: 'loans',
         sourceId: loan.id,
         title: `${entry.action}：${loan.borrower || '-'} - ${loan.purpose || '-'}`,
-        detail: entry.note || '',
-        meta: { borrower: loan.borrower, purpose: loan.purpose, status: loan.status, borrowDate: loan.borrowDate, dueDate: loan.dueDate }
+        detail: detail,
+        meta: { borrower: loan.borrower, purpose: loan.purpose, status: loan.status, borrowDate: loan.borrowDate, dueDate: loan.dueDate, conditions: loan.conditions || null, conditionsSummary: loan.conditionsSummary || '' }
       });
     }
   }
@@ -1519,6 +1526,7 @@ app.post('/api/action/:actionId/:id', async (req, res) => {
 
   let actionType = 'statusChange';
   if (actionId === 'loan-approve') actionType = 'approve';
+  else if (actionId === 'loan-approve-condition') actionType = 'approve';
   else if (actionId === 'loan-reject') actionType = 'reject';
   else if (actionId === 'loan-out') actionType = 'lend';
   else if (actionId === 'loan-return') actionType = 'return';
@@ -1538,8 +1546,14 @@ app.post('/api/action/:actionId/:id', async (req, res) => {
   const item = db[collection]?.find((entry) => entry.id === req.params.id);
   if (!item) return res.status(404).json({ error: 'not found' });
 
+  const { conditions, conditionsNote } = req.body || {};
+
+  if (actionId === 'loan-approve-condition' && (!Array.isArray(conditions) || conditions.length === 0)) {
+    return res.status(400).json({ error: '条件批准必须至少选择一项保护条件' });
+  }
+
   const oldItem = { ...item };
-  const result = runAction(db, action, item);
+  const result = runAction(db, action, item, { conditions, conditionsNote });
   if (result.error) return res.status(409).json({ error: result.error });
 
   if (action.id === 'repair-done') {
@@ -1600,13 +1614,23 @@ app.post('/api/action/:actionId/:id', async (req, res) => {
     }
   }
 
+  let auditNote = action.note || action.label;
+  if (actionId === 'loan-approve-condition' && Array.isArray(conditions) && conditions.length > 0) {
+    const conditionLabels = conditions.map((c) => config.loanConditions?.[c]?.label || c).join('、');
+    auditNote = `条件批准：${conditionLabels}${conditionsNote ? ` | 补充说明：${conditionsNote}` : ''}`;
+    changes.conditions = { before: oldItem.conditions || null, after: conditions };
+    if (conditionsNote) changes.conditionsNote = { before: oldItem.conditionsNote || null, after: conditionsNote };
+  } else if ((actionId === 'loan-out' || actionId === 'loan-return') && item.conditionsSummary) {
+    auditNote = `${action.label}（保护条件：${item.conditionsSummary}）`;
+  }
+
   await writeAuditLog(db, req, {
     collection,
     itemId: item.id,
     itemTitle: String(itemTitle),
     action: actionType,
     changes: Object.keys(changes).length ? changes : null,
-    note: action.note || action.label
+    note: auditNote
   });
 
   if (collection === 'loans' && action.relation) {
@@ -1646,7 +1670,8 @@ function findRelated(db, relation, item) {
   return db[relation.collection]?.find((entry) => entry.id === item[relation.localKey]);
 }
 
-function runAction(db, action, item) {
+function runAction(db, action, item, extra = {}) {
+  const { conditions, conditionsNote } = extra;
   const related = action.relation ? findRelated(db, action.relation, item) : null;
   const context = { item, related };
   const levelRank = { '低': 1, '中': 2, '高': 3 };
@@ -1695,7 +1720,17 @@ function runAction(db, action, item) {
     if (action.collection === 'loans' && assessment && patch.target !== 'related') {
       const riskNote = formatRiskNote(assessment, action.label);
       const baseNote = action.note || '状态流转';
-      target.history.unshift(stamp(action.label, `${baseNote} | ${riskNote}`));
+
+      if (action.id === 'loan-approve-condition' && Array.isArray(conditions) && conditions.length > 0) {
+        item.conditions = conditions;
+        if (conditionsNote) item.conditionsNote = conditionsNote;
+        const conditionLabels = conditions.map((c) => config.loanConditions?.[c]?.label || c).join('、');
+        item.conditionsSummary = conditionLabels;
+        const conditionNoteText = `保护条件：${conditionLabels}${conditionsNote ? ` | 补充说明：${conditionsNote}` : ''}`;
+        target.history.unshift(stamp(action.label, `${baseNote} | ${riskNote} | ${conditionNoteText}`));
+      } else {
+        target.history.unshift(stamp(action.label, `${baseNote} | ${riskNote}`));
+      }
     } else {
       target.history.unshift(stamp(action.label, action.note || '状态流转'));
     }

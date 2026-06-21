@@ -276,6 +276,28 @@ function isStrictRiskAssessment(assessment) {
     assessment.borrowStatus === '修补中';
 }
 
+function isConditionRequired(assessment) {
+  if (!assessment) return false;
+  return isStrictRiskAssessment(assessment) ||
+    assessment.level === '高风险' ||
+    assessment.level === '极高风险';
+}
+
+function renderConditionsSummary(loan) {
+  if (!loan || !loan.conditionsSummary) return '';
+  const condItems = (loan.conditions || []).map((key) => {
+    const conf = state.config.loanConditions?.[key];
+    if (!conf) return escapeHtml(key);
+    return `<span class="condition-chip" title="${escapeHtml(conf.desc || '')}">${escapeHtml(conf.icon || '')} ${escapeHtml(conf.label || key)}</span>`;
+  }).join('');
+  const noteHtml = loan.conditionsNote ? `<div style="margin-top:6px;font-size:12px;color:var(--muted);line-height:1.5">💬 ${escapeHtml(loan.conditionsNote)}</div>` : '';
+  return `<div class="conditions-summary">
+    <div class="conditions-title">🛡️ 保护条件</div>
+    <div class="conditions-chips">${condItems}</div>
+    ${noteHtml}
+  </div>`;
+}
+
 function renderRiskPanel(assessment) {
   if (!assessment) return '';
   const tone = toneForRisk(assessment.level);
@@ -407,6 +429,9 @@ function displayField(item, field) {
   }
   if (['riskLevel', 'scrollProtection', 'scrollBorrowStatus'].includes(field.name)) {
     return getRiskField(item, field.name);
+  }
+  if (field.name === 'conditionsSummary') {
+    return item.conditionsSummary || '-';
   }
   const value = item[field.name] ?? '';
   if (field.type === 'select' && field.options) return value || field.options[0];
@@ -722,14 +747,30 @@ function renderCard(item, collection, view) {
   };
 
   let actionsHtml;
-  if (collection === 'loans' && isStrictRiskAssessment(item.riskAssessment)) {
-    actionsHtml = `<div class="actions">${state.config.actions
-        .filter((action) => action.collection === collection)
-        .map((action) => {
-          const extraClass = (action.id === 'loan-approve' || action.id === 'loan-reject') ? ' strict-action' : '';
-          return `<button class="${action.danger ? 'danger' : 'ghost'}${extraClass}" data-action="${action.id}" data-id="${item.id}" data-strict="true">${action.id === 'loan-approve' || action.id === 'loan-reject' ? '⚠️ ' : ''}${escapeHtml(action.label)}</button>`;
-        })
-        .join('')}</div>`;
+  if (collection === 'loans' && item.status !== '已归还' && item.status !== '已拒绝') {
+    const needCondition = isConditionRequired(item.riskAssessment);
+    const isStrict = isStrictRiskAssessment(item.riskAssessment);
+    const loanActions = state.config.actions.filter((action) => action.collection === collection);
+
+    const actionsList = loanActions.map((action) => {
+      if (action.id === 'loan-approve') {
+        if (needCondition) {
+          const extraClass = ' strict-action';
+          return `<button class="ghost${extraClass}" data-action="loan-approve-condition" data-id="${item.id}" data-condition="true">⚠️ 条件批准</button>`;
+        } else {
+          return `<button class="ghost" data-action="${action.id}" data-id="${item.id}">${escapeHtml(action.label)}</button>`;
+        }
+      }
+      if (action.id === 'loan-approve-condition') {
+        if (!needCondition) return '';
+        return '';
+      }
+      const extraClass = (isStrict && (action.id === 'loan-reject')) ? ' strict-action' : '';
+      const warnIcon = (isStrict && (action.id === 'loan-reject')) ? '⚠️ ' : '';
+      return `<button class="${action.danger ? 'danger' : 'ghost'}${extraClass}" data-action="${action.id}" data-id="${item.id}" data-strict="${isStrict ? 'true' : ''}">${warnIcon}${escapeHtml(action.label)}</button>`;
+    }).filter(Boolean).join('');
+
+    actionsHtml = `<div class="actions">${actionsList}</div>`;
   } else if (collection === 'materials') {
     actionsHtml = `<div class="actions">
       <button class="ghost" data-material-edit="${item.id}">✏️ 编辑</button>
@@ -780,6 +821,8 @@ function renderCard(item, collection, view) {
     cardTitleHtml = `${warnIcon} ${escapeHtml(title)}`;
   }
 
+  const conditionsHtml = collection === 'loans' ? renderConditionsSummary(item) : '';
+
   return `<article class="card${collection === 'materials' && ['低余量', '即将到期', '已过期'].includes(item.status) ? ' material-warning material-' + toneFor(item.status) : ''}">
     <div class="card-head"><h3>${cardTitleHtml}</h3>${statusValue ? pill(statusValue, toneFor(statusValue)) : ''}</div>
     ${relation}
@@ -789,6 +832,7 @@ function renderCard(item, collection, view) {
     ${materialStatusHtml}
     ${batchProgressHtml}
     ${riskHtml}
+    ${conditionsHtml}
     ${actionsHtml}
     ${timelineBtn ? `<div class="actions">${timelineBtn}</div>` : ''}
     ${historyHtml(item)}
@@ -852,7 +896,7 @@ function renderCalendarView(view) {
     ? `<option value="">全部经卷</option>${scrolls.map((s) => `<option value="${s.id}" ${state.selectedScrollId === s.id ? 'selected' : ''}>${escapeHtml(s.title)}</option>`).join('')}`
     : '<option value="">暂无经卷</option>';
 
-  const statusOptions = ['全部', '待审批', '已批准', '已借出'].map((label) => {
+  const statusOptions = ['全部', ...(view.activeStatuses || [])].map((label) => {
     const value = label === '全部' ? '' : label;
     const selected = state.calendarStatusFilter === value ? 'selected' : '';
     return `<option value="${escapeHtml(value)}" ${selected}>${escapeHtml(label)}</option>`;
@@ -894,9 +938,11 @@ function renderCalendarView(view) {
         const reservationHtml = hasReservation ? reservations.slice(0, 2).map((r) => {
           const riskTone = toneForRisk(r.riskAssessment?.level || '低风险');
           const riskLevel = r.riskAssessment?.level || '低风险';
+          const conditionMark = r.conditionsSummary ? `<span class="condition-chip-small" title="保护条件：${escapeHtml(r.conditionsSummary)}${r.conditionsNote ? '｜' + escapeHtml(r.conditionsNote) : ''}">🛡️</span>` : '';
+          const tooltip = `${escapeHtml(r.scrollTitle)} - ${escapeHtml(r.borrower)}: ${escapeHtml(r.purpose)} (${r.status}｜${riskLevel}${r.conditionsSummary ? '｜保护条件：' + r.conditionsSummary : ''})`;
           return `
-          <div class="calendar-event ${riskTone}" title="${escapeHtml(r.scrollTitle)} - ${escapeHtml(r.borrower)}: ${escapeHtml(r.purpose)} (${r.status}｜${riskLevel})">
-            <span class="event-scroll">${escapeHtml(r.scrollTitle)}</span>
+          <div class="calendar-event ${riskTone}${r.conditionsSummary ? ' has-condition' : ''}" title="${escapeHtml(tooltip)}">
+            <span class="event-scroll">${escapeHtml(r.scrollTitle)}${conditionMark}</span>
             <span class="event-meta">
               <span class="event-borrower">${escapeHtml(r.borrower)}</span>
               <span class="event-risk ${toneForRisk(riskLevel)}">${escapeHtml(riskLevel)}</span>
@@ -922,8 +968,11 @@ function renderCalendarView(view) {
           ${reservations.map((r) => {
             const riskLevel = r.riskAssessment?.level || '低风险';
             const riskTone = toneForRisk(riskLevel);
+            const conditionHtml = r.conditionsSummary
+              ? `<div class="reservation-conditions" title="${r.conditionsNote ? '补充说明：' + escapeHtml(r.conditionsNote) : ''}"><span class="condition-chip-small">🛡️</span>${escapeHtml(r.conditionsSummary)}</div>`
+              : '';
             return `
-            <div class="reservation-item">
+            <div class="reservation-item${r.conditionsSummary ? ' has-condition' : ''}">
               <div class="reservation-dates">${escapeHtml(r.borrowDate)} ~ ${escapeHtml(r.dueDate)}</div>
               <div class="reservation-info">
                 <span>${escapeHtml(r.borrower)} - ${escapeHtml(r.purpose)}</span>
@@ -932,6 +981,7 @@ function renderCalendarView(view) {
                   ${pill(riskLevel, riskTone)}
                 </span>
               </div>
+              ${conditionHtml}
             </div>
           `}).join('')}
         </div>
@@ -1293,6 +1343,98 @@ function openStrictConfirmModal(action, item, onConfirm) {
       }
       close();
       onConfirm(note);
+    }
+  });
+}
+
+function openConditionApproveModal(action, item, onConfirm) {
+  const assessment = item.riskAssessment || {};
+  const scroll = state.db.scrolls?.find((s) => s.id === item.scrollId);
+  const reasons = (assessment.reasons || []).slice(0, 5).map((r) => `<li>${escapeHtml(r)}</li>`).join('');
+  const conditionConfig = state.config.loanConditions || {};
+
+  const conditionItems = Object.entries(conditionConfig).map(([key, conf]) => `
+    <label class="condition-option">
+      <input type="checkbox" name="loan-condition" value="${escapeHtml(key)}">
+      <span class="condition-option-main">
+        <span class="condition-option-icon">${escapeHtml(conf.icon || '')}</span>
+        <span class="condition-option-label">${escapeHtml(conf.label || key)}</span>
+      </span>
+      <span class="condition-option-desc">${escapeHtml(conf.desc || '')}</span>
+    </label>
+  `).join('');
+
+  const strictReason = [];
+  if (assessment.protectionLevel === '一级') strictReason.push('一级保护经卷');
+  if (assessment.borrowStatus === '修补中') strictReason.push('经卷处于修补中状态');
+  if (assessment.level === '高风险') strictReason.push('高风险借阅');
+  if (assessment.level === '极高风险') strictReason.push('极高风险借阅');
+
+  const modal = document.createElement('div');
+  modal.className = 'modal-backdrop';
+  modal.id = 'condition-modal';
+  modal.innerHTML = `
+    <div class="modal condition-modal">
+      <div class="modal-head">
+        <h3>🛡️ 条件批准 - 保护条件录入</h3>
+        <button class="modal-close" data-modal-close>×</button>
+      </div>
+      <div class="modal-body">
+        <div class="condition-modal-hint">
+          此借阅为<strong style="color:var(--bad)">${escapeHtml(strictReason.join(' + '))}</strong>，必须勾选至少一项保护条件后才可批准。
+        </div>
+        <div class="modal-info-grid">
+          <div class="modal-info-row"><span class="label">经卷名称</span><span><strong>${escapeHtml(scroll?.title || '-')}</strong></span></div>
+          <div class="modal-info-row"><span class="label">借阅人</span><span>${escapeHtml(item.borrower || '-')}</span></div>
+          <div class="modal-info-row"><span class="label">借阅用途</span><span>${escapeHtml(item.purpose || '-')}</span></div>
+          <div class="modal-info-row"><span class="label">风险等级</span><span>${pill(assessment.level || '-', toneFor(assessment.level))} <span style="font-family:monospace;color:var(--muted)">(${assessment.score || 0}/100)</span></span></div>
+        </div>
+        <div style="font-size:13px;color:var(--muted);font-weight:700;margin:10px 0 4px">风险评估详情：</div>
+        <ul class="risk-reasons">${reasons}</ul>
+        <div class="condition-list-title">请选择保护条件（至少一项）：</div>
+        <div class="condition-options">${conditionItems}</div>
+        <div style="margin-top:14px">
+          <label style="font-size:13px;font-weight:700">补充说明（可选）：
+            <textarea class="modal-confirm-textarea" id="conditions-note" placeholder="可补充具体的时段、陪同人员等细节..."></textarea>
+          </label>
+        </div>
+        <div style="margin-top:10px">
+          <label style="color:var(--bad);font-size:13px;font-weight:700">批准理由（必填）：
+            <textarea class="modal-confirm-textarea" id="approve-note" placeholder="请详细说明条件批准此借阅申请的理由..."></textarea>
+          </label>
+        </div>
+      </div>
+      <div class="modal-foot">
+        <button class="ghost" data-modal-close>取消</button>
+        <button id="condition-approve-btn">确认条件批准</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modal);
+
+  const close = () => {
+    modal.remove();
+    document.removeEventListener('keydown', onKey);
+  };
+  const onKey = (e) => { if (e.key === 'Escape') close(); };
+  document.addEventListener('keydown', onKey);
+
+  modal.addEventListener('click', (e) => {
+    if (e.target.closest('[data-modal-close]') || e.target === modal) close();
+    if (e.target.id === 'condition-approve-btn') {
+      const checked = [...modal.querySelectorAll('input[name="loan-condition"]:checked')].map((el) => el.value);
+      const conditionsNote = $('#conditions-note', modal)?.value.trim();
+      const approveNote = $('#approve-note', modal)?.value.trim();
+      if (checked.length === 0) {
+        toast('请至少选择一项保护条件');
+        return;
+      }
+      if (!approveNote) {
+        toast('请输入批准理由');
+        return;
+      }
+      close();
+      onConfirm({ conditions: checked, conditionsNote, approveNote });
     }
   });
 }
@@ -1681,8 +1823,30 @@ document.addEventListener('click', async (event) => {
     const actionConfig = state.config.actions.find((a) => a.id === actionId);
     const item = state.db[actionConfig?.collection]?.find((i) => i.id === itemId);
 
+    if (actionId === 'loan-approve-condition' ||
+        (actionId === 'loan-approve' && isConditionRequired(item?.riskAssessment))) {
+      openConditionApproveModal(actionConfig, item, async ({ conditions, conditionsNote, approveNote }) => {
+        try {
+          const approveAction = state.config.actions.find((a) => a.id === 'loan-approve-condition') || actionConfig;
+          await api(`/api/${actionConfig.collection}/${itemId}`, {
+            method: 'PATCH',
+            body: JSON.stringify({ note: approveNote, historyAction: approveAction.label })
+          });
+          await api(`/api/action/loan-approve-condition/${itemId}`, {
+            method: 'POST',
+            body: JSON.stringify({ conditions, conditionsNote })
+          });
+          await load();
+          toast('已条件批准');
+        } catch (error) {
+          toast(error.message);
+        }
+      });
+      return;
+    }
+
     if (actionConfig?.collection === 'loans' &&
-        (actionId === 'loan-approve' || actionId === 'loan-reject') &&
+        actionId === 'loan-reject' &&
         isStrictRiskAssessment(item?.riskAssessment)) {
       openStrictConfirmModal(actionConfig, item, async (note) => {
         try {
@@ -1698,6 +1862,13 @@ document.addEventListener('click', async (event) => {
         }
       });
       return;
+    }
+
+    if ((actionId === 'loan-out' || actionId === 'loan-return') && item?.conditionsSummary) {
+      const actionName = actionId === 'loan-out' ? '借出' : '归还';
+      if (!confirm(`确认${actionName}？\n\n保护条件：${item.conditionsSummary}${item.conditionsNote ? '\n补充说明：' + item.conditionsNote : ''}\n\n请确认在${actionName}过程中已遵守以上保护条件。`)) {
+        return;
+      }
     }
 
     try {

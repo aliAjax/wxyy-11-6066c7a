@@ -9,6 +9,7 @@ module.exports = {
     '需审批': 'warn',
     '待审批': 'warn',
     '已批准': 'warn',
+    '条件批准': 'warn',
     '已借出': 'warn',
     '计划中': 'warn',
     '进行中': 'warn',
@@ -210,7 +211,7 @@ module.exports = {
       searchPlaceholder: '搜索借阅人、用途',
       searchFields: ['borrower', 'purpose', 'reason'],
       statusField: 'status',
-      statusOptions: ['待审批', '已批准', '已借出', '已归还', '已拒绝'],
+      statusOptions: ['待审批', '条件批准', '已批准', '已借出', '已归还', '已拒绝'],
       titleFields: ['borrower', 'purpose'],
       relation: { collection: 'scrolls', localKey: 'scrollId', labelFields: ['title', 'borrowStatus'] },
       summaryFields: ['reason'],
@@ -220,7 +221,8 @@ module.exports = {
         { label: '状态', name: 'status' },
         { label: '风险等级', name: 'riskLevel' },
         { label: '保护等级', name: 'scrollProtection' },
-        { label: '借阅状态', name: 'scrollBorrowStatus' }
+        { label: '借阅状态', name: 'scrollBorrowStatus' },
+        { label: '批准条件', name: 'conditionsSummary' }
       ],
       defaults: { status: '待审批' },
       fields: [
@@ -239,7 +241,7 @@ module.exports = {
       collection: 'loans',
       relation: { collection: 'scrolls', localKey: 'scrollId', labelFields: ['title'] },
       statusField: 'status',
-      activeStatuses: ['待审批', '已批准', '已借出'],
+      activeStatuses: ['待审批', '条件批准', '已批准', '已借出'],
       titleFields: ['borrower', 'purpose']
     },
     {
@@ -365,7 +367,8 @@ module.exports = {
         { field: 'status', value: '已完成' }
       ]
     },
-    { id: 'loan-approve', label: '批准', collection: 'loans', patches: [{ field: 'status', value: '已批准' }] },
+    { id: 'loan-approve', label: '快速批准', collection: 'loans', patches: [{ field: 'status', value: '已批准' }] },
+    { id: 'loan-approve-condition', label: '条件批准', collection: 'loans', patches: [{ field: 'status', value: '条件批准' }] },
     {
       id: 'loan-out',
       label: '借出',
@@ -398,5 +401,27 @@ module.exports = {
     { id: 'inventory-processed', label: '已处理', collection: 'inventories', patches: [{ field: 'status', value: '已处理' }] },
     { id: 'template-enable', label: '启用', collection: 'repairTemplates', patches: [{ field: 'status', value: '启用' }] },
     { id: 'template-disable', label: '停用', collection: 'repairTemplates', danger: true, patches: [{ field: 'status', value: '停用' }] }
-  ]
+  ],
+  loanConditions: {
+    '馆内阅览': {
+      label: '限馆内阅览',
+      icon: '🏛️',
+      desc: '仅限在馆内特藏室查阅，不得带出馆外'
+    },
+    '修补陪同': {
+      label: '需修补人员陪同',
+      icon: '👥',
+      desc: '查阅全过程须由专职修补人员在场陪同监护'
+    },
+    '禁止拍照': {
+      label: '禁止拍照',
+      icon: '📵',
+      desc: '查阅过程中禁止任何形式的拍照、扫描等影像采集'
+    },
+    '限定时段': {
+      label: '限定时段',
+      icon: '⏰',
+      desc: '限定在特定时段内查阅，例如工作日上午 9:00-11:00'
+    }
+  }
 };
