@@ -11,17 +11,12 @@
       "protectionLevel": "一级",
       "borrowStatus": "需审批",
       "createdAt": "2026-06-12T08:00:00.000Z",
-      "updatedAt": "2026-06-21T02:49:41.023Z",
+      "updatedAt": "2026-06-21T03:08:48.801Z",
       "history": [
         {
-          "at": "2026-06-21T02:49:41.023Z",
+          "at": "2026-06-21T03:08:48.801Z",
           "action": "修补完成",
           "note": "修补批次\"常规除尘修补\"全部工序完成，转入需审批"
-        },
-        {
-          "at": "2026-06-21T02:45:28.116Z",
-          "action": "修补中",
-          "note": "启动修补批次\"常规除尘修补\""
         },
         {
           "at": "2026-06-20T14:21:14.382Z",
@@ -40,7 +35,7 @@
         }
       ],
       "protectionAdvice": {
-        "content": "经卷存在虫蛀痕迹，需立即放入低温冷冻柜进行杀虫处理（-18℃冷冻72小时）\n处理后置于密封盒中，内放樟脑丸或芸香草以防再次虫害\n检查相邻经卷是否受波及，必要时整柜熏蒸\n纸张脆裂需进行托裱加固，注意拼接处纹理对齐\n脆裂部位避免受力，操作时使用软纸衬垫\n建议制作仿真复制本供查阅使用，原件封存\n【一级保护】原件仅限馆内特藏室查阅，须两人以上在场\n【一级保护】禁止外借展出，如需展示须使用高仿复制件\n【一级保护】每季度进行一次外观检查，每年做一次专业除尘\n【一级保护】存放于恒温恒湿柜（温度18-22℃，湿度45-55%）\n借阅需审批：使用前须评估用途风险，查阅时在旁监护\n归还时须当面检查经卷状态，确认完好后签收归档",
+        "content": "经卷存在虫蛀痕迹，需立即放入低温冷冻柜进行杀虫处理（-18℃冷冻72小时）\n处理后置于密封盒中，内放樟脑丸或芸香草以防再次虫害\n检查相邻经卷是否受波及，必要时整柜熏蒸\n纸张脆裂需进行托裱加固，注意拼接处纹理对齐\n脆裂部位避免受力，操作时使用软纸衬垫\n建议制作仿真复制本供查阅使用，原件封存\n【一级保护】原件仅限馆内特藏室查阅，须两人以上在场\n【一级保护】禁止外借展出，如需展示须使用高仿复制件\n【一级保护】每季度进行一次外观检查，每年做一次专业除尘\n【一级保护】存放于恒温恒湿柜（温度18-22℃，湿度45-55%）\n修补进行中：操作区域须保持温湿度稳定，避免无关人员接触\n每日记录修补进度和经卷状态变化，重要工序前后拍照留档",
         "suggestions": [
           "经卷存在虫蛀痕迹，需立即放入低温冷冻柜进行杀虫处理（-18℃冷冻72小时）",
           "处理后置于密封盒中，内放樟脑丸或芸香草以防再次虫害",
@@ -52,15 +47,15 @@
           "【一级保护】禁止外借展出，如需展示须使用高仿复制件",
           "【一级保护】每季度进行一次外观检查，每年做一次专业除尘",
           "【一级保护】存放于恒温恒湿柜（温度18-22℃，湿度45-55%）",
-          "借阅需审批：使用前须评估用途风险，查阅时在旁监护",
-          "归还时须当面检查经卷状态，确认完好后签收归档"
+          "修补进行中：操作区域须保持温湿度稳定，避免无关人员接触",
+          "每日记录修补进度和经卷状态变化，重要工序前后拍照留档"
         ],
         "damageLabels": [
           "严重残损"
         ],
         "protectionLevel": "一级",
         "borrowStatus": "需审批",
-        "generatedAt": "2026-06-21T02:49:41.023Z"
+        "generatedAt": "2026-06-21T03:08:48.801Z"
       }
     },
     {
@@ -168,33 +163,8 @@
       "protectionLevel": "二级",
       "borrowStatus": "需审批",
       "createdAt": "2026-06-05T08:00:00.000Z",
-      "updatedAt": "2026-06-20T09:59:18.116Z",
+      "updatedAt": "2026-06-12T08:00:00.000Z",
       "history": [
-        {
-          "at": "2026-06-20T09:59:18.116Z",
-          "action": "保护建议更新",
-          "note": "根据水渍残损及二级保护等级、需审批状态自动生成"
-        },
-        {
-          "at": "2026-06-20T09:59:18.116Z",
-          "action": "修补完成",
-          "note": "状态修复：修补批次\"测试模板-标准修复\"全部工序完成，转入需审批"
-        },
-        {
-          "at": "2026-06-20T09:52:09.010Z",
-          "action": "修补中",
-          "note": "启动修补批次\"测试模板-标准修复\""
-        },
-        {
-          "at": "2026-06-20T09:41:00.523Z",
-          "action": "修补完成",
-          "note": "修补批次\"常规除尘修补\"全部工序完成，转入需审批"
-        },
-        {
-          "at": "2026-06-20T09:40:07.365Z",
-          "action": "修补中",
-          "note": "启动修补批次\"常规除尘修补\""
-        },
         {
           "at": "2026-06-12T08:00:00.000Z",
           "action": "保护评估",
@@ -216,24 +186,8 @@
         ],
         "protectionLevel": "二级",
         "borrowStatus": "需审批",
-        "generatedAt": "2026-06-20T09:59:18.116Z"
+        "generatedAt": "2026-06-12T08:00:00.000Z"
       }
-    },
-    {
-      "id": "scrolls-1781957739137-684f7",
-      "name": "测试经卷123",
-      "dynasty": "测试",
-      "status": "完好",
-      "location": "测试柜",
-      "createdAt": "2026-06-20T12:15:39.137Z",
-      "updatedAt": "2026-06-20T12:15:39.137Z",
-      "history": [
-        {
-          "at": "2026-06-20T12:15:39.137Z",
-          "action": "创建",
-          "note": ""
-        }
-      ]
     }
   ],
   "repairs": [
@@ -291,315 +245,6 @@
           "at": "2026-06-16T09:00:00.000Z",
           "action": "创建",
           "note": "展平工序"
-        }
-      ]
-    },
-    {
-      "id": "repairs-1781948407365-e803f",
-      "scrollId": "scroll-seed-4",
-      "batchId": "repairBatches-1781948407365-b08d9",
-      "process": "除尘",
-      "conservator": "周问",
-      "date": "2026-06-20",
-      "status": "已完成",
-      "materialUsed": "",
-      "note": "由模板\"常规除尘修补\"生成",
-      "createdAt": "2026-06-20T09:40:07.365Z",
-      "updatedAt": "2026-06-20T09:40:41.178Z",
-      "history": [
-        {
-          "at": "2026-06-20T09:40:41.178Z",
-          "action": "完成修补",
-          "note": "状态流转"
-        },
-        {
-          "at": "2026-06-20T09:40:07.365Z",
-          "action": "创建",
-          "note": "批次生成：除尘"
-        }
-      ]
-    },
-    {
-      "id": "repairs-1781948407365-92c7b",
-      "scrollId": "scroll-seed-4",
-      "batchId": "repairBatches-1781948407365-b08d9",
-      "process": "展平",
-      "conservator": "周问",
-      "date": "2026-06-20",
-      "status": "已完成",
-      "materialUsed": "",
-      "note": "由模板\"常规除尘修补\"生成",
-      "createdAt": "2026-06-20T09:40:07.365Z",
-      "updatedAt": "2026-06-20T09:41:00.507Z",
-      "history": [
-        {
-          "at": "2026-06-20T09:41:00.507Z",
-          "action": "完成修补",
-          "note": "状态流转"
-        },
-        {
-          "at": "2026-06-20T09:40:07.365Z",
-          "action": "创建",
-          "note": "批次生成：展平"
-        }
-      ]
-    },
-    {
-      "id": "repairs-1781948407365-df564",
-      "scrollId": "scroll-seed-4",
-      "batchId": "repairBatches-1781948407365-b08d9",
-      "process": "装函",
-      "conservator": "周问",
-      "date": "2026-06-20",
-      "status": "已完成",
-      "materialUsed": "",
-      "note": "由模板\"常规除尘修补\"生成",
-      "createdAt": "2026-06-20T09:40:07.365Z",
-      "updatedAt": "2026-06-20T09:41:00.522Z",
-      "history": [
-        {
-          "at": "2026-06-20T09:41:00.523Z",
-          "action": "完成修补",
-          "note": "状态流转"
-        },
-        {
-          "at": "2026-06-20T09:40:07.365Z",
-          "action": "创建",
-          "note": "批次生成：装函"
-        }
-      ]
-    },
-    {
-      "id": "repairs-1781949129010-e6d39",
-      "scrollId": "scroll-seed-4",
-      "batchId": "repairBatches-1781949129010-b0d3c",
-      "process": "除尘",
-      "conservator": "张修复师",
-      "date": "2026-06-20",
-      "status": "已完成",
-      "materialUsed": "软羊毫刷、无尘棉签、低吸力吸尘器",
-      "note": "经卷表面浮尘清理完毕，卷首边角灰尘用棉签细致清除，无新损伤发现，碎屑已密封归档",
-      "createdAt": "2026-06-20T09:52:09.010Z",
-      "updatedAt": "2026-06-20T09:55:59.817Z",
-      "history": [
-        {
-          "at": "2026-06-20T09:55:59.817Z",
-          "action": "更新",
-          "note": "经卷表面浮尘清理完毕，卷首边角灰尘用棉签细致清除，无新损伤发现，碎屑已密封归档"
-        },
-        {
-          "at": "2026-06-20T09:53:56.739Z",
-          "action": "状态变更为已完成",
-          "note": ""
-        },
-        {
-          "at": "2026-06-20T09:52:34.738Z",
-          "action": "状态变更为进行中",
-          "note": ""
-        },
-        {
-          "at": "2026-06-20T09:52:09.010Z",
-          "action": "创建",
-          "note": "批次生成：除尘"
-        }
-      ]
-    },
-    {
-      "id": "repairs-1781949129010-42680",
-      "scrollId": "scroll-seed-4",
-      "batchId": "repairBatches-1781949129010-b0d3c",
-      "process": "展平",
-      "conservator": "张修复师",
-      "date": "2026-06-20",
-      "status": "已完成",
-      "materialUsed": "",
-      "note": "由模板\"测试模板-标准修复\"生成",
-      "createdAt": "2026-06-20T09:52:09.010Z",
-      "updatedAt": "2026-06-20T09:56:07.144Z",
-      "history": [
-        {
-          "at": "2026-06-20T09:56:07.144Z",
-          "action": "状态变更为已完成",
-          "note": ""
-        },
-        {
-          "at": "2026-06-20T09:52:09.010Z",
-          "action": "创建",
-          "note": "批次生成：展平"
-        }
-      ]
-    },
-    {
-      "id": "repairs-1781949129010-4624a",
-      "scrollId": "scroll-seed-4",
-      "batchId": "repairBatches-1781949129010-b0d3c",
-      "process": "托裱",
-      "conservator": "张修复师",
-      "date": "2026-06-20",
-      "status": "已完成",
-      "materialUsed": "",
-      "note": "由模板\"测试模板-标准修复\"生成",
-      "createdAt": "2026-06-20T09:52:09.010Z",
-      "updatedAt": "2026-06-20T09:56:07.152Z",
-      "history": [
-        {
-          "at": "2026-06-20T09:56:07.152Z",
-          "action": "状态变更为已完成",
-          "note": ""
-        },
-        {
-          "at": "2026-06-20T09:52:09.010Z",
-          "action": "创建",
-          "note": "批次生成：托裱"
-        }
-      ]
-    },
-    {
-      "id": "repairs-1781949129010-743f1",
-      "scrollId": "scroll-seed-4",
-      "batchId": "repairBatches-1781949129010-b0d3c",
-      "process": "补纸",
-      "conservator": "张修复师",
-      "date": "2026-06-20",
-      "status": "已完成",
-      "materialUsed": "",
-      "note": "由模板\"测试模板-标准修复\"生成",
-      "createdAt": "2026-06-20T09:52:09.010Z",
-      "updatedAt": "2026-06-20T09:56:07.158Z",
-      "history": [
-        {
-          "at": "2026-06-20T09:56:07.158Z",
-          "action": "状态变更为已完成",
-          "note": ""
-        },
-        {
-          "at": "2026-06-20T09:52:09.010Z",
-          "action": "创建",
-          "note": "批次生成：补纸"
-        }
-      ]
-    },
-    {
-      "id": "repairs-1781949129010-2ce19",
-      "scrollId": "scroll-seed-4",
-      "batchId": "repairBatches-1781949129010-b0d3c",
-      "process": "装函",
-      "conservator": "张修复师",
-      "date": "2026-06-20",
-      "status": "已完成",
-      "materialUsed": "",
-      "note": "由模板\"测试模板-标准修复\"生成",
-      "createdAt": "2026-06-20T09:52:09.010Z",
-      "updatedAt": "2026-06-20T09:56:07.162Z",
-      "history": [
-        {
-          "at": "2026-06-20T09:56:07.162Z",
-          "action": "状态变更为已完成",
-          "note": ""
-        },
-        {
-          "at": "2026-06-20T09:52:09.010Z",
-          "action": "创建",
-          "note": "批次生成：装函"
-        }
-      ]
-    },
-    {
-      "id": "repairs-1781957754532-6cb17",
-      "scrollId": "scrolls-1781957739137-684f7",
-      "damageType": "破损",
-      "status": "修补中",
-      "createdAt": "2026-06-20T12:15:54.532Z",
-      "updatedAt": "2026-06-20T12:16:12.449Z",
-      "history": [
-        {
-          "at": "2026-06-20T12:16:12.449Z",
-          "action": "修补中",
-          "note": "开始修补"
-        },
-        {
-          "at": "2026-06-20T12:15:54.532Z",
-          "action": "创建",
-          "note": ""
-        }
-      ],
-      "note": "开始修补"
-    },
-    {
-      "id": "repairs-1782009928116-5dbec",
-      "scrollId": "scroll-seed-1",
-      "batchId": "repairBatches-1782009928116-a20f6",
-      "process": "除尘",
-      "sortOrder": 0,
-      "conservator": "测试员",
-      "date": "2026-06-22",
-      "status": "已完成",
-      "materialUsed": "",
-      "note": "由模板\"常规除尘修补\"生成",
-      "createdAt": "2026-06-21T02:45:28.116Z",
-      "updatedAt": "2026-06-21T02:46:59.672Z",
-      "history": [
-        {
-          "at": "2026-06-21T02:46:59.672Z",
-          "action": "已完成",
-          "note": ""
-        },
-        {
-          "at": "2026-06-21T02:45:28.116Z",
-          "action": "创建",
-          "note": "批次生成：除尘（第1道工序）"
-        }
-      ]
-    },
-    {
-      "id": "repairs-1782009928116-cf9a6",
-      "scrollId": "scroll-seed-1",
-      "batchId": "repairBatches-1782009928116-a20f6",
-      "process": "展平",
-      "sortOrder": 1,
-      "conservator": "测试员",
-      "date": "2026-06-22",
-      "status": "已完成",
-      "materialUsed": "",
-      "note": "由模板\"常规除尘修补\"生成",
-      "createdAt": "2026-06-21T02:45:28.116Z",
-      "updatedAt": "2026-06-21T02:47:27.908Z",
-      "history": [
-        {
-          "at": "2026-06-21T02:47:27.908Z",
-          "action": "已完成",
-          "note": ""
-        },
-        {
-          "at": "2026-06-21T02:45:28.116Z",
-          "action": "创建",
-          "note": "批次生成：展平（第2道工序）"
-        }
-      ]
-    },
-    {
-      "id": "repairs-1782009928116-27685",
-      "scrollId": "scroll-seed-1",
-      "batchId": "repairBatches-1782009928116-a20f6",
-      "process": "装函",
-      "sortOrder": 2,
-      "conservator": "测试员",
-      "date": "2026-06-22",
-      "status": "已完成",
-      "materialUsed": "",
-      "note": "由模板\"常规除尘修补\"生成",
-      "createdAt": "2026-06-21T02:45:28.116Z",
-      "updatedAt": "2026-06-21T02:49:41.022Z",
-      "history": [
-        {
-          "at": "2026-06-21T02:49:41.023Z",
-          "action": "已完成",
-          "note": ""
-        },
-        {
-          "at": "2026-06-21T02:45:28.116Z",
-          "action": "创建",
-          "note": "批次生成：装函（第3道工序）"
         }
       ]
     }
@@ -866,132 +511,6 @@
       ]
     },
     {
-      "id": "loans-1781940493272-03ea8",
-      "scrollId": "scroll-seed-2",
-      "borrower": "测试用户2",
-      "purpose": "测试无冲突",
-      "borrowDate": "2026-07-25",
-      "dueDate": "2026-07-30",
-      "reason": "测试无冲突日期",
-      "status": "待审批",
-      "riskAssessment": {
-        "level": "中风险",
-        "score": 50,
-        "reasons": [
-          "一级保护经卷",
-          "借阅用途：测试无冲突"
-        ],
-        "evaluatedAt": "2026-06-20T07:28:13.272Z",
-        "protectionLevel": "一级",
-        "borrowStatus": "可借阅",
-        "lastRepair": {
-          "date": "2026-06-16",
-          "status": "已完成",
-          "process": "展平"
-        },
-        "isStrictMode": true
-      },
-      "createdAt": "2026-06-20T07:28:13.272Z",
-      "updatedAt": "2026-06-20T07:28:13.272Z",
-      "history": [
-        {
-          "at": "2026-06-20T07:28:13.272Z",
-          "action": "创建",
-          "note": " | 风险评估：中风险（得分50）"
-        }
-      ]
-    },
-    {
-      "id": "loans-1781943929708-75f7b",
-      "scrollId": "scroll-seed-4",
-      "borrower": "测试用户",
-      "purpose": "教学使用",
-      "borrowDate": "2026-08-01",
-      "dueDate": "2026-08-07",
-      "reason": "测试自动风险评估",
-      "createdAt": "2026-06-20T08:25:29.708Z",
-      "updatedAt": "2026-06-20T08:25:43.764Z",
-      "riskAssessment": {
-        "level": "低风险",
-        "score": 31,
-        "reasons": [
-          "二级保护经卷",
-          "借阅用途：教学使用（低风险用途，短期使用）",
-          "残损情况：有少量水渍痕迹（轻微情况）",
-          "借阅周期合理（7天）"
-        ],
-        "evaluatedAt": "2026-06-20T08:25:43.764Z",
-        "protectionLevel": "二级",
-        "borrowStatus": "可借阅",
-        "lastRepair": null,
-        "isStrictMode": false
-      },
-      "history": [
-        {
-          "at": "2026-06-20T08:25:43.764Z",
-          "action": "批准",
-          "note": "状态流转 | 风险评估：低风险（得分31）- 二级保护经卷；借阅用途：教学使用（低风险用途，短期使用）"
-        },
-        {
-          "at": "2026-06-20T08:25:29.708Z",
-          "action": "创建",
-          "note": "测试自动风险评估 | 风险评估：低风险（得分31）- 二级保护经卷；借阅用途：教学使用（低风险用途，短期使用）"
-        }
-      ],
-      "status": "已批准"
-    },
-    {
-      "id": "loans-1781944305823-74b40",
-      "status": "已批准",
-      "scrollId": "scroll-seed-3",
-      "borrower": "测试严格模式用户",
-      "purpose": "学术研究",
-      "borrowDate": "2026-08-01",
-      "dueDate": "2026-08-15",
-      "reason": "",
-      "createdAt": "2026-06-20T08:31:45.823Z",
-      "updatedAt": "2026-06-20T08:37:25.185Z",
-      "riskAssessment": {
-        "level": "极高风险",
-        "score": 100,
-        "reasons": [
-          "一级保护经卷",
-          "借阅状态：修补中（不可借阅）",
-          "借阅用途：学术研究（中等风险，专业使用）",
-          "残损情况：首尾有残损，中部完好（明显残损）",
-          "最近修补：托裱进行中，未完成",
-          "借阅周期偏长（15天）"
-        ],
-        "evaluatedAt": "2026-06-20T08:37:25.185Z",
-        "protectionLevel": "一级",
-        "borrowStatus": "修补中",
-        "lastRepair": {
-          "date": "2026-06-19",
-          "status": "进行中",
-          "process": "托裱"
-        },
-        "isStrictMode": true
-      },
-      "history": [
-        {
-          "at": "2026-06-20T08:37:25.185Z",
-          "action": "批准",
-          "note": "状态流转 | 风险评估：极高风险（得分100，严格模式）- 一级保护经卷；借阅状态：修补中（不可借阅）"
-        },
-        {
-          "at": "2026-06-20T08:37:25.175Z",
-          "action": "批准",
-          "note": "经馆长办公会特别审议通过，用于宋代刻本专题学术研讨会重点展示，期间安排专人24小时看护，每日检查经卷状态，签署三方责任书。"
-        },
-        {
-          "at": "2026-06-20T08:31:45.823Z",
-          "action": "创建",
-          "note": "风险评估：极高风险（得分100，严格模式）- 一级保护经卷；借阅状态：修补中（不可借阅）"
-        }
-      ],
-      "note": "经馆长办公会特别审议通过，用于宋代刻本专题学术研讨会重点展示，期间安排专人24小时看护，每日检查经卷状态，签署三方责任书。"
-    },
-    {
       "id": "loans-compat-no-risk-1",
       "status": "待审批",
       "scrollId": "scroll-seed-1",
@@ -1202,36 +721,6 @@
   ],
   "observations": [
     {
-      "id": "obs-1781946111778-770b3",
-      "scrollId": "scroll-seed-1",
-      "observer": "测试观察员",
-      "content": "经卷卷首外观正常，未见新的损伤",
-      "createdAt": "2026-06-20T09:01:51.778Z",
-      "updatedAt": "2026-06-20T09:01:51.778Z",
-      "history": [
-        {
-          "at": "2026-06-20T09:01:51.778Z",
-          "action": "创建",
-          "note": "经卷卷首外观正常，未见新的损伤"
-        }
-      ]
-    },
-    {
-      "id": "obs-1781947048694-a87a0",
-      "scrollId": "scroll-seed-2",
-      "observer": "测试用户",
-      "content": "经卷保存状态良好，纸张韧性正常，无新损伤",
-      "createdAt": "2026-06-20T09:17:28.694Z",
-      "updatedAt": "2026-06-20T09:17:28.694Z",
-      "history": [
-        {
-          "at": "2026-06-20T09:17:28.694Z",
-          "action": "创建",
-          "note": "经卷保存状态良好，纸张韧性正常，无新损伤"
-        }
-      ]
-    },
-    {
       "id": "obs-1781947141638-9ca5c",
       "scrollId": "scroll-seed-3",
       "observer": "张管理员",
@@ -1285,25 +774,6 @@
           "note": "卷首封皮边角微潮湿，疑有冷凝水渗透"
         }
       ]
-    },
-    {
-      "id": "inventories-1781937670996-a51f7",
-      "result": "异常",
-      "status": "待复核",
-      "scrollId": "scroll-seed-1",
-      "inventoryPerson": "李青山",
-      "inventoryDate": "2026-06-20",
-      "cabinet": "恒湿柜C-02",
-      "exceptionNote": "函套轻微脱胶，签条边角卷曲",
-      "createdAt": "2026-06-20T06:41:10.996Z",
-      "updatedAt": "2026-06-20T06:41:10.996Z",
-      "history": [
-        {
-          "at": "2026-06-20T06:41:10.996Z",
-          "action": "创建",
-          "note": ""
-        }
-      ]
     }
   ],
   "repairTemplates": [
@@ -1354,313 +824,10 @@
           "note": "影像采集留档模板"
         }
       ]
-    },
-    {
-      "id": "repairTemplates-1781949064840-f158a",
-      "status": "启用",
-      "name": "测试模板-标准修复",
-      "processes": "除尘\n展平\n托裱\n补纸\n装函",
-      "description": "标准五步修复法，从除尘到装函完整流程，适用于一般残损经卷",
-      "createdAt": "2026-06-20T09:51:04.840Z",
-      "updatedAt": "2026-06-20T09:51:04.840Z",
-      "history": [
-        {
-          "at": "2026-06-20T09:51:04.840Z",
-          "action": "创建",
-          "note": ""
-        }
-      ]
     }
   ],
-  "repairBatches": [
-    {
-      "id": "repairBatches-1781948407365-b08d9",
-      "scrollId": "scroll-seed-4",
-      "templateId": "template-seed-1",
-      "templateName": "常规除尘修补",
-      "conservator": "周问",
-      "startDate": "2026-06-20",
-      "status": "已完成",
-      "progressSummary": "3/3 已完成",
-      "note": "测试批次生成",
-      "createdAt": "2026-06-20T09:40:07.365Z",
-      "updatedAt": "2026-06-20T09:41:00.523Z",
-      "history": [
-        {
-          "at": "2026-06-20T09:41:00.523Z",
-          "action": "批次完成",
-          "note": "所有修补工序已完成"
-        },
-        {
-          "at": "2026-06-20T09:41:00.507Z",
-          "action": "进度更新",
-          "note": "展平已完成（2/3）"
-        },
-        {
-          "at": "2026-06-20T09:40:41.178Z",
-          "action": "进度更新",
-          "note": "除尘已完成（1/3）"
-        },
-        {
-          "at": "2026-06-20T09:40:07.365Z",
-          "action": "创建",
-          "note": "从模板\"常规除尘修补\"生成3道工序"
-        }
-      ]
-    },
-    {
-      "id": "repairBatches-1781949129010-b0d3c",
-      "scrollId": "scroll-seed-4",
-      "templateId": "repairTemplates-1781949064840-f158a",
-      "templateName": "测试模板-标准修复",
-      "conservator": "张修复师",
-      "startDate": "2026-06-20",
-      "status": "已完成",
-      "progressSummary": "5/5 已完成",
-      "note": "测试标准修复流程",
-      "createdAt": "2026-06-20T09:52:09.010Z",
-      "updatedAt": "2026-06-20T09:59:18.116Z",
-      "history": [
-        {
-          "at": "2026-06-20T09:59:18.116Z",
-          "action": "批次完成",
-          "note": "状态修复：所有工序已完成"
-        },
-        {
-          "at": "2026-06-20T09:52:09.010Z",
-          "action": "创建",
-          "note": "从模板\"测试模板-标准修复\"生成5道工序"
-        }
-      ]
-    },
-    {
-      "id": "repairBatches-1782009928116-a20f6",
-      "scrollId": "scroll-seed-1",
-      "templateId": "template-seed-1",
-      "templateName": "常规除尘修补",
-      "conservator": "测试员",
-      "startDate": "2026-06-22",
-      "status": "已完成",
-      "progressSummary": "3/3 已完成",
-      "note": "测试工序依赖功能",
-      "createdAt": "2026-06-21T02:45:28.116Z",
-      "updatedAt": "2026-06-21T02:49:41.023Z",
-      "history": [
-        {
-          "at": "2026-06-21T02:49:41.023Z",
-          "action": "批次完成",
-          "note": "所有修补工序已完成"
-        },
-        {
-          "at": "2026-06-21T02:47:27.908Z",
-          "action": "进度更新",
-          "note": "展平已完成（2/3）"
-        },
-        {
-          "at": "2026-06-21T02:46:59.672Z",
-          "action": "进度更新",
-          "note": "除尘已完成（1/3）"
-        },
-        {
-          "at": "2026-06-21T02:45:28.116Z",
-          "action": "创建",
-          "note": "从模板\"常规除尘修补\"生成3道工序"
-        }
-      ]
-    }
-  ],
+  "repairBatches": [],
   "audits": [
-    {
-      "id": "audit-1782010181023-11309",
-      "timestamp": "2026-06-21T02:49:41.023Z",
-      "operator": "系统",
-      "operatorRole": "admin",
-      "operatorRoleName": "管理员",
-      "collection": "repairBatches",
-      "collectionLabel": "修补批次",
-      "itemId": "repairBatches-1782009928116-a20f6",
-      "itemTitle": "常规除尘修补",
-      "action": "statusChange",
-      "actionLabel": "状态变更",
-      "changes": null,
-      "note": "批次进度更新：3/3 已完成",
-      "ip": "::1"
-    },
-    {
-      "id": "audit-1782010181023-550c5",
-      "timestamp": "2026-06-21T02:49:41.023Z",
-      "operator": "系统",
-      "operatorRole": "admin",
-      "operatorRoleName": "管理员",
-      "collection": "scrolls",
-      "collectionLabel": "经卷档案",
-      "itemId": "scroll-seed-1",
-      "itemTitle": "妙法莲华经卷第三",
-      "action": "statusChange",
-      "actionLabel": "状态变更",
-      "changes": null,
-      "note": "经卷状态变更（修补工序装函：已完成）",
-      "ip": "::1"
-    },
-    {
-      "id": "audit-1782010181023-8ae0d",
-      "timestamp": "2026-06-21T02:49:41.023Z",
-      "operator": "系统",
-      "operatorRole": "admin",
-      "operatorRoleName": "管理员",
-      "collection": "repairs",
-      "collectionLabel": "修补记录",
-      "itemId": "repairs-1782009928116-27685",
-      "itemTitle": "装函",
-      "action": "statusChange",
-      "actionLabel": "状态变更",
-      "changes": {
-        "status": {
-          "before": "计划中",
-          "after": "已完成"
-        }
-      },
-      "note": "",
-      "ip": "::1"
-    },
-    {
-      "id": "audit-1782010047909-bd9ce",
-      "timestamp": "2026-06-21T02:47:27.909Z",
-      "operator": "系统",
-      "operatorRole": "admin",
-      "operatorRoleName": "管理员",
-      "collection": "repairBatches",
-      "collectionLabel": "修补批次",
-      "itemId": "repairBatches-1782009928116-a20f6",
-      "itemTitle": "常规除尘修补",
-      "action": "statusChange",
-      "actionLabel": "状态变更",
-      "changes": null,
-      "note": "批次进度更新：2/3 已完成",
-      "ip": "::1"
-    },
-    {
-      "id": "audit-1782010047909-7509f",
-      "timestamp": "2026-06-21T02:47:27.909Z",
-      "operator": "系统",
-      "operatorRole": "admin",
-      "operatorRoleName": "管理员",
-      "collection": "scrolls",
-      "collectionLabel": "经卷档案",
-      "itemId": "scroll-seed-1",
-      "itemTitle": "妙法莲华经卷第三",
-      "action": "statusChange",
-      "actionLabel": "状态变更",
-      "changes": null,
-      "note": "经卷状态变更（修补工序展平：已完成）",
-      "ip": "::1"
-    },
-    {
-      "id": "audit-1782010047908-c6850",
-      "timestamp": "2026-06-21T02:47:27.908Z",
-      "operator": "系统",
-      "operatorRole": "admin",
-      "operatorRoleName": "管理员",
-      "collection": "repairs",
-      "collectionLabel": "修补记录",
-      "itemId": "repairs-1782009928116-cf9a6",
-      "itemTitle": "展平",
-      "action": "statusChange",
-      "actionLabel": "状态变更",
-      "changes": {
-        "status": {
-          "before": "计划中",
-          "after": "已完成"
-        }
-      },
-      "note": "",
-      "ip": "::1"
-    },
-    {
-      "id": "audit-1782010019672-b9262",
-      "timestamp": "2026-06-21T02:46:59.672Z",
-      "operator": "系统",
-      "operatorRole": "admin",
-      "operatorRoleName": "管理员",
-      "collection": "repairBatches",
-      "collectionLabel": "修补批次",
-      "itemId": "repairBatches-1782009928116-a20f6",
-      "itemTitle": "常规除尘修补",
-      "action": "statusChange",
-      "actionLabel": "状态变更",
-      "changes": null,
-      "note": "批次进度更新：1/3 已完成",
-      "ip": "::1"
-    },
-    {
-      "id": "audit-1782010019672-e6932",
-      "timestamp": "2026-06-21T02:46:59.672Z",
-      "operator": "系统",
-      "operatorRole": "admin",
-      "operatorRoleName": "管理员",
-      "collection": "scrolls",
-      "collectionLabel": "经卷档案",
-      "itemId": "scroll-seed-1",
-      "itemTitle": "妙法莲华经卷第三",
-      "action": "statusChange",
-      "actionLabel": "状态变更",
-      "changes": null,
-      "note": "经卷状态变更（修补工序除尘：已完成）",
-      "ip": "::1"
-    },
-    {
-      "id": "audit-1782010019672-2c528",
-      "timestamp": "2026-06-21T02:46:59.672Z",
-      "operator": "系统",
-      "operatorRole": "admin",
-      "operatorRoleName": "管理员",
-      "collection": "repairs",
-      "collectionLabel": "修补记录",
-      "itemId": "repairs-1782009928116-5dbec",
-      "itemTitle": "除尘",
-      "action": "statusChange",
-      "actionLabel": "状态变更",
-      "changes": {
-        "status": {
-          "before": "计划中",
-          "after": "已完成"
-        }
-      },
-      "note": "",
-      "ip": "::1"
-    },
-    {
-      "id": "audit-1782009928117-3f97d",
-      "timestamp": "2026-06-21T02:45:28.117Z",
-      "operator": "系统",
-      "operatorRole": "admin",
-      "operatorRoleName": "管理员",
-      "collection": "scrolls",
-      "collectionLabel": "经卷档案",
-      "itemId": "scroll-seed-1",
-      "itemTitle": "妙法莲华经卷第三",
-      "action": "statusChange",
-      "actionLabel": "状态变更",
-      "changes": null,
-      "note": "状态变更为修补中（启动修补批次\"常规除尘修补\"）",
-      "ip": "::1"
-    },
-    {
-      "id": "audit-1782009928117-cfccd",
-      "timestamp": "2026-06-21T02:45:28.117Z",
-      "operator": "系统",
-      "operatorRole": "admin",
-      "operatorRoleName": "管理员",
-      "collection": "repairBatches",
-      "collectionLabel": "修补批次",
-      "itemId": "repairBatches-1782009928116-a20f6",
-      "itemTitle": "常规除尘修补 - 妙法莲华经卷第三",
-      "action": "create",
-      "actionLabel": "新增",
-      "changes": null,
-      "note": "生成3道修补工序",
-      "ip": "::1"
-    },
     {
       "id": "audit-condition-approve-demo",
       "timestamp": "2026-06-22T11:00:00.000Z",
@@ -1754,50 +921,6 @@
       "actionLabel": "状态变更",
       "changes": null,
       "note": "经卷状态变更：修补工序进入修补中",
-      "ip": "::1"
-    },
-    {
-      "id": "audit-1781957772449-c1e37",
-      "timestamp": "2026-06-20T12:16:12.449Z",
-      "operator": "张修补",
-      "operatorRole": "conservator",
-      "operatorRoleName": "修补人员",
-      "collection": "repairs",
-      "collectionLabel": "修补记录",
-      "itemId": "repairs-1781957754532-6cb17",
-      "itemTitle": "repairs-1781957754532-6cb17",
-      "action": "statusChange",
-      "actionLabel": "状态变更",
-      "changes": {
-        "status": {
-          "before": "待修补",
-          "after": "修补中"
-        },
-        "note": {
-          "after": "开始修补"
-        }
-      },
-      "note": "开始修补",
-      "ip": "::1"
-    },
-    {
-      "id": "audit-1781957754532-dd5c0",
-      "timestamp": "2026-06-20T12:15:54.532Z",
-      "operator": "张修补",
-      "operatorRole": "conservator",
-      "operatorRoleName": "修补人员",
-      "collection": "repairs",
-      "collectionLabel": "修补记录",
-      "itemId": "repairs-1781957754532-6cb17",
-      "itemTitle": "repairs-1781957754532-6cb17",
-      "action": "create",
-      "actionLabel": "新增",
-      "changes": {
-        "scrollId": "scrolls-1781957739137-684f7",
-        "damageType": "破损",
-        "status": "待修补"
-      },
-      "note": "",
       "ip": "::1"
     },
     {
