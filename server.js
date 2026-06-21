@@ -944,6 +944,14 @@ async function readDb() {
   if (Array.isArray(db.loans)) {
     for (const loan of db.loans) {
       if (!Array.isArray(loan.rescheduleHistory)) loan.rescheduleHistory = [];
+      loan.rescheduleHistory = loan.rescheduleHistory.map((entry) => ({
+        ...entry,
+        rescheduledBy: entry.rescheduledBy || entry.operator || '',
+        statusBefore: entry.statusBefore || entry.oldStatus || '',
+        statusAfter: entry.statusAfter || entry.newStatus || '',
+        riskBefore: entry.riskBefore || (entry.oldRiskLevel ? { level: entry.oldRiskLevel } : null),
+        riskAfter: entry.riskAfter || (entry.newRiskLevel ? { level: entry.newRiskLevel } : null)
+      }));
       if (!Array.isArray(loan.history)) loan.history = [];
     }
   }

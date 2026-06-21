@@ -743,7 +743,12 @@ function rescheduleHistoryHtml(item) {
   const items = rescheduleHistory.slice(0, 5);
   return `<div class="reschedule-history">
     <div class="reschedule-history-title">📅 改期记录（${rescheduleHistory.length}次）</div>
-    ${items.map((entry) => `
+    ${items.map((entry) => {
+      const rescheduledBy = entry.rescheduledBy || entry.operator || '-';
+      const statusBefore = entry.statusBefore || entry.oldStatus || '';
+      const statusAfter = entry.statusAfter || entry.newStatus || '';
+      const riskAfter = entry.riskAfter?.level || entry.newRiskLevel || '';
+      return `
       <div class="reschedule-history-item">
         <div class="reschedule-history-head">
           <span class="reschedule-sequence">第${entry.sequence}次改期</span>
@@ -756,12 +761,12 @@ function rescheduleHistoryHtml(item) {
         </div>
         ${entry.reason ? `<div class="reschedule-history-reason">原因：${escapeHtml(entry.reason)}</div>` : ''}
         <div class="reschedule-history-meta">
-          操作人：${escapeHtml(entry.rescheduledBy || '-')}
-          ${entry.statusBefore !== entry.statusAfter ? ` · 状态：${escapeHtml(entry.statusBefore)} → ${escapeHtml(entry.statusAfter)}` : ''}
-          ${entry.riskAfter ? ` · 风险：${escapeHtml(entry.riskAfter.level || '-')}` : ''}
+          操作人：${escapeHtml(rescheduledBy)}
+          ${statusBefore && statusAfter && statusBefore !== statusAfter ? ` · 状态：${escapeHtml(statusBefore)} → ${escapeHtml(statusAfter)}` : ''}
+          ${riskAfter ? ` · 风险：${escapeHtml(riskAfter)}` : ''}
         </div>
       </div>
-    `).join('')}
+    `}).join('')}
   </div>`;
 }
 
