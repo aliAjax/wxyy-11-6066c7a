@@ -2111,8 +2111,8 @@ function openRescheduleModal(loanId) {
         ` : ''}
 
         <div style="margin-top:14px">
-          <label style="font-size:13px;font-weight:700">改期原因（必填）：
-            <textarea class="modal-confirm-textarea" id="reschedule-reason" placeholder="请填写改期的原因..."></textarea>
+          <label style="font-size:13px;font-weight:700">改期原因（必填，最多 500 字）：
+            <textarea class="modal-confirm-textarea" id="reschedule-reason" placeholder="请填写改期的原因..." maxlength="500"></textarea>
           </label>
         </div>
       </div>

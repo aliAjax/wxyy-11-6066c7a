@@ -1147,84 +1147,68 @@
   ],
   "audits": [
     {
-      "id": "audit-1782042609911-7be2d",
-      "timestamp": "2026-06-21T11:50:09.911Z",
-      "operator": "系统",
-      "operatorRole": "admin",
-      "operatorRoleName": "管理员",
-      "collection": "scrolls",
-      "collectionLabel": "经卷档案",
-      "itemId": "scroll-seed-2",
-      "itemTitle": "金刚般若波罗蜜经",
-      "action": "statusChange",
-      "actionLabel": "状态变更",
-      "changes": null,
-      "note": "借阅改期：张教授（学术研究）日期从 2026-06-25 ~ 2026-07-05 调整为 2026-06-28 ~ 2026-07-08",
-      "ip": "::1"
-    },
-    {
-      "id": "audit-1782042609911-2fd38",
-      "timestamp": "2026-06-21T11:50:09.911Z",
-      "operator": "系统",
-      "operatorRole": "admin",
-      "operatorRoleName": "管理员",
+      "id": "audit-seed-loan-reschedule-1",
+      "timestamp": "2026-06-22T14:30:00.000Z",
+      "operator": "王管理员",
+      "operatorRole": "approver",
+      "operatorRoleName": "审批人",
       "collection": "loans",
       "collectionLabel": "借阅申请",
       "itemId": "loan-seed-1",
-      "itemTitle": "张教授 / 学术研究 / 2026-06-28 ~ 2026-07-08",
+      "itemTitle": "张教授 / 学术研究 / 2026-06-25 ~ 2026-07-05",
       "action": "reschedule",
       "actionLabel": "改期",
       "changes": {
         "borrowDate": {
-          "before": "2026-06-25",
-          "after": "2026-06-28"
+          "before": "2026-06-20",
+          "after": "2026-06-25"
         },
         "dueDate": {
-          "before": "2026-07-05",
-          "after": "2026-07-08"
+          "before": "2026-06-30",
+          "after": "2026-07-05"
         },
         "status": {
-          "before": "已借出",
-          "after": "已借出"
+          "before": "已批准",
+          "after": "待审批"
         },
         "riskLevel": {
           "before": "中风险",
-          "after": "高风险"
+          "after": "中风险"
         },
-        "reason": "已借出状态改期测试",
+        "reason": "论文写作进度调整，需要延后查阅时间",
         "rescheduleEntry": {
-          "id": "resched-1782042609911-5928d",
-          "sequence": 2,
-          "oldBorrowDate": "2026-06-25",
-          "oldDueDate": "2026-07-05",
-          "newBorrowDate": "2026-06-28",
-          "newDueDate": "2026-07-08",
-          "reason": "已借出状态改期测试",
-          "rescheduledAt": "2026-06-21T11:50:09.911Z",
-          "rescheduledBy": "系统",
-          "statusBefore": "已借出",
-          "statusAfter": "已借出",
+          "id": "resched-seed-loan-1-1",
+          "sequence": 1,
+          "oldBorrowDate": "2026-06-20",
+          "oldDueDate": "2026-06-30",
+          "newBorrowDate": "2026-06-25",
+          "newDueDate": "2026-07-05",
+          "reason": "论文写作进度调整，需要延后查阅时间",
+          "rescheduledAt": "2026-06-22T14:30:00.000Z",
+          "rescheduledBy": "王管理员",
+          "statusBefore": "已批准",
+          "statusAfter": "待审批",
           "riskBefore": {
             "level": "中风险",
             "score": 55
           },
           "riskAfter": {
-            "level": "高风险",
-            "score": 67
+            "level": "中风险",
+            "score": 55
           },
           "hadConflict": false,
           "conflictCount": 0
         }
       },
-      "note": "日期从 2026-06-25 ~ 2026-07-05 调整为 2026-06-28 ~ 2026-07-08，改期原因：已借出状态改期测试 | 风险评估：高风险（得分67）- 可借阅性评估：需审批（得分52）；借阅用途：学术研究（中等风险，专业使用）",
+      "note": "日期从 2026-06-20 ~ 2026-06-30 调整为 2026-06-25 ~ 2026-07-05，改期原因：论文写作进度调整，需要延后查阅时间，状态从「已批准」退回「待审批」待重新审批 | 风险评估：中风险（得分55）- 一级保护经卷；借阅用途：学术研究（中等风险）；残损情况：边缘轻微磨损",
       "ip": "::1"
     },
     {
-      "id": "audit-1782042600135-40824",
-      "timestamp": "2026-06-21T11:50:00.135Z",
-      "operator": "系统",
-      "operatorRole": "admin",
-      "operatorRoleName": "管理员",
+      "id": "audit-seed-scroll-reschedule-1",
+      "timestamp": "2026-06-22T14:30:00.000Z",
+      "operator": "王管理员",
+      "operatorRole": "approver",
+      "operatorRoleName": "审批人",
       "collection": "scrolls",
       "collectionLabel": "经卷档案",
       "itemId": "scroll-seed-2",
@@ -1232,210 +1216,44 @@
       "action": "statusChange",
       "actionLabel": "状态变更",
       "changes": null,
-      "note": "借阅改期：李研究员（展览筹备）日期从 2026-07-15 ~ 2026-07-25 调整为 2026-07-20 ~ 2026-07-30",
+      "note": "借阅改期：张教授（学术研究）日期从 2026-06-20 ~ 2026-06-30 调整为 2026-06-25 ~ 2026-07-05",
       "ip": "::1"
     },
     {
-      "id": "audit-1782042600135-423da",
-      "timestamp": "2026-06-21T11:50:00.135Z",
-      "operator": "系统",
+      "id": "audit-condition-approve-demo",
+      "timestamp": "2026-06-22T11:00:00.000Z",
+      "operator": "王馆长",
       "operatorRole": "admin",
       "operatorRoleName": "管理员",
       "collection": "loans",
-      "collectionLabel": "借阅申请",
-      "itemId": "loan-seed-2",
-      "itemTitle": "李研究员 / 展览筹备 / 2026-07-20 ~ 2026-07-30",
-      "action": "reschedule",
-      "actionLabel": "改期",
+      "collectionLabel": "借阅预约",
+      "itemId": "loan-seed-condition-1",
+      "itemTitle": "陈研究员 / 校勘比对 / 2026-07-01 ~ 2026-07-08",
+      "action": "approve",
+      "actionLabel": "条件批准",
       "changes": {
-        "borrowDate": {
-          "before": "2026-07-15",
-          "after": "2026-07-20"
-        },
-        "dueDate": {
-          "before": "2026-07-25",
-          "after": "2026-07-30"
-        },
         "status": {
           "before": "待审批",
-          "after": "待审批"
+          "after": "条件批准"
         },
-        "riskLevel": {
-          "before": "高风险",
-          "after": "高风险"
+        "conditions": {
+          "before": null,
+          "after": [
+            "馆内阅览",
+            "禁止拍照",
+            "修补陪同"
+          ]
         },
-        "reason": "再次调整时间",
-        "rescheduleEntry": {
-          "id": "resched-1782042600135-f4bae",
-          "sequence": 2,
-          "oldBorrowDate": "2026-07-15",
-          "oldDueDate": "2026-07-25",
-          "newBorrowDate": "2026-07-20",
-          "newDueDate": "2026-07-30",
-          "reason": "再次调整时间",
-          "rescheduledAt": "2026-06-21T11:50:00.135Z",
-          "rescheduledBy": "系统",
-          "statusBefore": "待审批",
-          "statusAfter": "待审批",
-          "riskBefore": {
-            "level": "高风险",
-            "score": 80
-          },
-          "riskAfter": {
-            "level": "高风险",
-            "score": 80
-          },
-          "hadConflict": false,
-          "conflictCount": 0
+        "conditionsSummary": {
+          "before": null,
+          "after": "限馆内阅览、禁止任何影像采集、查阅全过程须由专职修补人员陪同"
+        },
+        "conditionsNote": {
+          "before": null,
+          "after": "限定在特藏室A区查阅，每日查阅时段为上午9:00-11:30，查阅期间须佩戴白手套，修补人员为赵师傅"
         }
       },
-      "note": "日期从 2026-07-15 ~ 2026-07-25 调整为 2026-07-20 ~ 2026-07-30，改期原因：再次调整时间 | 风险评估：高风险（得分80）- 可借阅性评估：需审批（得分52）；借阅用途：展览筹备（高风险用途，需搬运和展示）",
-      "ip": "::1"
-    },
-    {
-      "id": "audit-1782042581171-4861a",
-      "timestamp": "2026-06-21T11:49:41.171Z",
-      "operator": "系统",
-      "operatorRole": "admin",
-      "operatorRoleName": "管理员",
-      "collection": "scrolls",
-      "collectionLabel": "经卷档案",
-      "itemId": "scroll-seed-2",
-      "itemTitle": "金刚般若波罗蜜经",
-      "action": "statusChange",
-      "actionLabel": "状态变更",
-      "changes": null,
-      "note": "借阅改期：李研究员（展览筹备）日期从 2026-07-10 ~ 2026-07-20 调整为 2026-07-15 ~ 2026-07-25",
-      "ip": "::1"
-    },
-    {
-      "id": "audit-1782042581171-3c7b0",
-      "timestamp": "2026-06-21T11:49:41.171Z",
-      "operator": "系统",
-      "operatorRole": "admin",
-      "operatorRoleName": "管理员",
-      "collection": "loans",
-      "collectionLabel": "借阅申请",
-      "itemId": "loan-seed-2",
-      "itemTitle": "李研究员 / 展览筹备 / 2026-07-15 ~ 2026-07-25",
-      "action": "reschedule",
-      "actionLabel": "改期",
-      "changes": {
-        "borrowDate": {
-          "before": "2026-07-10",
-          "after": "2026-07-15"
-        },
-        "dueDate": {
-          "before": "2026-07-20",
-          "after": "2026-07-25"
-        },
-        "status": {
-          "before": "已批准",
-          "after": "待审批"
-        },
-        "riskLevel": {
-          "before": "高风险",
-          "after": "高风险"
-        },
-        "reason": "展览时间调整",
-        "rescheduleEntry": {
-          "id": "resched-1782042581171-4b6c8",
-          "sequence": 1,
-          "oldBorrowDate": "2026-07-10",
-          "oldDueDate": "2026-07-20",
-          "newBorrowDate": "2026-07-15",
-          "newDueDate": "2026-07-25",
-          "reason": "展览时间调整",
-          "rescheduledAt": "2026-06-21T11:49:41.171Z",
-          "rescheduledBy": "系统",
-          "statusBefore": "已批准",
-          "statusAfter": "待审批",
-          "riskBefore": {
-            "level": "高风险",
-            "score": 80
-          },
-          "riskAfter": {
-            "level": "高风险",
-            "score": 80
-          },
-          "hadConflict": false,
-          "conflictCount": 0
-        }
-      },
-      "note": "日期从 2026-07-10 ~ 2026-07-20 调整为 2026-07-15 ~ 2026-07-25，改期原因：展览时间调整，状态从「已批准」退回「待审批」待重新审批 | 风险评估：高风险（得分80）- 可借阅性评估：需审批（得分52）；借阅用途：展览筹备（高风险用途，需搬运和展示）",
-      "ip": "::1"
-    },
-    {
-      "id": "audit-1782042125514-2a422",
-      "timestamp": "2026-06-21T11:42:05.514Z",
-      "operator": "系统",
-      "operatorRole": "admin",
-      "operatorRoleName": "管理员",
-      "collection": "scrolls",
-      "collectionLabel": "经卷档案",
-      "itemId": "scroll-seed-2",
-      "itemTitle": "金刚般若波罗蜜经",
-      "action": "statusChange",
-      "actionLabel": "状态变更",
-      "changes": null,
-      "note": "借阅改期：李研究员（展览筹备）日期从 2026-07-10 ~ 2026-07-20 调整为 2026-07-15 ~ 2026-07-25",
-      "ip": "::1"
-    },
-    {
-      "id": "audit-1782042125514-afc62",
-      "timestamp": "2026-06-21T11:42:05.514Z",
-      "operator": "系统",
-      "operatorRole": "admin",
-      "operatorRoleName": "管理员",
-      "collection": "loans",
-      "collectionLabel": "借阅申请",
-      "itemId": "loan-seed-2",
-      "itemTitle": "李研究员 / 展览筹备 / 2026-07-15 ~ 2026-07-25",
-      "action": "reschedule",
-      "actionLabel": "改期",
-      "changes": {
-        "borrowDate": {
-          "before": "2026-07-10",
-          "after": "2026-07-15"
-        },
-        "dueDate": {
-          "before": "2026-07-20",
-          "after": "2026-07-25"
-        },
-        "status": {
-          "before": "已批准",
-          "after": "待审批"
-        },
-        "riskLevel": {
-          "before": "高风险",
-          "after": "高风险"
-        },
-        "reason": "展览时间调整，需延后一周",
-        "rescheduleEntry": {
-          "id": "resched-1782042125514-624ef",
-          "sequence": 1,
-          "oldBorrowDate": "2026-07-10",
-          "oldDueDate": "2026-07-20",
-          "newBorrowDate": "2026-07-15",
-          "newDueDate": "2026-07-25",
-          "reason": "展览时间调整，需延后一周",
-          "rescheduledAt": "2026-06-21T11:42:05.514Z",
-          "rescheduledBy": "系统",
-          "statusBefore": "已批准",
-          "statusAfter": "待审批",
-          "riskBefore": {
-            "level": "高风险",
-            "score": 80
-          },
-          "riskAfter": {
-            "level": "高风险",
-            "score": 80
-          },
-          "hadConflict": false,
-          "conflictCount": 0
-        }
-      },
-      "note": "日期从 2026-07-10 ~ 2026-07-20 调整为 2026-07-15 ~ 2026-07-25，改期原因：展览时间调整，需延后一周，状态从「已批准」退回「待审批」待重新审批 | 风险评估：高风险（得分80）- 可借阅性评估：需审批（得分52）；借阅用途：展览筹备（高风险用途，需搬运和展示）",
+      "note": "条件批准：限馆内阅览、禁止任何影像采集、查阅全过程须由专职修补人员陪同 | 补充说明：限定在特藏室A区查阅，每日查阅时段为上午9:00-11:30，查阅期间须佩戴白手套，修补人员为赵师傅 | 审批理由：陈研究员长期从事敦煌文献整理工作，信誉良好。本次校勘为其国家社科基金重大项目子课题，有正式公函。",
       "ip": "::1"
     },
     {
@@ -1581,43 +1399,6 @@
         }
       },
       "note": "一致性巡检批量修复：修补完成但缺少历史记录 - 巡检修复：修补已完成但缺少历史记录，补充修补完成记录",
-      "ip": "::1"
-    },
-    {
-      "id": "audit-condition-approve-demo",
-      "timestamp": "2026-06-22T11:00:00.000Z",
-      "operator": "王馆长",
-      "operatorRole": "admin",
-      "operatorRoleName": "管理员",
-      "collection": "loans",
-      "collectionLabel": "借阅预约",
-      "itemId": "loan-seed-condition-1",
-      "itemTitle": "陈研究员 / 校勘比对 / 2026-07-01 ~ 2026-07-08",
-      "action": "approve",
-      "actionLabel": "条件批准",
-      "changes": {
-        "status": {
-          "before": "待审批",
-          "after": "条件批准"
-        },
-        "conditions": {
-          "before": null,
-          "after": [
-            "馆内阅览",
-            "禁止拍照",
-            "修补陪同"
-          ]
-        },
-        "conditionsSummary": {
-          "before": null,
-          "after": "限馆内阅览、禁止任何影像采集、查阅全过程须由专职修补人员陪同"
-        },
-        "conditionsNote": {
-          "before": null,
-          "after": "限定在特藏室A区查阅，每日查阅时段为上午9:00-11:30，查阅期间须佩戴白手套，修补人员为赵师傅"
-        }
-      },
-      "note": "条件批准：限馆内阅览、禁止任何影像采集、查阅全过程须由专职修补人员陪同 | 补充说明：限定在特藏室A区查阅，每日查阅时段为上午9:00-11:30，查阅期间须佩戴白手套，修补人员为赵师傅 | 审批理由：陈研究员长期从事敦煌文献整理工作，信誉良好。本次校勘为其国家社科基金重大项目子课题，有正式公函。",
       "ip": "::1"
     },
     {

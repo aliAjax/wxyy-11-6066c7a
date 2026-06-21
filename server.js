@@ -940,7 +940,14 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 async function readDb() {
   const raw = await fs.readFile(DB_FILE, 'utf8');
-  return JSON.parse(raw);
+  const db = JSON.parse(raw);
+  if (Array.isArray(db.loans)) {
+    for (const loan of db.loans) {
+      if (!Array.isArray(loan.rescheduleHistory)) loan.rescheduleHistory = [];
+      if (!Array.isArray(loan.history)) loan.history = [];
+    }
+  }
+  return db;
 }
 
 async function writeDb(db) {
@@ -1513,6 +1520,14 @@ app.post('/api/loans/:id/reschedule', requirePermission('loans', 'reschedule'), 
     return res.status(400).json({ error: '请提供新的借出日期和预计归还日期' });
   }
 
+  const trimmedReason = (reason || '').trim();
+  if (!trimmedReason) {
+    return res.status(400).json({ error: '请填写改期原因' });
+  }
+  if (trimmedReason.length > 500) {
+    return res.status(400).json({ error: '改期原因不能超过 500 个字符' });
+  }
+
   if (parseDate(dueDate) < parseDate(borrowDate)) {
     return res.status(400).json({ error: '预计归还日期不能早于借出日期' });
   }
@@ -1548,7 +1563,7 @@ app.post('/api/loans/:id/reschedule', requirePermission('loans', 'reschedule'), 
     oldDueDate,
     newBorrowDate: borrowDate,
     newDueDate: dueDate,
-    reason: reason || '',
+    reason: trimmedReason,
     rescheduledAt: new Date().toISOString(),
     rescheduledBy: getCurrentUser(req),
     statusBefore: oldStatus,
@@ -1570,7 +1585,7 @@ app.post('/api/loans/:id/reschedule', requirePermission('loans', 'reschedule'), 
   const statusReverted = newStatus !== oldStatus;
   const riskNote = formatRiskNote(newAssessment, '改期');
   const dateChangeNote = `日期从 ${oldBorrowDate} ~ ${oldDueDate} 调整为 ${borrowDate} ~ ${dueDate}`;
-  const reasonNote = reason ? `，改期原因：${reason}` : '';
+  const reasonNote = `，改期原因：${trimmedReason}`;
   const statusNote = statusReverted ? `，状态从「${oldStatus}」退回「${newStatus}」待重新审批` : '';
 
   loan.history = loan.history || [];
@@ -1589,7 +1604,7 @@ app.post('/api/loans/:id/reschedule', requirePermission('loans', 'reschedule'), 
       dueDate: { before: oldDueDate, after: dueDate },
       status: { before: oldStatus, after: newStatus },
       riskLevel: { before: oldRiskLevel, after: newAssessment.level },
-      reason: reason || null,
+      reason: trimmedReason,
       rescheduleEntry
     },
     note: `${dateChangeNote}${reasonNote}${statusNote} | ${riskNote}`
@@ -1761,6 +1776,7 @@ app.post('/api/:collection', requirePermission(':collection', 'create'), async (
   if (collection === 'loans') {
     const assessment = assessLoanRisk(db, item);
     item.riskAssessment = assessment;
+    item.rescheduleHistory = [];
     const riskNote = formatRiskNote(assessment, '创建');
     const originalNote = req.body.note || req.body.memo || req.body.reason || '';
     item.history = [stamp('创建', originalNote ? `${originalNote} | ${riskNote}` : riskNote)];
