@@ -25,3 +25,7 @@ coverage/
 .idea/
 .vscode/
 Thumbs.db
+
+# Database backups and test data
+data/backups/
+data/test-db.json

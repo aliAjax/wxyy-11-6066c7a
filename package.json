@@ -2,8 +2,15 @@
   "scripts": {
     "start": "node server.js",
     "dev": "node --watch server.js",
-    "test": "node test/loan-regression.test.js",
-    "test:loans": "node test/loan-regression.test.js"
+    "test": "npm run test:unit && npm run test:api",
+    "test:unit": "node test/loan-regression.test.js",
+    "test:loans": "node test/loan-regression.test.js",
+    "test:api": "node test/api.test.js",
+    "db:check": "node scripts/check-db-schema.js",
+    "db:backup": "node scripts/backup-db.js",
+    "db:restore": "node scripts/restore-db.js",
+    "prestart": "node scripts/check-db-schema.js",
+    "verify": "npm run db:check && npm run test:unit && npm run test:api"
   },
   "dependencies": {
     "express": "^4.19.2"

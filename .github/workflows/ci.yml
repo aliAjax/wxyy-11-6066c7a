@@ -1,0 +1,64 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        node-version: [18.x, 20.x]
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: 安装 Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ matrix.node-version }}
+
+    - name: 缓存 node_modules
+      uses: actions/cache@v4
+      with:
+        path: ~/.npm
+        key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+        restore-keys: |
+          ${{ runner.os }}-node-
+
+    - name: 安装依赖
+      run: npm install
+
+    - name: 数据库结构检查
+      run: npm run db:check
+
+    - name: 单元测试
+      run: npm run test:unit
+
+    - name: 接口集成测试
+      run: npm run test:api
+      env:
+        CI: true
+
+    - name: 完整验证
+      run: npm run verify
+
+  lint-check:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: 安装 Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: 20.x
+
+    - name: 安装依赖
+      run: npm install
+
+    - name: 验证 server.js 可正常加载
+      run: node -e "const { app } = require('./server'); console.log('Server module loaded OK')"

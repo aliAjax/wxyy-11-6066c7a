@@ -6,7 +6,7 @@ const app = express();
 const config = require('./project.config');
 const loanAssess = require('./loan-assess');
 const PORT = process.env.PORT || config.port || 3900;
-const DB_FILE = path.join(__dirname, 'data', 'db.json');
+const DB_FILE = process.env.DB_FILE || path.join(__dirname, 'data', 'db.json');
 
 const {
   ACTIVE_LOAN_STATUSES,
