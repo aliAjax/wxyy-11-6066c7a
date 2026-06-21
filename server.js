@@ -210,7 +210,7 @@ async function writeAuditLog(db, req, options = {}) {
   return logEntry;
 }
 
-const ACTIVE_LOAN_STATUSES = ['待审批', '已批准', '已借出'];
+const ACTIVE_LOAN_STATUSES = ['待审批', '条件批准', '已批准', '已借出'];
 
 const PROTECTION_LEVEL_SCORE = { '一级': 30, '二级': 15, '三级': 5 };
 
