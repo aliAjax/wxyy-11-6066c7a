@@ -69,7 +69,8 @@ const PERMISSIONS = {
     approve: ['admin', 'approver'],
     reject: ['admin', 'approver'],
     lend: ['admin', 'approver'],
-    return: ['admin', 'approver']
+    return: ['admin', 'approver'],
+    reschedule: ['admin', 'approver']
   },
   imagings: {
     view: ['admin', 'conservator', 'approver', 'guest'],
@@ -186,6 +187,7 @@ function actionLabel(action) {
     reject: '拒绝',
     lend: '借出',
     return: '归还',
+    reschedule: '改期',
     confirm: '确认转正'
   };
   return labels[action] || action;
@@ -220,6 +222,10 @@ async function writeAuditLog(db, req, options = {}) {
 }
 
 const ACTIVE_LOAN_STATUSES = ['待审批', '条件批准', '已批准', '已借出'];
+
+const RESCHEDULEABLE_STATUSES = ['待审批', '条件批准', '已批准', '已借出'];
+
+const RESCHEDULE_REVERT_STATUSES = ['已批准', '条件批准'];
 
 const PROTECTION_LEVEL_SCORE = { '一级': 30, '二级': 15, '三级': 5 };
 
@@ -1162,7 +1168,16 @@ app.get('/api/scrolls/:id/timeline', async (req, res) => {
     if (loan.scrollId !== scrollId) continue;
     const loanTypeMap = { '待审批': '借阅', '条件批准': '借阅', '已批准': '借阅', '已借出': '借阅', '已归还': '归还', '已拒绝': '借阅' };
     for (const entry of loan.history || []) {
-      const evType = entry.action === '归还' ? '归还' : (entry.action === '创建' ? '借阅' : loanTypeMap[entry.action] || '借阅');
+      let evType;
+      if (entry.action === '归还') {
+        evType = '归还';
+      } else if (entry.action === '创建') {
+        evType = '借阅';
+      } else if (entry.action === '改期') {
+        evType = '改期';
+      } else {
+        evType = loanTypeMap[entry.action] || '借阅';
+      }
       let detail = entry.note || '';
       if (loan.conditionsSummary) {
         detail = detail ? `${detail} | 保护条件：${loan.conditionsSummary}` : `保护条件：${loan.conditionsSummary}`;
@@ -1175,7 +1190,7 @@ app.get('/api/scrolls/:id/timeline', async (req, res) => {
         sourceId: loan.id,
         title: `${entry.action}：${loan.borrower || '-'} - ${loan.purpose || '-'}`,
         detail: detail,
-        meta: { borrower: loan.borrower, purpose: loan.purpose, status: loan.status, borrowDate: loan.borrowDate, dueDate: loan.dueDate, conditions: loan.conditions || null, conditionsSummary: loan.conditionsSummary || '' },
+        meta: { borrower: loan.borrower, purpose: loan.purpose, status: loan.status, borrowDate: loan.borrowDate, dueDate: loan.dueDate, conditions: loan.conditions || null, conditionsSummary: loan.conditionsSummary || '', rescheduleCount: (loan.rescheduleHistory || []).length },
         attachments: { hasAttachment: false, attachmentCode: null, externalLink: null }
       });
     }
@@ -1474,6 +1489,124 @@ app.post('/api/loans/assess-preview', async (req, res) => {
   const db = await readDb();
   const assessment = assessLoanRisk(db, req.body || {});
   res.json(assessment);
+});
+
+app.post('/api/loans/:id/reschedule', requirePermission('loans', 'reschedule'), async (req, res) => {
+  const db = await readDb();
+  const { id } = req.params;
+  const { borrowDate, dueDate, reason } = req.body || {};
+
+  const loan = (db.loans || []).find((l) => l.id === id);
+  if (!loan) {
+    return res.status(404).json({ error: '借阅申请不存在' });
+  }
+
+  if (!RESCHEDULEABLE_STATUSES.includes(loan.status)) {
+    return res.status(409).json({
+      error: `当前状态「${loan.status}」不允许改期`,
+      currentStatus: loan.status,
+      allowedStatuses: RESCHEDULEABLE_STATUSES
+    });
+  }
+
+  if (!borrowDate || !dueDate) {
+    return res.status(400).json({ error: '请提供新的借出日期和预计归还日期' });
+  }
+
+  if (parseDate(dueDate) < parseDate(borrowDate)) {
+    return res.status(400).json({ error: '预计归还日期不能早于借出日期' });
+  }
+
+  const conflicts = checkLoanConflict(db, loan.scrollId, borrowDate, dueDate, loan.id);
+  if (conflicts.length > 0) {
+    const conflictInfo = conflicts.map((c) => `${c.borrower}（${c.borrowDate} 至 ${c.dueDate}，状态：${c.status}）`).join('；');
+    return res.status(409).json({
+      error: `日期冲突：该经卷在 ${borrowDate} 至 ${dueDate} 期间已被预约。冲突记录：${conflictInfo}`,
+      conflicts
+    });
+  }
+
+  const oldBorrowDate = loan.borrowDate;
+  const oldDueDate = loan.dueDate;
+  const oldStatus = loan.status;
+  const oldRiskLevel = loan.riskAssessment?.level || null;
+  const oldRiskScore = loan.riskAssessment?.score || null;
+
+  const mergedLoan = { ...loan, borrowDate, dueDate };
+  const newAssessment = assessLoanRisk(db, mergedLoan);
+
+  let newStatus = loan.status;
+  if (RESCHEDULE_REVERT_STATUSES.includes(loan.status)) {
+    newStatus = '待审批';
+    loan.status = newStatus;
+  }
+
+  const rescheduleEntry = {
+    id: `resched-${Date.now()}-${Math.random().toString(16).slice(2, 7)}`,
+    sequence: (loan.rescheduleHistory?.length || 0) + 1,
+    oldBorrowDate,
+    oldDueDate,
+    newBorrowDate: borrowDate,
+    newDueDate: dueDate,
+    reason: reason || '',
+    rescheduledAt: new Date().toISOString(),
+    rescheduledBy: getCurrentUser(req),
+    statusBefore: oldStatus,
+    statusAfter: newStatus,
+    riskBefore: oldRiskLevel ? { level: oldRiskLevel, score: oldRiskScore } : null,
+    riskAfter: { level: newAssessment.level, score: newAssessment.score },
+    hadConflict: false,
+    conflictCount: 0
+  };
+
+  loan.rescheduleHistory = loan.rescheduleHistory || [];
+  loan.rescheduleHistory.unshift(rescheduleEntry);
+
+  loan.borrowDate = borrowDate;
+  loan.dueDate = dueDate;
+  loan.riskAssessment = newAssessment;
+  loan.updatedAt = new Date().toISOString();
+
+  const statusReverted = newStatus !== oldStatus;
+  const riskNote = formatRiskNote(newAssessment, '改期');
+  const dateChangeNote = `日期从 ${oldBorrowDate} ~ ${oldDueDate} 调整为 ${borrowDate} ~ ${dueDate}`;
+  const reasonNote = reason ? `，改期原因：${reason}` : '';
+  const statusNote = statusReverted ? `，状态从「${oldStatus}」退回「${newStatus}」待重新审批` : '';
+
+  loan.history = loan.history || [];
+  loan.history.unshift(stamp('改期', `${dateChangeNote}${reasonNote}${statusNote} | ${riskNote}`));
+
+  const scroll = (db.scrolls || []).find((s) => s.id === loan.scrollId);
+  const itemTitle = `${loan.borrower || '-'} / ${loan.purpose || '-'} / ${borrowDate} ~ ${dueDate}`;
+
+  await writeAuditLog(db, req, {
+    collection: 'loans',
+    itemId: loan.id,
+    itemTitle,
+    action: 'reschedule',
+    changes: {
+      borrowDate: { before: oldBorrowDate, after: borrowDate },
+      dueDate: { before: oldDueDate, after: dueDate },
+      status: { before: oldStatus, after: newStatus },
+      riskLevel: { before: oldRiskLevel, after: newAssessment.level },
+      reason: reason || null,
+      rescheduleEntry
+    },
+    note: `${dateChangeNote}${reasonNote}${statusNote} | ${riskNote}`
+  });
+
+  if (scroll) {
+    await writeAuditLog(db, req, {
+      collection: 'scrolls',
+      itemId: scroll.id,
+      itemTitle: scroll.title || scroll.name,
+      action: 'statusChange',
+      note: `借阅改期：${loan.borrower || '-'}（${loan.purpose || '-'}）日期从 ${oldBorrowDate} ~ ${oldDueDate} 调整为 ${borrowDate} ~ ${dueDate}`
+    });
+  }
+
+  await writeDb(db);
+  res.json(loan);
 });
 
 app.post('/api/:collection', requirePermission(':collection', 'create'), async (req, res, next) => {

@@ -449,6 +449,13 @@ module.exports = {
       desc: '限定在特定时段内查阅，例如工作日上午 9:00-11:00'
     }
   },
+  loanReschedule: {
+    rescheduleableStatuses: ['待审批', '条件批准', '已批准', '已借出'],
+    revertToPendingStatuses: ['已批准', '条件批准'],
+    reasonRequired: true,
+    historyDisplayLimit: 5,
+    auditEvent: '改期'
+  },
   borrowabilityDecision: {
     levels: [
       { value: '可借阅', label: '可借阅', minScore: 0, maxScore: 30, tone: 'ok' },

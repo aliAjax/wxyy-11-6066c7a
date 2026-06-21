@@ -422,6 +422,23 @@
       "dueDate": "2026-07-05",
       "reason": "用于敦煌学论文写作",
       "status": "已借出",
+      "rescheduleHistory": [
+        {
+          "sequence": 1,
+          "oldBorrowDate": "2026-06-20",
+          "oldDueDate": "2026-06-30",
+          "newBorrowDate": "2026-06-25",
+          "newDueDate": "2026-07-05",
+          "reason": "论文写作进度调整，需要延后查阅时间",
+          "operator": "王管理员",
+          "operatorRole": "approver",
+          "oldStatus": "已批准",
+          "newStatus": "待审批",
+          "oldRiskLevel": "中风险",
+          "newRiskLevel": "中风险",
+          "rescheduledAt": "2026-06-22T14:30:00.000Z"
+        }
+      ],
       "riskAssessment": {
         "level": "中风险",
         "score": 55,
@@ -441,12 +458,22 @@
         "isStrictMode": true
       },
       "createdAt": "2026-06-15T09:00:00.000Z",
-      "updatedAt": "2026-06-20T09:00:00.000Z",
+      "updatedAt": "2026-06-22T14:30:00.000Z",
       "history": [
         {
-          "at": "2026-06-20T09:00:00.000Z",
+          "at": "2026-06-25T09:00:00.000Z",
           "action": "借出",
           "note": "经卷已出库 | 风险评估：中风险（一级保护经卷）"
+        },
+        {
+          "at": "2026-06-23T10:00:00.000Z",
+          "action": "批准",
+          "note": "重新批准改期后的借阅 | 风险评估：中风险"
+        },
+        {
+          "at": "2026-06-22T14:30:00.000Z",
+          "action": "改期",
+          "note": "第1次改期：2026-06-20~2026-06-30 → 2026-06-25~2026-07-05 | 原因：论文写作进度调整，需要延后查阅时间 | 操作人：王管理员 | 状态变更：已批准→待审批 | 风险：中风险→中风险"
         },
         {
           "at": "2026-06-16T09:00:00.000Z",
@@ -1119,6 +1146,298 @@
     }
   ],
   "audits": [
+    {
+      "id": "audit-1782042609911-7be2d",
+      "timestamp": "2026-06-21T11:50:09.911Z",
+      "operator": "系统",
+      "operatorRole": "admin",
+      "operatorRoleName": "管理员",
+      "collection": "scrolls",
+      "collectionLabel": "经卷档案",
+      "itemId": "scroll-seed-2",
+      "itemTitle": "金刚般若波罗蜜经",
+      "action": "statusChange",
+      "actionLabel": "状态变更",
+      "changes": null,
+      "note": "借阅改期：张教授（学术研究）日期从 2026-06-25 ~ 2026-07-05 调整为 2026-06-28 ~ 2026-07-08",
+      "ip": "::1"
+    },
+    {
+      "id": "audit-1782042609911-2fd38",
+      "timestamp": "2026-06-21T11:50:09.911Z",
+      "operator": "系统",
+      "operatorRole": "admin",
+      "operatorRoleName": "管理员",
+      "collection": "loans",
+      "collectionLabel": "借阅申请",
+      "itemId": "loan-seed-1",
+      "itemTitle": "张教授 / 学术研究 / 2026-06-28 ~ 2026-07-08",
+      "action": "reschedule",
+      "actionLabel": "改期",
+      "changes": {
+        "borrowDate": {
+          "before": "2026-06-25",
+          "after": "2026-06-28"
+        },
+        "dueDate": {
+          "before": "2026-07-05",
+          "after": "2026-07-08"
+        },
+        "status": {
+          "before": "已借出",
+          "after": "已借出"
+        },
+        "riskLevel": {
+          "before": "中风险",
+          "after": "高风险"
+        },
+        "reason": "已借出状态改期测试",
+        "rescheduleEntry": {
+          "id": "resched-1782042609911-5928d",
+          "sequence": 2,
+          "oldBorrowDate": "2026-06-25",
+          "oldDueDate": "2026-07-05",
+          "newBorrowDate": "2026-06-28",
+          "newDueDate": "2026-07-08",
+          "reason": "已借出状态改期测试",
+          "rescheduledAt": "2026-06-21T11:50:09.911Z",
+          "rescheduledBy": "系统",
+          "statusBefore": "已借出",
+          "statusAfter": "已借出",
+          "riskBefore": {
+            "level": "中风险",
+            "score": 55
+          },
+          "riskAfter": {
+            "level": "高风险",
+            "score": 67
+          },
+          "hadConflict": false,
+          "conflictCount": 0
+        }
+      },
+      "note": "日期从 2026-06-25 ~ 2026-07-05 调整为 2026-06-28 ~ 2026-07-08，改期原因：已借出状态改期测试 | 风险评估：高风险（得分67）- 可借阅性评估：需审批（得分52）；借阅用途：学术研究（中等风险，专业使用）",
+      "ip": "::1"
+    },
+    {
+      "id": "audit-1782042600135-40824",
+      "timestamp": "2026-06-21T11:50:00.135Z",
+      "operator": "系统",
+      "operatorRole": "admin",
+      "operatorRoleName": "管理员",
+      "collection": "scrolls",
+      "collectionLabel": "经卷档案",
+      "itemId": "scroll-seed-2",
+      "itemTitle": "金刚般若波罗蜜经",
+      "action": "statusChange",
+      "actionLabel": "状态变更",
+      "changes": null,
+      "note": "借阅改期：李研究员（展览筹备）日期从 2026-07-15 ~ 2026-07-25 调整为 2026-07-20 ~ 2026-07-30",
+      "ip": "::1"
+    },
+    {
+      "id": "audit-1782042600135-423da",
+      "timestamp": "2026-06-21T11:50:00.135Z",
+      "operator": "系统",
+      "operatorRole": "admin",
+      "operatorRoleName": "管理员",
+      "collection": "loans",
+      "collectionLabel": "借阅申请",
+      "itemId": "loan-seed-2",
+      "itemTitle": "李研究员 / 展览筹备 / 2026-07-20 ~ 2026-07-30",
+      "action": "reschedule",
+      "actionLabel": "改期",
+      "changes": {
+        "borrowDate": {
+          "before": "2026-07-15",
+          "after": "2026-07-20"
+        },
+        "dueDate": {
+          "before": "2026-07-25",
+          "after": "2026-07-30"
+        },
+        "status": {
+          "before": "待审批",
+          "after": "待审批"
+        },
+        "riskLevel": {
+          "before": "高风险",
+          "after": "高风险"
+        },
+        "reason": "再次调整时间",
+        "rescheduleEntry": {
+          "id": "resched-1782042600135-f4bae",
+          "sequence": 2,
+          "oldBorrowDate": "2026-07-15",
+          "oldDueDate": "2026-07-25",
+          "newBorrowDate": "2026-07-20",
+          "newDueDate": "2026-07-30",
+          "reason": "再次调整时间",
+          "rescheduledAt": "2026-06-21T11:50:00.135Z",
+          "rescheduledBy": "系统",
+          "statusBefore": "待审批",
+          "statusAfter": "待审批",
+          "riskBefore": {
+            "level": "高风险",
+            "score": 80
+          },
+          "riskAfter": {
+            "level": "高风险",
+            "score": 80
+          },
+          "hadConflict": false,
+          "conflictCount": 0
+        }
+      },
+      "note": "日期从 2026-07-15 ~ 2026-07-25 调整为 2026-07-20 ~ 2026-07-30，改期原因：再次调整时间 | 风险评估：高风险（得分80）- 可借阅性评估：需审批（得分52）；借阅用途：展览筹备（高风险用途，需搬运和展示）",
+      "ip": "::1"
+    },
+    {
+      "id": "audit-1782042581171-4861a",
+      "timestamp": "2026-06-21T11:49:41.171Z",
+      "operator": "系统",
+      "operatorRole": "admin",
+      "operatorRoleName": "管理员",
+      "collection": "scrolls",
+      "collectionLabel": "经卷档案",
+      "itemId": "scroll-seed-2",
+      "itemTitle": "金刚般若波罗蜜经",
+      "action": "statusChange",
+      "actionLabel": "状态变更",
+      "changes": null,
+      "note": "借阅改期：李研究员（展览筹备）日期从 2026-07-10 ~ 2026-07-20 调整为 2026-07-15 ~ 2026-07-25",
+      "ip": "::1"
+    },
+    {
+      "id": "audit-1782042581171-3c7b0",
+      "timestamp": "2026-06-21T11:49:41.171Z",
+      "operator": "系统",
+      "operatorRole": "admin",
+      "operatorRoleName": "管理员",
+      "collection": "loans",
+      "collectionLabel": "借阅申请",
+      "itemId": "loan-seed-2",
+      "itemTitle": "李研究员 / 展览筹备 / 2026-07-15 ~ 2026-07-25",
+      "action": "reschedule",
+      "actionLabel": "改期",
+      "changes": {
+        "borrowDate": {
+          "before": "2026-07-10",
+          "after": "2026-07-15"
+        },
+        "dueDate": {
+          "before": "2026-07-20",
+          "after": "2026-07-25"
+        },
+        "status": {
+          "before": "已批准",
+          "after": "待审批"
+        },
+        "riskLevel": {
+          "before": "高风险",
+          "after": "高风险"
+        },
+        "reason": "展览时间调整",
+        "rescheduleEntry": {
+          "id": "resched-1782042581171-4b6c8",
+          "sequence": 1,
+          "oldBorrowDate": "2026-07-10",
+          "oldDueDate": "2026-07-20",
+          "newBorrowDate": "2026-07-15",
+          "newDueDate": "2026-07-25",
+          "reason": "展览时间调整",
+          "rescheduledAt": "2026-06-21T11:49:41.171Z",
+          "rescheduledBy": "系统",
+          "statusBefore": "已批准",
+          "statusAfter": "待审批",
+          "riskBefore": {
+            "level": "高风险",
+            "score": 80
+          },
+          "riskAfter": {
+            "level": "高风险",
+            "score": 80
+          },
+          "hadConflict": false,
+          "conflictCount": 0
+        }
+      },
+      "note": "日期从 2026-07-10 ~ 2026-07-20 调整为 2026-07-15 ~ 2026-07-25，改期原因：展览时间调整，状态从「已批准」退回「待审批」待重新审批 | 风险评估：高风险（得分80）- 可借阅性评估：需审批（得分52）；借阅用途：展览筹备（高风险用途，需搬运和展示）",
+      "ip": "::1"
+    },
+    {
+      "id": "audit-1782042125514-2a422",
+      "timestamp": "2026-06-21T11:42:05.514Z",
+      "operator": "系统",
+      "operatorRole": "admin",
+      "operatorRoleName": "管理员",
+      "collection": "scrolls",
+      "collectionLabel": "经卷档案",
+      "itemId": "scroll-seed-2",
+      "itemTitle": "金刚般若波罗蜜经",
+      "action": "statusChange",
+      "actionLabel": "状态变更",
+      "changes": null,
+      "note": "借阅改期：李研究员（展览筹备）日期从 2026-07-10 ~ 2026-07-20 调整为 2026-07-15 ~ 2026-07-25",
+      "ip": "::1"
+    },
+    {
+      "id": "audit-1782042125514-afc62",
+      "timestamp": "2026-06-21T11:42:05.514Z",
+      "operator": "系统",
+      "operatorRole": "admin",
+      "operatorRoleName": "管理员",
+      "collection": "loans",
+      "collectionLabel": "借阅申请",
+      "itemId": "loan-seed-2",
+      "itemTitle": "李研究员 / 展览筹备 / 2026-07-15 ~ 2026-07-25",
+      "action": "reschedule",
+      "actionLabel": "改期",
+      "changes": {
+        "borrowDate": {
+          "before": "2026-07-10",
+          "after": "2026-07-15"
+        },
+        "dueDate": {
+          "before": "2026-07-20",
+          "after": "2026-07-25"
+        },
+        "status": {
+          "before": "已批准",
+          "after": "待审批"
+        },
+        "riskLevel": {
+          "before": "高风险",
+          "after": "高风险"
+        },
+        "reason": "展览时间调整，需延后一周",
+        "rescheduleEntry": {
+          "id": "resched-1782042125514-624ef",
+          "sequence": 1,
+          "oldBorrowDate": "2026-07-10",
+          "oldDueDate": "2026-07-20",
+          "newBorrowDate": "2026-07-15",
+          "newDueDate": "2026-07-25",
+          "reason": "展览时间调整，需延后一周",
+          "rescheduledAt": "2026-06-21T11:42:05.514Z",
+          "rescheduledBy": "系统",
+          "statusBefore": "已批准",
+          "statusAfter": "待审批",
+          "riskBefore": {
+            "level": "高风险",
+            "score": 80
+          },
+          "riskAfter": {
+            "level": "高风险",
+            "score": 80
+          },
+          "hadConflict": false,
+          "conflictCount": 0
+        }
+      },
+      "note": "日期从 2026-07-10 ~ 2026-07-20 调整为 2026-07-15 ~ 2026-07-25，改期原因：展览时间调整，需延后一周，状态从「已批准」退回「待审批」待重新审批 | 风险评估：高风险（得分80）- 可借阅性评估：需审批（得分52）；借阅用途：展览筹备（高风险用途，需搬运和展示）",
+      "ip": "::1"
+    },
     {
       "id": "audit-1782017847902-0fcd0",
       "timestamp": "2026-06-21T04:57:27.902Z",

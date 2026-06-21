@@ -9,6 +9,15 @@ const state = {
   calendarRiskFilter: '',
   conflictCheck: { scrollId: '', borrowDate: '', dueDate: '', conflicts: [] },
   riskPreview: null,
+  rescheduleModal: {
+    visible: false,
+    loanId: null,
+    borrowDate: '',
+    dueDate: '',
+    reason: '',
+    conflicts: [],
+    riskPreview: null
+  },
   timelineScrollId: null,
   timelineData: null,
   timelineFilter: '',
@@ -728,6 +737,34 @@ function historyHtml(item) {
   `).join('')}</div>`;
 }
 
+function rescheduleHistoryHtml(item) {
+  const rescheduleHistory = item.rescheduleHistory || [];
+  if (!rescheduleHistory.length) return '';
+  const items = rescheduleHistory.slice(0, 5);
+  return `<div class="reschedule-history">
+    <div class="reschedule-history-title">📅 改期记录（${rescheduleHistory.length}次）</div>
+    ${items.map((entry) => `
+      <div class="reschedule-history-item">
+        <div class="reschedule-history-head">
+          <span class="reschedule-sequence">第${entry.sequence}次改期</span>
+          <span class="reschedule-history-time">${fmtDate(entry.rescheduledAt)}</span>
+        </div>
+        <div class="reschedule-history-dates">
+          <span class="reschedule-old-date old">${escapeHtml(entry.oldBorrowDate)} ~ ${escapeHtml(entry.oldDueDate)}</span>
+          <span class="reschedule-arrow">→</span>
+          <span class="reschedule-new-date new">${escapeHtml(entry.newBorrowDate)} ~ ${escapeHtml(entry.newDueDate)}</span>
+        </div>
+        ${entry.reason ? `<div class="reschedule-history-reason">原因：${escapeHtml(entry.reason)}</div>` : ''}
+        <div class="reschedule-history-meta">
+          操作人：${escapeHtml(entry.rescheduledBy || '-')}
+          ${entry.statusBefore !== entry.statusAfter ? ` · 状态：${escapeHtml(entry.statusBefore)} → ${escapeHtml(entry.statusAfter)}` : ''}
+          ${entry.riskAfter ? ` · 风险：${escapeHtml(entry.riskAfter.level || '-')}` : ''}
+        </div>
+      </div>
+    `).join('')}
+  </div>`;
+}
+
 function renderBatchTasksDetail(tasks) {
   const statuses = ['计划中', '进行中', '已完成'];
   return `<div class="batch-tasks-detail">
@@ -812,6 +849,7 @@ const TIMELINE_TYPE_ICONS = {
   '修补': '🔧',
   '借阅': '📖',
   '归还': '↩️',
+  '改期': '📅',
   '状态变更': '🔄',
   '保护建议': '🛡️',
   '影像采集': '📷',
@@ -825,6 +863,7 @@ const TIMELINE_TYPE_TONES = {
   '修补': 'warn',
   '借阅': 'warn',
   '归还': 'ok',
+  '改期': 'warn',
   '状态变更': '',
   '保护建议': 'obs',
   '影像采集': '',
@@ -1074,6 +1113,7 @@ function renderCard(item, collection, view) {
     const needCondition = isConditionRequired(item.riskAssessment);
     const isStrict = isStrictRiskAssessment(item.riskAssessment);
     const loanActions = state.config.actions.filter((action) => action.collection === collection);
+    const canReschedule = ['待审批', '条件批准', '已批准', '已借出'].includes(item.status);
 
     const actionsList = loanActions.map((action) => {
       if (action.id === 'loan-approve') {
@@ -1093,7 +1133,11 @@ function renderCard(item, collection, view) {
       return `<button class="${action.danger ? 'danger' : 'ghost'}${extraClass}" data-action="${action.id}" data-id="${item.id}" data-strict="${isStrict ? 'true' : ''}">${warnIcon}${escapeHtml(action.label)}</button>`;
     }).filter(Boolean).join('');
 
-    actionsHtml = `<div class="actions">${actionsList}</div>`;
+    const rescheduleBtn = canReschedule
+      ? `<button class="ghost" data-reschedule="${item.id}">📅 改期</button>`
+      : '';
+
+    actionsHtml = `<div class="actions">${actionsList}${rescheduleBtn}</div>`;
   } else if (collection === 'materials') {
     actionsHtml = `<div class="actions">
       <button class="ghost" data-material-edit="${item.id}">✏️ 编辑</button>
@@ -1180,6 +1224,7 @@ function renderCard(item, collection, view) {
     ${attachmentsHtml}
     ${actionsHtml}
     ${timelineBtn ? `<div class="actions">${timelineBtn}</div>` : ''}
+    ${collection === 'loans' ? rescheduleHistoryHtml(item) : ''}
     ${historyHtml(item)}
     <div class="batch-tasks" id="batch-tasks-${item.id}" style="display:none"></div>
   </article>`;
@@ -1991,6 +2036,230 @@ function openConditionApproveModal(action, item, onConfirm) {
   });
 }
 
+function openRescheduleModal(loanId) {
+  const loan = (state.db.loans || []).find((l) => l.id === loanId);
+  if (!loan) {
+    toast('借阅申请不存在');
+    return;
+  }
+
+  const scroll = state.db.scrolls?.find((s) => s.id === loan.scrollId);
+  const assessment = loan.riskAssessment || {};
+  const willRevert = ['已批准', '条件批准'].includes(loan.status);
+
+  state.rescheduleModal = {
+    visible: true,
+    loanId,
+    borrowDate: loan.borrowDate,
+    dueDate: loan.dueDate,
+    reason: '',
+    conflicts: [],
+    riskPreview: null
+  };
+
+  const modal = document.createElement('div');
+  modal.className = 'modal-backdrop';
+  modal.id = 'reschedule-modal';
+  modal.innerHTML = `
+    <div class="modal reschedule-modal">
+      <div class="modal-head">
+        <h3>📅 借阅改期</h3>
+        <button class="modal-close" data-modal-close>×</button>
+      </div>
+      <div class="modal-body">
+        <div class="reschedule-info-grid">
+          <div class="modal-info-row"><span class="label">经卷名称</span><span><strong>${escapeHtml(scroll?.title || '-')}</strong></span></div>
+          <div class="modal-info-row"><span class="label">借阅人</span><span>${escapeHtml(loan.borrower || '-')}</span></div>
+          <div class="modal-info-row"><span class="label">借阅用途</span><span>${escapeHtml(loan.purpose || '-')}</span></div>
+          <div class="modal-info-row"><span class="label">当前状态</span><span>${pill(loan.status || '-', toneFor(loan.status))}</span></div>
+          <div class="modal-info-row"><span class="label">当前风险</span><span>${pill(assessment.level || '-', toneFor(assessment.level))} <span style="font-family:monospace;color:var(--muted)">(${assessment.score || 0}/100)</span></span></div>
+        </div>
+
+        <div class="reschedule-current-dates">
+          <div class="reschedule-current-label">当前借阅日期：</div>
+          <div class="reschedule-current-value">${escapeHtml(loan.borrowDate)} ~ ${escapeHtml(loan.dueDate)}</div>
+        </div>
+
+        <div class="reschedule-new-dates">
+          <div class="reschedule-dates-row">
+            <label>新借出日期
+              <input type="date" name="reschedule-borrow" value="${escapeHtml(loan.borrowDate)}">
+            </label>
+            <label>新预计归还
+              <input type="date" name="reschedule-due" value="${escapeHtml(loan.dueDate)}">
+            </label>
+          </div>
+        </div>
+
+        <div class="reschedule-conflict" id="reschedule-conflict" style="display:none">
+          <div class="reschedule-conflict-title">⚠️ 日期冲突</div>
+          <div class="reschedule-conflict-list" id="reschedule-conflict-list"></div>
+        </div>
+
+        <div class="reschedule-risk-preview" id="reschedule-risk-preview" style="display:none">
+          <div class="reschedule-risk-title">📊 改期后风险评估</div>
+          <div class="reschedule-risk-content" id="reschedule-risk-content"></div>
+        </div>
+
+        ${willRevert ? `
+          <div class="reschedule-revert-warn">
+            <div class="reschedule-revert-icon">⚠️</div>
+            <div class="reschedule-revert-text">
+              改期后状态将从<strong>「${escapeHtml(loan.status)}」</strong>退回<strong>「待审批」</strong>，需要重新审批。
+            </div>
+          </div>
+        ` : ''}
+
+        <div style="margin-top:14px">
+          <label style="font-size:13px;font-weight:700">改期原因（必填）：
+            <textarea class="modal-confirm-textarea" id="reschedule-reason" placeholder="请填写改期的原因..."></textarea>
+          </label>
+        </div>
+      </div>
+      <div class="modal-foot">
+        <button class="ghost" data-modal-close>取消</button>
+        <button id="reschedule-confirm-btn" disabled>确认改期</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(modal);
+
+  const close = () => {
+    modal.remove();
+    document.removeEventListener('keydown', onKey);
+    state.rescheduleModal.visible = false;
+  };
+  const onKey = (e) => { if (e.key === 'Escape') close(); };
+  document.addEventListener('keydown', onKey);
+
+  let conflictCheckTimer = null;
+  let riskPreviewTimer = null;
+
+  const validateAndUpdate = () => {
+    const borrowDate = modal.querySelector('[name="reschedule-borrow"]').value;
+    const dueDate = modal.querySelector('[name="reschedule-due"]').value;
+    const reason = modal.querySelector('#reschedule-reason').value.trim();
+    const confirmBtn = modal.querySelector('#reschedule-confirm-btn');
+
+    const datesValid = borrowDate && dueDate && new Date(dueDate) >= new Date(borrowDate);
+    const hasConflict = state.rescheduleModal.conflicts.length > 0;
+    const hasReason = reason.length > 0;
+
+    confirmBtn.disabled = !(datesValid && !hasConflict && hasReason);
+  };
+
+  const checkConflict = async () => {
+    const borrowDate = modal.querySelector('[name="reschedule-borrow"]').value;
+    const dueDate = modal.querySelector('[name="reschedule-due"]').value;
+    if (!borrowDate || !dueDate || !loan.scrollId) {
+      state.rescheduleModal.conflicts = [];
+      modal.querySelector('#reschedule-conflict').style.display = 'none';
+      validateAndUpdate();
+      return;
+    }
+    try {
+      const result = await api(`/api/loans/check-conflict?scrollId=${encodeURIComponent(loan.scrollId)}&borrowDate=${encodeURIComponent(borrowDate)}&dueDate=${encodeURIComponent(dueDate)}&excludeId=${encodeURIComponent(loanId)}`);
+      state.rescheduleModal.conflicts = result.conflicts || [];
+      const conflictEl = modal.querySelector('#reschedule-conflict');
+      const conflictList = modal.querySelector('#reschedule-conflict-list');
+      if (result.conflicts && result.conflicts.length > 0) {
+        conflictEl.style.display = 'block';
+        conflictList.innerHTML = result.conflicts.map((c) => `
+          <div class="reschedule-conflict-item">
+            <span class="conflict-borrower">${escapeHtml(c.borrower)}</span>
+            <span class="conflict-dates">${escapeHtml(c.borrowDate)} ~ ${escapeHtml(c.dueDate)}</span>
+            <span class="conflict-status">${escapeHtml(c.status)}</span>
+          </div>
+        `).join('');
+      } else {
+        conflictEl.style.display = 'none';
+      }
+      validateAndUpdate();
+    } catch (e) {
+      console.error('Conflict check failed:', e);
+    }
+  };
+
+  const previewRisk = async () => {
+    const borrowDate = modal.querySelector('[name="reschedule-borrow"]').value;
+    const dueDate = modal.querySelector('[name="reschedule-due"]').value;
+    if (!borrowDate || !dueDate || !loan.scrollId) {
+      state.rescheduleModal.riskPreview = null;
+      modal.querySelector('#reschedule-risk-preview').style.display = 'none';
+      return;
+    }
+    try {
+      const result = await api('/api/loans/assess-preview', {
+        method: 'POST',
+        body: JSON.stringify({ ...loan, borrowDate, dueDate })
+      });
+      state.rescheduleModal.riskPreview = result;
+      const riskEl = modal.querySelector('#reschedule-risk-preview');
+      const riskContent = modal.querySelector('#reschedule-risk-content');
+      riskEl.style.display = 'block';
+      const reasons = (result.reasons || []).slice(0, 4).map((r) => `<li>${escapeHtml(r)}</li>`).join('');
+      riskContent.innerHTML = `
+        <div class="reschedule-risk-level">
+          风险等级：${pill(result.level || '-', toneFor(result.level))}
+          <span style="font-family:monospace;color:var(--muted)">(${result.score || 0}/100)</span>
+        </div>
+        <ul class="risk-reasons">${reasons}</ul>
+      `;
+    } catch (e) {
+      console.error('Risk preview failed:', e);
+    }
+  };
+
+  modal.addEventListener('input', (e) => {
+    if (e.target.name === 'reschedule-borrow' || e.target.name === 'reschedule-due') {
+      clearTimeout(conflictCheckTimer);
+      clearTimeout(riskPreviewTimer);
+      conflictCheckTimer = setTimeout(checkConflict, 300);
+      riskPreviewTimer = setTimeout(previewRisk, 300);
+    }
+    if (e.target.id === 'reschedule-reason') {
+      validateAndUpdate();
+    }
+  });
+
+  modal.addEventListener('click', (e) => {
+    if (e.target.closest('[data-modal-close]') || e.target === modal) close();
+    if (e.target.id === 'reschedule-confirm-btn') {
+      const borrowDate = modal.querySelector('[name="reschedule-borrow"]').value;
+      const dueDate = modal.querySelector('[name="reschedule-due"]').value;
+      const reason = modal.querySelector('#reschedule-reason').value.trim();
+      if (!borrowDate || !dueDate) {
+        toast('请填写新的借阅日期');
+        return;
+      }
+      if (!reason) {
+        toast('请填写改期原因');
+        return;
+      }
+      const btn = e.target;
+      btn.disabled = true;
+      btn.textContent = '处理中...';
+      api(`/api/loans/${encodeURIComponent(loanId)}/reschedule`, {
+        method: 'POST',
+        body: JSON.stringify({ borrowDate, dueDate, reason })
+      }).then(async (result) => {
+        close();
+        await load();
+        toast('改期成功');
+      }).catch((err) => {
+        toast(err.message);
+        btn.disabled = false;
+        btn.textContent = '确认改期';
+      });
+    }
+  });
+
+  setTimeout(() => {
+    checkConflict();
+    previewRisk();
+  }, 50);
+}
+
 document.addEventListener('click', async (event) => {
   const tab = event.target.closest('.tab');
   const action = event.target.closest('[data-action]');
@@ -2000,6 +2269,7 @@ document.addEventListener('click', async (event) => {
   const timelineBtn = event.target.closest('[data-timeline]');
   const timelineClose = event.target.closest('[data-timeline-close]');
   const batchTasksBtn = event.target.closest('[data-batch-tasks]');
+  const rescheduleBtn = event.target.closest('[data-reschedule]');
 
   const batchPreviewBtn = event.target.closest('#batch-preview-btn');
   const batchResetBtn = event.target.closest('#batch-reset-btn');
@@ -2426,6 +2696,11 @@ document.addEventListener('click', async (event) => {
     } catch (e) {
       toast(e.message);
     }
+    return;
+  }
+
+  if (rescheduleBtn) {
+    openRescheduleModal(rescheduleBtn.dataset.reschedule);
     return;
   }
 
