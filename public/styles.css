@@ -3949,3 +3949,60 @@ main {
 .borrowability-card.compact .borrowability-icon {
   font-size: 16px;
 }
+
+.conditional-field.hidden {
+  display: none !important;
+}
+
+.conditional-field textarea {
+  border-color: rgba(161, 61, 61, .3);
+  background: rgba(161, 61, 61, .03);
+}
+
+.conditional-field textarea:focus {
+  border-color: rgba(161, 61, 61, .5);
+  box-shadow: 0 0 0 2px rgba(161, 61, 61, .1);
+}
+
+.borrowability-guard {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  margin-top: 8px;
+  background: linear-gradient(135deg, rgba(127, 29, 29, .08), rgba(161, 61, 61, .05));
+  border: 1px solid rgba(127, 29, 29, .3);
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  color: #7f1d1d;
+}
+
+.borrowability-guard .guard-icon {
+  font-size: 16px;
+  flex-shrink: 0;
+}
+
+.block-reason-display {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 10px 14px;
+  margin: 8px 0;
+  background: linear-gradient(135deg, rgba(127, 29, 29, .06), rgba(161, 61, 61, .03));
+  border: 1px solid rgba(127, 29, 29, .2);
+  border-radius: 8px;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.block-reason-icon {
+  font-size: 14px;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.block-reason-text {
+  color: var(--ink);
+  font-weight: 600;
+}

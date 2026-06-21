@@ -369,6 +369,10 @@ const PROTECTION_ADVICE_RULES = {
     '可借阅': [
       '借阅状态正常：仍需遵守轻取轻放原则，查阅时佩戴干净手套',
       '归还时检查有无新增损伤，异常情况及时登记报告'
+    ],
+    '不可借阅': [
+      '当前不可借阅：经卷处于不可借阅状态，任何借阅申请均将被拦截',
+      '如需解除不可借阅状态，须由馆长审批确认风险已消除后方可操作'
     ]
   }
 };
@@ -1494,6 +1498,34 @@ app.post('/api/:collection', requirePermission(':collection', 'create'), async (
 
   if (collection === 'loans') {
     const { scrollId, borrowDate, dueDate } = req.body;
+    if (scrollId) {
+      const scroll = (db.scrolls || []).find((s) => s.id === scrollId);
+      if (scroll) {
+        if (scroll.borrowStatus === '不可借阅') {
+          return res.status(403).json({
+            error: `该经卷当前借阅状态为「不可借阅」${(scroll.blockReason || '').trim() ? '：' + scroll.blockReason : ''}，无法提交借阅申请`,
+            blocked: true
+          });
+        }
+        if (scroll.borrowStatus === '修补中') {
+          return res.status(403).json({
+            error: `该经卷当前处于修补中状态，无法提交借阅申请`,
+            blocked: true
+          });
+        }
+        const borrowability = assessBorrowability(db, scrollId, { borrowDate, dueDate });
+        if (borrowability.level === '不可借阅') {
+          const reasons = borrowability.blockReasons.length > 0
+            ? borrowability.blockReasons.join('；')
+            : '综合评估为不可借阅';
+          return res.status(403).json({
+            error: `可借阅性决策为不可借阅：${reasons}`,
+            borrowability,
+            blocked: true
+          });
+        }
+      }
+    }
     if (scrollId && borrowDate && dueDate) {
       const conflicts = checkLoanConflict(db, scrollId, borrowDate, dueDate);
       if (conflicts.length > 0) {
@@ -1720,6 +1752,13 @@ app.patch('/api/:collection/:id', async (req, res) => {
   Object.assign(item, req.body, { updatedAt: new Date().toISOString() });
 
   if (collection === 'scrolls') {
+    const newBorrowStatus = req.body.borrowStatus !== undefined ? req.body.borrowStatus : oldItem.borrowStatus;
+    const newBlockReason = req.body.blockReason !== undefined ? req.body.blockReason : (oldItem.blockReason || '');
+    const newDamage = req.body.damage !== undefined ? req.body.damage : (oldItem.damage || '');
+    if (newBorrowStatus === '不可借阅' && !newBlockReason.trim() && !newDamage.trim()) {
+      Object.assign(item, oldItem);
+      return res.status(400).json({ error: '借阅状态为「不可借阅」时必须提供原因（blockReason 或 damage 字段）' });
+    }
     const damageChanged = req.body.damage !== undefined && req.body.damage !== oldItem.damage;
     const levelChanged = req.body.protectionLevel !== undefined && req.body.protectionLevel !== oldItem.protectionLevel;
     const borrowChanged = req.body.borrowStatus !== undefined && req.body.borrowStatus !== oldItem.borrowStatus;
@@ -2144,6 +2183,15 @@ function runAction(db, action, item, extra = {}) {
           };
         }
       }
+      if (item.scrollId) {
+        const borrowability = assessBorrowability(db, item.scrollId, { borrowDate: item.borrowDate, dueDate: item.dueDate });
+        if (borrowability.level === '不可借阅') {
+          const reasons = borrowability.blockReasons.length > 0
+            ? borrowability.blockReasons.join('；')
+            : '综合评估为不可借阅';
+          return { error: `无法${action.label}：经卷可借阅性决策为「不可借阅」—${reasons}` };
+        }
+      }
     }
   }
 
@@ -2202,7 +2250,7 @@ function runAction(db, action, item, extra = {}) {
 }
 
 const VALID_PROTECTION_LEVELS = ['一级', '二级', '三级'];
-const VALID_BORROW_STATUSES = ['可借阅', '需审批', '限制借阅', '修补中'];
+const VALID_BORROW_STATUSES = ['可借阅', '需审批', '限制借阅', '修补中', '不可借阅'];
 const SCROLL_REQUIRED_FIELDS = ['title', 'material', 'era', 'cabinet', 'damage'];
 
 const FIELD_ALIASES = {
@@ -2213,7 +2261,8 @@ const FIELD_ALIASES = {
   inscription: ['题跋', '题记', '跋文', '题跋信息', 'inscription'],
   cabinet: ['柜位', '存放柜位', '位置', '存放位置', 'cabinet'],
   protectionLevel: ['保护等级', '等级', 'protectionLevel', 'protection_level'],
-  borrowStatus: ['借阅状态', '状态', '借阅情况', 'borrowStatus', 'borrow_status']
+  borrowStatus: ['借阅状态', '状态', '借阅情况', 'borrowStatus', 'borrow_status'],
+  blockReason: ['不可借阅原因', '阻断原因', '借阅限制原因', 'blockReason', 'block_reason']
 };
 
 function parseCsvText(text) {
@@ -2344,6 +2393,14 @@ function validateScrollRow(row, existingTitles, inputTitleCounts) {
       type: 'invalid_borrow',
       field: 'borrowStatus',
       message: `借阅状态"${data.borrowStatus}"无效，有效值：${VALID_BORROW_STATUSES.join('、')}`
+    });
+  }
+
+  if (data.borrowStatus && data.borrowStatus.trim() === '不可借阅' && !(data.blockReason || '').trim() && !(data.damage || '').trim()) {
+    errors.push({
+      type: 'missing_block_reason',
+      field: 'blockReason',
+      message: '借阅状态为「不可借阅」时必须提供原因（blockReason 或 damage 字段）'
     });
   }
 

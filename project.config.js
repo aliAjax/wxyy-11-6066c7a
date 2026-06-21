@@ -26,6 +26,7 @@ module.exports = {
     '异常': 'bad',
     '低余量': 'warn',
     '即将到期': 'warn',
+    '不可借阅': 'extreme',
     '已过期': 'bad',
     '低风险': 'ok',
     '中风险': 'warn',
@@ -74,7 +75,7 @@ module.exports = {
       foci: [
         {
           title: '重点保护经卷',
-          focus: { collection: 'scrolls', field: 'borrowStatus', values: ['限制借阅', '修补中', '需审批'], limit: 8 }
+          focus: { collection: 'scrolls', field: 'borrowStatus', values: ['不可借阅', '限制借阅', '修补中', '需审批'], limit: 8 }
         },
         {
           title: '待复核盘点',
@@ -97,7 +98,7 @@ module.exports = {
       searchPlaceholder: '搜索卷名、年代、柜位',
       searchFields: ['title', 'era', 'cabinet', 'material'],
       statusField: 'borrowStatus',
-      statusOptions: ['可借阅', '需审批', '限制借阅', '修补中'],
+      statusOptions: ['可借阅', '需审批', '限制借阅', '修补中', '不可借阅'],
       titleFields: ['title'],
       summaryFields: ['damage', 'inscription'],
       detailFields: [
@@ -115,7 +116,8 @@ module.exports = {
         { label: '年代判断', name: 'era', required: true },
         { label: '存放柜位', name: 'cabinet', required: true },
         { label: '保护等级', name: 'protectionLevel', type: 'select', options: ['一级', '二级', '三级'] },
-        { label: '借阅状态', name: 'borrowStatus', type: 'select', options: ['可借阅', '需审批', '限制借阅', '修补中'] },
+        { label: '借阅状态', name: 'borrowStatus', type: 'select', options: ['可借阅', '需审批', '限制借阅', '修补中', '不可借阅'] },
+        { label: '不可借阅原因', name: 'blockReason', type: 'textarea', wide: true, showWhen: { field: 'borrowStatus', value: '不可借阅' } },
         { label: '残损位置', name: 'damage', type: 'textarea', required: true, wide: true },
         { label: '题跋信息', name: 'inscription', type: 'textarea', wide: true }
       ]
@@ -380,6 +382,7 @@ module.exports = {
     { id: 'scroll-approval', label: '需审批', collection: 'scrolls', patches: [{ field: 'borrowStatus', value: '需审批' }] },
     { id: 'scroll-repairing', label: '修补中', collection: 'scrolls', patches: [{ field: 'borrowStatus', value: '修补中' }] },
     { id: 'scroll-restrict', label: '限制借阅', collection: 'scrolls', danger: true, patches: [{ field: 'borrowStatus', value: '限制借阅' }] },
+    { id: 'scroll-unborrowable', label: '不可借阅', collection: 'scrolls', danger: true, guards: [{ left: 'item.blockReason', op: 'missing', message: '设为不可借阅时必须填写原因' }], patches: [{ field: 'borrowStatus', value: '不可借阅' }] },
     { id: 'repair-doing', label: '进行中', collection: 'repairs', patches: [{ field: 'status', value: '进行中' }] },
     {
       id: 'repair-done',
@@ -389,15 +392,15 @@ module.exports = {
         { field: 'status', value: '已完成' }
       ]
     },
-    { id: 'loan-approve', label: '快速批准', collection: 'loans', patches: [{ field: 'status', value: '已批准' }] },
-    { id: 'loan-approve-condition', label: '条件批准', collection: 'loans', patches: [{ field: 'status', value: '条件批准' }] },
+    { id: 'loan-approve', label: '快速批准', collection: 'loans', relation: { collection: 'scrolls', localKey: 'scrollId' }, guards: [{ left: 'related.borrowStatus', op: 'notIn', values: ['不可借阅', '修补中'], message: '经卷当前状态为「不可借阅」或「修补中」，无法批准借阅' }], patches: [{ field: 'status', value: '已批准' }] },
+    { id: 'loan-approve-condition', label: '条件批准', collection: 'loans', relation: { collection: 'scrolls', localKey: 'scrollId' }, guards: [{ left: 'related.borrowStatus', op: 'notIn', values: ['不可借阅', '修补中'], message: '经卷当前状态为「不可借阅」或「修补中」，无法条件批准' }], patches: [{ field: 'status', value: '条件批准' }] },
     {
       id: 'loan-out',
       label: '借出',
       collection: 'loans',
       relation: { collection: 'scrolls', localKey: 'scrollId' },
       guards: [
-        { left: 'related.borrowStatus', op: 'notIn', values: ['限制借阅', '修补中'], message: '经卷当前不可借出' }
+        { left: 'related.borrowStatus', op: 'notIn', values: ['不可借阅', '限制借阅', '修补中'], message: '经卷当前不可借出：状态为不可借阅/限制借阅/修补中' }
       ],
       patches: [
         { field: 'status', value: '已借出' },

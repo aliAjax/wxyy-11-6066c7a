@@ -697,17 +697,19 @@ function formField(field, viewId) {
   const placeholder = field.placeholder ? `placeholder="${escapeHtml(field.placeholder)}"` : '';
   const conflictCheckClass = viewId === 'loans' && (field.name === 'borrowDate' || field.name === 'dueDate') ? 'conflict-check' : '';
   const relationSelectClass = viewId === 'loans' && field.type === 'relation' ? 'scroll-select' : '';
+  const showWhenAttr = field.showWhen ? `data-show-when-field="${field.showWhen.field}" data-show-when-value="${field.showWhen.value}"` : '';
+  const hiddenClass = field.showWhen ? ' conditional-field hidden' : '';
   if (field.type === 'textarea') {
-    return `<label class="${field.wide ? 'wide' : ''}">${field.label}<textarea name="${field.name}" ${required} ${placeholder}></textarea></label>`;
+    return `<label class="${field.wide ? 'wide' : ''}${hiddenClass}" ${showWhenAttr}>${field.label}<textarea name="${field.name}" ${required} ${placeholder}></textarea></label>`;
   }
   if (field.type === 'select') {
-    return `<label class="${field.wide ? 'wide' : ''}">${field.label}<select name="${field.name}" ${required}>${field.options.map((option) => `<option>${escapeHtml(option)}</option>`).join('')}</select></label>`;
+    return `<label class="${field.wide ? 'wide' : ''}${hiddenClass}" ${showWhenAttr}>${field.label}<select name="${field.name}" ${required}>${field.options.map((option) => `<option>${escapeHtml(option)}</option>`).join('')}</select></label>`;
   }
   if (field.type === 'relation') {
     const items = state.db[field.collection] || [];
-    return `<label class="${field.wide ? 'wide' : ''} ${relationSelectClass}">${field.label}<select name="${field.name}" ${required}>${optionList(items, field.labelFields)}</select></label>`;
+    return `<label class="${field.wide ? 'wide' : ''} ${relationSelectClass}${hiddenClass}" ${showWhenAttr}>${field.label}<select name="${field.name}" ${required}>${optionList(items, field.labelFields)}</select></label>`;
   }
-  return `<label class="${field.wide ? 'wide' : ''} ${conflictCheckClass}">${field.label}<input type="${field.type || 'text'}" name="${field.name}" ${value} ${placeholder} ${required}></label>`;
+  return `<label class="${field.wide ? 'wide' : ''} ${conflictCheckClass}${hiddenClass}" ${showWhenAttr}>${field.label}<input type="${field.type || 'text'}" name="${field.name}" ${value} ${placeholder} ${required}></label>`;
 }
 
 function pill(value, tone = '') {
@@ -1109,6 +1111,10 @@ function renderCard(item, collection, view) {
     ? renderBorrowabilityCard(item.borrowabilityDecision, { compact: false, showDimensions: true, showActions: true })
     : '';
 
+  const blockReasonHtml = collection === 'scrolls' && item.borrowStatus === '不可借阅' && (item.blockReason || '').trim()
+    ? `<div class="block-reason-display"><span class="block-reason-icon">🔒</span><span class="block-reason-text">不可借阅原因：${escapeHtml(item.blockReason)}</span></div>`
+    : '';
+
   let materialStatusHtml = '';
   if (collection === 'materials') {
     const reasons = item.statusReasons || [];
@@ -1166,6 +1172,7 @@ function renderCard(item, collection, view) {
     ${details ? `<div class="detail">${details}</div>` : ''}
     ${adviceHtml}
     ${borrowabilityHtml}
+    ${blockReasonHtml}
     ${materialStatusHtml}
     ${batchProgressHtml}
     ${riskHtml}
@@ -1543,9 +1550,10 @@ function renderBatchImportView(view) {
     </div>`;
   }
 
-  const sampleText = `卷名,材质,年代,残损,题跋,柜位,保护等级,借阅状态
-维摩诘经卷上,楮皮纸,唐代,首尾完整中部略有虫蛀,有贞观年款,恒湿柜A-01,一级,需审批
-楞伽阿跋多罗宝经,宣纸,宋代,边缘轻微磨损,无,恒湿柜B-02,二级,可借阅`;
+  const sampleText = `卷名,材质,年代,残损,题跋,柜位,保护等级,借阅状态,不可借阅原因
+维摩诘经卷上,楮皮纸,唐代,首尾完整中部略有虫蛀,有贞观年款,恒湿柜A-01,一级,需审批,
+楞伽阿跋多罗宝经,宣纸,宋代,边缘轻微磨损,无,恒湿柜B-02,二级,可借阅,
+严重霉变经卷,麻纸,北宋,严重霉变多处粘连,首尾完整,恒湿柜B-05,一级,不可借阅,严重霉变需揭裱修复`;
 
   return `<section class="view" id="${view.id}">
     <div class="panel">
@@ -1752,9 +1760,10 @@ function openDraftEditModal(draft) {
             </label>
             <label>借阅状态
               <select name="borrowStatus">
-                ${['可借阅', '需审批', '限制借阅', '修补中'].map((opt) => `<option ${d.borrowStatus === opt ? 'selected' : ''}>${opt}</option>`).join('')}
+                ${['可借阅', '需审批', '限制借阅', '修补中', '不可借阅'].map((opt) => `<option ${d.borrowStatus === opt ? 'selected' : ''}>${opt}</option>`).join('')}
               </select>
             </label>
+            <label class="wide conditional-field${d.borrowStatus !== '不可借阅' ? ' hidden' : ''}" data-show-when-field="borrowStatus" data-show-when-value="不可借阅">不可借阅原因 <textarea name="blockReason" placeholder="请填写不可借阅的具体原因">${escapeHtml(d.blockReason || '')}</textarea></label>
             <label class="wide">残损位置 <textarea name="damage" required>${escapeHtml(d.damage || '')}</textarea></label>
             <label class="wide">题跋信息 <textarea name="inscription">${escapeHtml(d.inscription || '')}</textarea></label>
           </div>
@@ -1795,6 +1804,25 @@ function openDraftEditModal(draft) {
       });
     }
   });
+
+  modal.addEventListener('change', (e) => {
+    if (e.target.name === 'borrowStatus') {
+      const form = e.target.closest('form');
+      if (!form) return;
+      form.querySelectorAll('.conditional-field').forEach((label) => {
+        const triggerField = label.dataset.showWhenField;
+        const triggerValue = label.dataset.showWhenValue;
+        const triggerEl = form.querySelector(`[name="${triggerField}"]`);
+        if (triggerEl && triggerEl.value === triggerValue) {
+          label.classList.remove('hidden');
+        } else {
+          label.classList.add('hidden');
+          const input = label.querySelector('input, textarea, select');
+          if (input) input.value = '';
+        }
+      });
+    }
+  });
 }
 
 function openStrictConfirmModal(action, item, onConfirm) {
@@ -1810,6 +1838,8 @@ function openStrictConfirmModal(action, item, onConfirm) {
   const strictReason = [];
   if (assessment.protectionLevel === '一级') strictReason.push('一级保护经卷');
   if (assessment.borrowStatus === '修补中') strictReason.push('经卷处于修补中状态');
+  if (assessment.borrowStatus === '不可借阅') strictReason.push('经卷处于不可借阅状态');
+  if (assessment.borrowStatus === '限制借阅') strictReason.push('经卷处于限制借阅状态');
 
   const modal = document.createElement('div');
   modal.className = 'modal-backdrop';
@@ -1887,6 +1917,8 @@ function openConditionApproveModal(action, item, onConfirm) {
   const strictReason = [];
   if (assessment.protectionLevel === '一级') strictReason.push('一级保护经卷');
   if (assessment.borrowStatus === '修补中') strictReason.push('经卷处于修补中状态');
+  if (assessment.borrowStatus === '不可借阅') strictReason.push('经卷处于不可借阅状态');
+  if (assessment.borrowStatus === '限制借阅') strictReason.push('经卷处于限制借阅状态');
   if (assessment.level === '高风险') strictReason.push('高风险借阅');
   if (assessment.level === '极高风险') strictReason.push('极高风险借阅');
 
@@ -1977,10 +2009,10 @@ document.addEventListener('click', async (event) => {
   const batchRowCheck = event.target.closest('[data-batch-row-check]');
 
   if (batchFillSampleBtn) {
-    const sample = `卷名,材质,年代,残损,题跋,柜位,保护等级,借阅状态
-维摩诘经卷上,楮皮纸,唐代,首尾完整中部略有虫蛀,有贞观年款,恒湿柜A-01,一级,需审批
-楞伽阿跋多罗宝经,宣纸,宋代,边缘轻微磨损,无,恒湿柜B-02,二级,可借阅
-妙法莲华经卷第七,麻纸,元代,无明显残损,尾题完整,恒湿柜C-03,三级,可借阅`;
+    const sample = `卷名,材质,年代,残损,题跋,柜位,保护等级,借阅状态,不可借阅原因
+维摩诘经卷上,楮皮纸,唐代,首尾完整中部略有虫蛀,有贞观年款,恒湿柜A-01,一级,需审批,
+楞伽阿跋多罗宝经,宣纸,宋代,边缘轻微磨损,无,恒湿柜B-02,二级,可借阅,
+妙法莲华经卷第七,麻纸,元代,无明显残损,尾题完整,恒湿柜C-03,三级,可借阅,`;
     const input = $('#batch-csv-input');
     if (input) input.value = sample;
     return;
@@ -2467,6 +2499,25 @@ document.addEventListener('click', async (event) => {
       }
     }
 
+    if (actionId === 'scroll-unborrowable') {
+      const reason = prompt('请填写设为不可借阅的原因（必填）：');
+      if (!reason || !reason.trim()) {
+        toast('设为不可借阅时必须填写原因');
+        return;
+      }
+      try {
+        await api(`/api/${actionConfig.collection}/${itemId}`, {
+          method: 'PATCH',
+          body: JSON.stringify({ borrowStatus: '不可借阅', blockReason: reason.trim(), historyAction: '不可借阅' })
+        });
+        await load();
+        toast('已设为不可借阅');
+      } catch (error) {
+        toast(error.message);
+      }
+      return;
+    }
+
     try {
       await api(`/api/action/${actionId}/${itemId}`, { method: 'POST' });
       await load();
@@ -2494,6 +2545,25 @@ let riskPreviewTimeout = null;
 let borrowabilityPreviewTimeout = null;
 
 document.addEventListener('input', async (event) => {
+  const conditionalField = event.target.closest('[data-create]')?.querySelector('.conditional-field');
+  if (event.target.name && conditionalField) {
+    const form = event.target.closest('[data-create]');
+    form.querySelectorAll('.conditional-field').forEach((label) => {
+      const triggerField = label.dataset.showWhenField;
+      const triggerValue = label.dataset.showWhenValue;
+      const triggerEl = form.querySelector(`[name="${triggerField}"]`);
+      if (triggerEl && triggerEl.value === triggerValue) {
+        label.classList.remove('hidden');
+        const input = label.querySelector('input, textarea, select');
+        if (input) input.required = true;
+      } else {
+        label.classList.add('hidden');
+        const input = label.querySelector('input, textarea, select');
+        if (input) { input.required = false; input.value = ''; }
+      }
+    });
+  }
+
   const view = state.config.views.find((entry) => entry.id && (event.target.id === `search-${entry.id}` || event.target.id === `status-${entry.id}`));
   if (view) $(`#list-${view.id}`).innerHTML = renderList(view);
 
@@ -2582,10 +2652,30 @@ document.addEventListener('input', async (event) => {
             formGrid.insertAdjacentHTML('afterend', newPreviewHtml);
           }
         }
+        const submitBtn = form.querySelector('button[type="submit"]') || form.querySelector('button');
+        const existingGuard = form.querySelector('.borrowability-guard');
+        if (decision && (decision.level === '不可借阅' || decision.level === '修补中')) {
+          if (submitBtn) submitBtn.disabled = true;
+          if (!existingGuard) {
+            const guardHtml = `<div class="borrowability-guard"><span class="guard-icon">🔒</span><span>该经卷当前为「${decision.level}」状态，无法提交借阅申请</span></div>`;
+            const actionsDiv = form.querySelector('.actions');
+            if (actionsDiv) actionsDiv.insertAdjacentHTML('beforebegin', guardHtml);
+          } else {
+            existingGuard.querySelector('span:last-child').textContent = `该经卷当前为「${decision.level}」状态，无法提交借阅申请`;
+          }
+        } else {
+          if (existingGuard) existingGuard.remove();
+          const conflictWarningEl = form.querySelector('.conflict-warning');
+          if (!conflictWarningEl && submitBtn) submitBtn.disabled = false;
+        }
       } else {
         state.borrowabilityPreview = null;
         const previewEl = form.querySelector('.borrowability-preview');
         if (previewEl) previewEl.remove();
+        const guardEl = form.querySelector('.borrowability-guard');
+        if (guardEl) guardEl.remove();
+        const submitBtn = form.querySelector('button[type="submit"]') || form.querySelector('button');
+        if (submitBtn) submitBtn.disabled = false;
       }
     }, 200);
 
